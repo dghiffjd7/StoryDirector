@@ -1,0 +1,67 @@
+# Story Weaver Plugin - Git Ignore File
+
+# 开发和测试文件
+test.html
+test_*.html
+debug.html
+
+# 日志文件
+*.log
+logs/
+
+# 临时文件
+*.tmp
+*.temp
+temp/
+
+# 编辑器配置文件
+.vscode/
+.idea/
+*.sublime-*
+
+# OS 生成的文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# 备份文件
+*.bak
+*.backup
+*.old
+*~
+
+# 打包文件
+*.zip
+*.tar.gz
+*.rar
+
+# 用户自定义配置文件
+config/user-*
+settings/user-*
+
+# 缓存文件
+cache/
+.cache/
+
+# 构建输出
+dist/
+build/
+out/
+
+# 依赖包
+node_modules/
+npm-debug.log*
+
+# 环境变量文件
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+
+# 生成的文档
+docs/generated/
