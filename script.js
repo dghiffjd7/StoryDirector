@@ -120,38 +120,13 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           <span class="title-icon">📖</span>
           Story Weaver - 故事大纲生成器
         </h2>
+        <button id="minimize-panel" class="minimize-btn" title="最小化">—</button>
         <button id="close-panel" class="close-btn" title="关闭面板">
           <span>✕</span>
         </button>
       </div>
       <div class="story-weaver-content">
-        <!-- 世界观数据读取区 -->
-        <section class="content-section">
-          <h3 class="section-title">
-            <span class="section-icon">🌍</span>
-            世界观数据读取
-          </h3>
-          <div class="section-content">
-            <div class="button-group">
-              <button id="read-lorebooks" class="primary-btn">
-                <span class="btn-icon">📚</span>
-                读取当前启用的世界书
-              </button>
-              <button id="read-character" class="secondary-btn">
-                <span class="btn-icon">👤</span>
-                读取当前角色卡
-              </button>
-            </div>
-            <div id="lorebook-status" class="status-display">
-              <span class="status-icon">ℹ️</span>
-              点击上方按钮读取世界观数据...
-            </div>
-            <div id="data-preview" class="data-preview hidden">
-              <h4>数据预览：</h4>
-              <div id="preview-content" class="preview-content"></div>
-            </div>
-          </div>
-        </section>
+        
 
         <!-- 剧情上下文设定区 -->
         <section class="content-section">
@@ -362,17 +337,28 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       closeBtn.onclick = () => (panel.style.display = 'none');
     }
 
-    // Read lorebooks button
-    const readBtn = panel.querySelector('#read-lorebooks');
-    if (readBtn) {
-      readBtn.onclick = handleReadLorebooks;
+    // Minimize to sprite
+    const minimizeBtn = panel.querySelector('#minimize-panel');
+    const sprite = document.getElementById('story-weaver-sprite') || createSprite();
+    if (minimizeBtn) {
+      minimizeBtn.onclick = () => {
+        panel.style.display = 'none';
+        sprite.style.display = 'flex';
+      };
+    }
+    if (sprite) {
+      sprite.onclick = () => {
+        panel.style.display = 'block';
+        sprite.style.display = 'none';
+      };
     }
 
-    // Read character button
-    const charBtn = panel.querySelector('#read-character');
-    if (charBtn) {
-      charBtn.onclick = handleReadCharacter;
-    }
+    // Drag move panel by header
+    makeDraggable(panel, panel.querySelector('.story-weaver-header'));
+    // Resizable by edges
+    makeResizable(panel);
+
+    // 已改用占位符，移除世界书/角色读取按钮绑定
 
     // Generate button
     const genBtn = panel.querySelector('#generate-outline');
@@ -391,6 +377,92 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     if (saveBtn) {
       saveBtn.onclick = () => handleSaveResult(panel);
     }
+  }
+
+  function createSprite() {
+    const sprite = document.createElement('div');
+    sprite.id = 'story-weaver-sprite';
+    sprite.className = 'story-weaver-sprite';
+    sprite.innerHTML = '<span>📖</span>';
+    document.body.appendChild(sprite);
+    return sprite;
+  }
+
+  function makeDraggable(target, handle) {
+    if (!target || !handle) return;
+    let isDown = false;
+    let startX = 0;
+    let startY = 0;
+    let startLeft = 0;
+    let startTop = 0;
+
+    handle.style.cursor = 'move';
+    handle.addEventListener('mousedown', e => {
+      isDown = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = target.getBoundingClientRect();
+      startLeft = rect.left;
+      startTop = rect.top;
+      document.body.style.userSelect = 'none';
+    });
+    document.addEventListener('mousemove', e => {
+      if (!isDown) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      target.style.left = `${startLeft + dx}px`;
+      target.style.top = `${startTop + dy}px`;
+      target.style.transform = 'translate(0, 0)';
+      target.style.position = 'fixed';
+    });
+    document.addEventListener('mouseup', () => {
+      isDown = false;
+      document.body.style.userSelect = '';
+    });
+  }
+
+  function makeResizable(target) {
+    if (!target) return;
+    const resizer = document.createElement('div');
+    resizer.style.position = 'absolute';
+    resizer.style.right = '0';
+    resizer.style.bottom = '0';
+    resizer.style.width = '14px';
+    resizer.style.height = '14px';
+    resizer.style.cursor = 'se-resize';
+    resizer.style.background = 'transparent';
+    target.appendChild(resizer);
+
+    let isResizing = false;
+    let startX = 0;
+    let startY = 0;
+    let startW = 0;
+    let startH = 0;
+
+    resizer.addEventListener('mousedown', e => {
+      isResizing = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      const rect = target.getBoundingClientRect();
+      startW = rect.width;
+      startH = rect.height;
+      document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', e => {
+      if (!isResizing) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      target.style.width = `${Math.max(480, startW + dx)}px`;
+      target.style.height = `${Math.max(360, startH + dy)}px`;
+      target.style.maxWidth = 'none';
+      target.style.maxHeight = 'none';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isResizing = false;
+      document.body.style.userSelect = '';
+    });
   }
 
   /**
@@ -412,95 +484,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   /**
    * Handle read lorebooks
    */
-  function handleReadLorebooks() {
-    console.log('[Story Weaver] Reading lorebooks...');
-
-    const statusDiv = document.getElementById('lorebook-status');
-    if (!statusDiv) return;
-
-    try {
-      // Get SillyTavern context
-      const context = typeof getContext === 'function' ? getContext() : null;
-
-      if (!context || !context.worldInfoData) {
-        updateStatus(statusDiv, '❌ 无法获取世界书数据', 'error');
-        return;
-      }
-
-      const entries = context.worldInfoData.entries || [];
-      const activeEntries = entries.filter(entry => !entry.disable);
-
-      if (activeEntries.length === 0) {
-        updateStatus(statusDiv, '⚠️ 未找到启用的世界书条目', 'warning');
-        return;
-      }
-
-      // Store worldbook content
-      window.storyWeaverData = window.storyWeaverData || {};
-      window.storyWeaverData.worldbook = activeEntries.map(entry => ({
-        keys: Array.isArray(entry.key) ? entry.key : [entry.key],
-        content: entry.content,
-      }));
-
-      // 格式化为文本供prompt使用
-      window.storyWeaverData.worldbookContent = activeEntries
-        .map(entry => {
-          const keys = Array.isArray(entry.key) ? entry.key : [entry.key];
-          return `- Keywords: ${keys.join(', ')}\n  Content: ${entry.content}`;
-        })
-        .join('\n\n');
-
-      updateStatus(statusDiv, `✅ 成功读取 ${activeEntries.length} 个世界书条目`, 'success');
-    } catch (error) {
-      console.error('[Story Weaver] Error reading lorebooks:', error);
-      updateStatus(statusDiv, '❌ 读取世界书失败', 'error');
-    }
-  }
+  // 已改用占位符策略，不再单独读取世界书
 
   /**
    * Handle read character
    */
-  function handleReadCharacter() {
-    console.log('[Story Weaver] Reading character...');
-
-    const statusDiv = document.getElementById('lorebook-status');
-    if (!statusDiv) return;
-
-    try {
-      const context = typeof getContext === 'function' ? getContext() : null;
-
-      if (!context || !context.characters || context.characterId === undefined) {
-        updateStatus(statusDiv, '❌ 无法获取角色数据', 'error');
-        return;
-      }
-
-      const character = context.characters[context.characterId];
-      if (!character) {
-        updateStatus(statusDiv, '❌ 未找到当前角色', 'warning');
-        return;
-      }
-
-      // Store character data
-      window.storyWeaverData = window.storyWeaverData || {};
-      window.storyWeaverData.character = {
-        name: character.name,
-        description: character.description,
-        personality: character.personality || '',
-        scenario: character.scenario || '',
-      };
-
-      // 格式化为文本供prompt使用
-      window.storyWeaverData.characterContent = `Name: ${character.name}
-Description: ${character.description || 'N/A'}
-Personality: ${character.personality || 'N/A'}
-Scenario: ${character.scenario || 'N/A'}`;
-
-      updateStatus(statusDiv, `✅ 成功读取角色: ${character.name}`, 'success');
-    } catch (error) {
-      console.error('[Story Weaver] Error reading character:', error);
-      updateStatus(statusDiv, '❌ 读取角色失败', 'error');
-    }
-  }
+  // 已改用占位符策略，不再单独读取角色
 
   /**
    * Constructs the final prompt by reading the template and injecting data.

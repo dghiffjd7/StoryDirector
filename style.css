@@ -134,6 +134,43 @@
   justify-content: center;
 }
 
+.minimize-btn {
+  background: var(--sw-bg-input);
+  border: 1px solid var(--sw-border-color);
+  color: var(--sw-text-primary);
+  padding: 6px 10px;
+  border-radius: var(--sw-border-radius);
+  cursor: pointer;
+  transition: var(--sw-transition-fast);
+  font-size: 16px;
+  margin-right: 8px;
+}
+.minimize-btn:hover {
+  background: var(--sw-border-light);
+}
+
+/* 悬浮小精灵 */
+.story-weaver-sprite {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 10000;
+  background: var(--sw-primary-gradient);
+  color: white;
+  border-radius: 999px;
+  box-shadow: var(--sw-shadow-medium);
+  display: none; /* 初始隐藏 */
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  cursor: pointer;
+  user-select: none;
+}
+.story-weaver-sprite span {
+  font-size: 24px;
+}
+
 .close-btn:hover {
   background: var(--sw-danger-color);
   transform: scale(1.05);

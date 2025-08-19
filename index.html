@@ -22,34 +22,6 @@
 
       <!-- 面板内容区域 -->
       <div class="story-weaver-content">
-        <!-- 世界观数据读取区 -->
-        <section class="content-section">
-          <h3 class="section-title">
-            <span class="section-icon">🌍</span>
-            世界观数据读取
-          </h3>
-          <div class="section-content">
-            <div class="button-group">
-              <button id="read-lorebooks" class="primary-btn">
-                <span class="btn-icon">📚</span>
-                读取当前启用的世界书
-              </button>
-              <button id="read-character" class="secondary-btn">
-                <span class="btn-icon">👤</span>
-                读取当前角色卡
-              </button>
-            </div>
-            <div id="lorebook-status" class="status-display">
-              <span class="status-icon">ℹ️</span>
-              点击上方按钮读取世界观数据...
-            </div>
-            <div id="data-preview" class="data-preview hidden">
-              <h4>数据预览：</h4>
-              <div id="preview-content" class="preview-content"></div>
-            </div>
-          </div>
-        </section>
-
         <!-- 剧情上下文设定区 -->
         <section class="content-section">
           <h3 class="section-title">
@@ -247,6 +219,11 @@
 
     <!-- 通知容器 -->
     <div id="notification-container" class="notification-container"></div>
+
+    <!-- 悬浮小精灵 -->
+    <div id="story-weaver-sprite" class="story-weaver-sprite" title="打开Story Weaver">
+      <span>📖</span>
+    </div>
 
     <!-- 脚本加载 -->
     <script src="script.js"></script>
