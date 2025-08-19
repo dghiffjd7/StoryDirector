@@ -76,7 +76,8 @@
   transform: translate(-50%, -50%);
   width: 90%;
   max-width: 900px;
-  max-height: 90vh;
+  /* 使用确定高度，便于内部flex子元素按高度收缩并出现滚动条 */
+  height: 90vh;
   background: var(--sw-bg-primary);
   border: 2px solid var(--sw-border-color);
   border-radius: var(--sw-border-radius-large);
@@ -668,7 +669,7 @@ details[open] > summary .summary-arrow {
 @media (max-width: 768px) {
   .story-weaver-panel {
     width: 95%;
-    max-height: 95vh;
+    height: 95vh;
   }
 
   .story-weaver-header,
@@ -710,7 +711,7 @@ details[open] > summary .summary-arrow {
 @media (max-width: 480px) {
   .story-weaver-panel {
     width: 98%;
-    max-height: 98vh;
+    height: 98vh;
   }
 
   .panel-title {
