@@ -39,14 +39,38 @@
 
 ## 🚀 快速安装
 
-### 方法一：直接下载（推荐）
+### 方法一：直接通过SillyTavern安装（推荐）
+
+1. **打开SillyTavern**
+   启动您的SillyTavern应用
+
+2. **进入扩展面板**
+   - 点击顶部菜单栏的 "扩展" 按钮
+   - 或点击右上角的扩展图标 🧩
+
+3. **安装扩展**
+   - 在扩展面板中，找到 "安装扩展" 选项
+   - 输入以下GitHub仓库URL：
+   ```
+   https://github.com/your-username/story-weaver-plugin
+   ```
+
+4. **启用扩展**
+   - 安装完成后，在扩展列表中找到 "Story Weaver"
+   - 点击开关启用扩展
+
+5. **访问插件**
+   - 在扩展下拉菜单中找到 "📖 Story Weaver"
+   - 点击即可打开故事大纲生成器界面
+
+### 方法二：手动安装
 
 1. **下载插件文件**
    ```bash
    git clone https://github.com/your-username/story-weaver-plugin.git
    ```
 
-2. **复制到SillyTavern**
+2. **复制到SillyTavern扩展目录**
    ```
    将插件文件夹复制到：
    SillyTavern/public/extensions/story-weaver/
@@ -55,15 +79,8 @@
 3. **重启SillyTavern**
    重新启动 SillyTavern 服务
 
-4. **激活插件**
-   在界面上找到 "📖 Story Weaver" 按钮即表示安装成功
-
-### 方法二：Git 子模块
-
-```bash
-cd SillyTavern/public/extensions/
-git submodule add https://github.com/your-username/story-weaver-plugin.git story-weaver
-```
+4. **在扩展面板中启用**
+   在扩展管理中找到并启用 "Story Weaver"
 
 ## 📖 使用指南
 
@@ -130,9 +147,11 @@ const customPrompt = `
 ### 项目结构
 ```
 story-weaver/
-├── script.js          # 主要逻辑文件
+├── index.js           # 扩展主文件（SillyTavern标准）
+├── script.js          # 原始逻辑文件（兼容版本）
 ├── index.html         # UI结构定义
 ├── style.css          # 样式文件
+├── manifest.json      # 扩展配置文件
 ├── README.md          # 说明文档
 ├── LICENSE            # 开源协议
 └── assets/            # 资源文件
@@ -145,6 +164,21 @@ story-weaver/
 - **UI设计**：响应式设计，支持移动端
 - **数据处理**：JSON格式的世界书和角色数据解析
 - **API集成**：基于 SillyTavern 的后端API
+- **扩展标准**：符合 SillyTavern 扩展规范
+
+### 两种集成方式
+
+#### 方式一：标准SillyTavern扩展（推荐）
+- **文件**：`index.js` + `manifest.json`
+- **访问**：通过扩展下拉菜单
+- **优势**：完全集成，设置保存，自动更新
+- **数据访问**：可读取真实的世界书和角色数据
+
+#### 方式二：独立插件模式
+- **文件**：`script.js`（原始实现）
+- **访问**：直接在页面注入按钮
+- **优势**：独立运行，便于调试
+- **适用**：开发测试或独立部署
 
 ### 开发环境搭建
 1. **克隆仓库**

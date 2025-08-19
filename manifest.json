@@ -1,50 +1,13 @@
 {
-  "name": "Story Weaver",
   "display_name": "Story Weaver - 故事大纲生成器",
-  "version": "1.0.0",
-  "description": "一个为 SillyTavern 设计的智能故事大纲生成插件，能够读取世界书设定，结合用户创作需求，自动生成结构化的故事大纲。",
+  "loading_order": 1000,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
   "author": "Story Weaver Team",
-  "homepage": "https://github.com/your-username/story-weaver-plugin",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-username/story-weaver-plugin.git"
-  },
-  "license": "MIT",
-  "keywords": ["sillytavern", "plugin", "story", "outline", "ai", "worldbook", "creative-writing", "lorebook"],
-  "main": "script.js",
-  "files": ["script.js", "index.html", "style.css", "README.md", "LICENSE"],
-  "engines": {
-    "sillytavern": ">=1.10.0"
-  },
-  "capabilities": {
-    "worldbook_read": true,
-    "character_read": true,
-    "independent_ui": true,
-    "export_support": true,
-    "markdown_export": true
-  },
-  "permissions": ["worldbook", "character", "ui-injection", "file-download"],
-  "config": {
-    "entry_point": "script.js",
-    "ui_file": "index.html",
-    "css_file": "style.css",
-    "module_name": "story-weaver"
-  },
-  "screenshots": ["assets/screenshot-main.png", "assets/screenshot-ui.png", "assets/screenshot-output.png"],
-  "tags": ["创作工具", "大纲生成", "世界观", "故事创作", "AI辅助"],
-  "compatibility": {
-    "browsers": ["chrome", "firefox", "safari", "edge"],
-    "sillytavern_versions": ["1.10.x", "1.11.x", "1.12.x"],
-    "backends": ["koboldcpp", "oobabooga", "openai", "claude"]
-  },
-  "installation": {
-    "type": "git",
-    "path": "public/extensions/story-weaver",
-    "auto_enable": false
-  },
-  "support": {
-    "issues": "https://github.com/your-username/story-weaver-plugin/issues",
-    "wiki": "https://github.com/your-username/story-weaver-plugin/wiki",
-    "discussions": "https://github.com/your-username/story-weaver-plugin/discussions"
-  }
+  "version": "1.0.0",
+  "homePage": "https://github.com/your-username/story-weaver-plugin",
+  "auto_update": true,
+  "description": "一个为 SillyTavern 设计的智能故事大纲生成插件，能够读取世界书设定，结合用户创作需求，自动生成结构化的故事大纲。"
 }
