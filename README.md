@@ -60,8 +60,9 @@
    - 点击开关启用扩展
 
 5. **访问插件**
-   - 在扩展下拉菜单中找到 "📖 Story Weaver"
-   - 点击即可打开故事大纲生成器界面
+   - 进入SillyTavern扩展设置（Extensions按钮）
+   - 找到 "📖 Story Weaver" 扩展设置
+   - 点击 "📖 打开Story Weaver面板" 按钮
 
 ### 方法二：手动安装
 
@@ -81,6 +82,48 @@
 
 4. **在扩展面板中启用**
    在扩展管理中找到并启用 "Story Weaver"
+
+## 🔧 故障排除
+
+### 扩展未显示在列表中
+
+如果安装后没有看到 Story Weaver 扩展，请尝试：
+
+1. **检查文件位置**
+   ```
+   确保文件位于：SillyTavern/public/extensions/story-weaver/
+   ```
+
+2. **重启SillyTavern**
+   完全关闭并重新启动SillyTavern应用
+
+3. **检查浏览器控制台**
+   - 按F12打开开发者工具
+   - 查看Console标签页是否有错误信息
+   - 搜索"Story Weaver"相关日志
+
+4. **手动验证文件**
+   确保以下文件存在：
+   - `manifest.json`
+   - `script.js`  
+   - `style.css`
+   - `index.html`
+
+5. **清除浏览器缓存**
+   清除浏览器缓存后重新加载页面
+
+### 扩展无法正常工作
+
+1. **检查SillyTavern版本**
+   确保使用SillyTavern 1.10.0+版本
+
+2. **检查依赖**
+   确保SillyTavern基础功能正常（世界书、角色管理等）
+
+3. **重新安装**
+   删除扩展文件夹，重新安装
+
+如果问题仍然存在，请在[GitHub Issues](https://github.com/your-username/story-weaver-plugin/issues)中报告。
 
 ## 📖 使用指南
 

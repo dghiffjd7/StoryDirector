@@ -10,7 +10,9 @@
 
   const extensionName = 'story-weaver';
   const extensionFolderPath = `scripts/extensions/${extensionName}`;
-  const defaultSettings = {};
+  const defaultSettings = {
+    enabled: true,
+  };
 
   // 扩展状态
   let extensionSettings = {};
@@ -603,39 +605,73 @@
   }
 
   /**
-   * 在SillyTavern中注册扩展菜单项
+   * 初始化扩展设置UI
    */
-  function registerExtensionMenu() {
-    // 创建扩展按钮
-    const extensionButton = $(`
-      <div id="story-weaver-button" class="list-group-item flex-container flexGap5">
-        <div class="fa-solid fa-book extensionsMenuExtensionIndicator"></div>
-        <span>📖 Story Weaver</span>
-      </div>
-    `);
+  function setupExtensionUI() {
+    // 创建设置HTML
+    const settingsHtml = `
+       <div class="story-weaver-settings">
+         <div class="inline-drawer">
+           <div class="inline-drawer-toggle inline-drawer-header">
+             <b>📖 Story Weaver</b>
+             <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+           </div>
+           <div class="inline-drawer-content">
+             <label class="checkbox_label">
+               <input id="story_weaver_enabled" type="checkbox" checked>
+               <span>启用Story Weaver扩展</span>
+             </label>
+             <small>故事大纲生成器 - 基于世界书和角色设定生成结构化故事大纲</small>
+             <br><br>
+             <div class="storyweaver_controls">
+               <input id="story_weaver_open_panel" class="menu_button" type="submit" value="📖 打开Story Weaver面板" />
+             </div>
+           </div>
+         </div>
+       </div>
+     `;
 
-    // 绑定点击事件
-    extensionButton.on('click', function () {
-      showStoryWeaverPanel();
+    // 添加到扩展设置面板
+    $('#extensions_settings').append(settingsHtml);
+
+    // 绑定面板打开按钮事件
+    $('#story_weaver_open_panel').on('click', showStoryWeaverPanel);
+
+    // 绑定启用/禁用事件
+    $('#story_weaver_enabled').on('change', function () {
+      extensionSettings.enabled = this.checked;
+      saveSettings();
+      console.log('[Story Weaver] 扩展状态:', this.checked ? '启用' : '禁用');
     });
-
-    // 添加到扩展菜单
-    $('#extensions_list').append(extensionButton);
-
-    console.log('[Story Weaver] 扩展菜单项已注册');
   }
 
-  // 扩展初始化
-  jQuery(async () => {
+  // 扩展初始化 - 使用SillyTavern标准方式
+  $(document).ready(function () {
+    // 等待扩展设置面板加载
+    if (typeof extension_settings === 'undefined') {
+      setTimeout(
+        () =>
+          $(document).ready(function () {
+            initExtension();
+          }),
+        100,
+      );
+      return;
+    }
+
+    initExtension();
+  });
+
+  function initExtension() {
     // 加载设置
     loadSettings();
 
-    // 注册扩展菜单项
-    registerExtensionMenu();
+    // 设置UI
+    setupExtensionUI();
 
     // 标记扩展为已启用
     isExtensionEnabled = true;
 
     console.log('[Story Weaver] 扩展初始化完成');
-  });
+  }
 })();

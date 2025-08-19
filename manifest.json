@@ -1,13 +1,12 @@
 {
-  "display_name": "Story Weaver - 故事大纲生成器",
+  "display_name": "Story Weaver",
   "loading_order": 1000,
   "requires": [],
   "optional": [],
-  "js": "index.js",
+  "js": "script.js",
   "css": "style.css",
   "author": "Story Weaver Team",
   "version": "1.0.0",
   "homePage": "https://github.com/your-username/story-weaver-plugin",
-  "auto_update": true,
-  "description": "一个为 SillyTavern 设计的智能故事大纲生成插件，能够读取世界书设定，结合用户创作需求，自动生成结构化的故事大纲。"
+  "auto_update": true
 }
