@@ -139,7 +139,10 @@
 /* ===== 面板内容区域 ===== */
 .story-weaver-content {
   flex: 1;
+  /* 关键：在固定定位容器内允许子容器滚动 */
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 20px 25px;
   color: var(--sw-text-primary);
   line-height: 1.6;

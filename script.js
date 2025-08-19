@@ -537,8 +537,41 @@ Scenario: ${character.scenario || 'N/A'}`;
       finalPrompt = finalPrompt.replace(placeholder, requirements[key]);
     }
 
+    // 4. 可选：尝试走 SillyTavern 原生占位符解析（若前端暴露该函数）
+    finalPrompt = applyNativePlaceholdersIfAvailable(finalPrompt);
+
     console.log('[Story Weaver] Final prompt constructed:', finalPrompt);
     return finalPrompt;
+  }
+
+  /**
+   * If SillyTavern exposes a placeholder applying function, use it to keep
+   * compatibility with native macros/placeholders. Silently falls back.
+   */
+  function applyNativePlaceholdersIfAvailable(text) {
+    try {
+      const ctx = typeof getContext === 'function' ? getContext() : {};
+      const candidates = [
+        // Common possibilities in ST builds; all optional
+        window?.replacePlaceholders,
+        window?.applyPlaceholders,
+        window?.formatPromptPlaceholders,
+        window?.ST?.placeholders?.apply,
+      ];
+      for (const fn of candidates) {
+        if (typeof fn === 'function') {
+          // Many ST helpers accept (text, context). If only one arg is supported, ignore ctx.
+          try {
+            return fn.length >= 2 ? fn(text, ctx) : fn(text);
+          } catch (_) {
+            // try next
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Story Weaver] Native placeholder application failed:', e);
+    }
+    return text;
   }
 
   /**
