@@ -144,6 +144,27 @@
           </div>
         </section>
 
+        <!-- Prompt模板编辑器区 -->
+        <section class="content-section">
+          <details id="prompt-editor-container">
+            <summary class="section-title prompt-summary">
+              <span class="section-icon">🧠</span>
+              编辑底层提示词模板 (Prompt)
+              <span class="summary-arrow">▶</span>
+            </summary>
+            <div class="section-content">
+              <div class="form-group">
+                <label for="prompt-template-editor" class="form-label">
+                  您可以在此自定义用于生成大纲的完整提示词。插件会将 `{worldbook}`, `{character}`, `{requirements}`
+                  等占位符替换为实际内容。
+                </label>
+                <textarea id="prompt-template-editor" class="form-textarea prompt-editor" rows="15"></textarea>
+                <div class="form-help">提示：修改后将立即生效。如需恢复默认设置，可刷新插件或重新加载。</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
         <!-- 生成控制区 -->
         <section class="content-section">
           <div class="generate-section">

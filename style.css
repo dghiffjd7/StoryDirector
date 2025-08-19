@@ -409,6 +409,33 @@
   transform: translate(-50%, -50%);
 }
 
+/* ===== Prompt 模板编辑器样式 ===== */
+.prompt-summary {
+  cursor: pointer;
+  padding: 10px 0;
+  margin-bottom: 0; /* 覆盖.section-title的margin */
+  display: flex;
+  align-items: center;
+  justify-content: flex-start; /* 调整对齐 */
+}
+
+.summary-arrow {
+  margin-left: auto; /* 将箭头推到最右边 */
+  transition: transform var(--sw-transition-fast);
+}
+
+details[open] > summary .summary-arrow {
+  transform: rotate(90deg);
+}
+
+.prompt-editor {
+  background-color: #1c1c1c; /* 使用更深的背景以突出 */
+  font-family: 'Courier New', Courier, monospace; /* 使用等宽字体，便于阅读 */
+  font-size: 13px;
+  line-height: 1.6;
+  color: #c5c8c6; /* 柔和的文本颜色 */
+}
+
 /* ===== 状态显示样式 ===== */
 .status-display {
   padding: 12px;

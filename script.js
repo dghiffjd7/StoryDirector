@@ -6,6 +6,35 @@
 
   const MODULE_NAME = 'story-weaver';
 
+  // Default Prompt Template
+  const DEFAULT_PROMPT_TEMPLATE = `You are an expert storyteller and world-building assistant. Your task is to generate a compelling and structured story outline.
+
+### CONTEXT & LORE ###
+Here is the established context, including world settings and character information.
+
+**Worldbook Entries:**
+{worldbook}
+
+**Character Information:**
+{character}
+
+### USER REQUIREMENTS ###
+Based on the context above, generate a story outline that meets the following user requirements.
+
+* **Story Type:** {story_type}
+* **Core Theme / Conflict:** {story_theme}
+* **Narrative Style:** {story_style}
+* **Expected Chapters:** {chapter_count}
+* **Outline Detail Level:** {detail_level}
+* **Special Requirements:** {special_requirements}
+* **Output Options:**
+    * Include Overall Summary: {include_summary}
+    * Include Character Arcs: {include_characters}
+    * Include Thematic Analysis: {include_themes}
+
+### TASK ###
+Generate a story outline divided into {chapter_count} chapters. The outline should be creative, coherent, and strictly adhere to all the user requirements provided above. The output should be in clean, well-structured Markdown format.`;
+
   // Settings
   let settings = {
     enabled: true,
@@ -183,6 +212,12 @@
    * Bind panel events
    */
   function bindPanelEvents(panel) {
+    // Initialize Prompt Editor
+    const promptEditor = panel.querySelector('#prompt-template-editor');
+    if (promptEditor) {
+      promptEditor.value = DEFAULT_PROMPT_TEMPLATE.trim();
+    }
+
     // Close button
     const closeBtn = panel.querySelector('#close-panel');
     if (closeBtn) {
@@ -269,6 +304,14 @@
         content: entry.content,
       }));
 
+      // 格式化为文本供prompt使用
+      window.storyWeaverData.worldbookContent = activeEntries
+        .map(entry => {
+          const keys = Array.isArray(entry.key) ? entry.key : [entry.key];
+          return `- Keywords: ${keys.join(', ')}\n  Content: ${entry.content}`;
+        })
+        .join('\n\n');
+
       updateStatus(statusDiv, `✅ 成功读取 ${activeEntries.length} 个世界书条目`, 'success');
     } catch (error) {
       console.error('[Story Weaver] Error reading lorebooks:', error);
@@ -308,6 +351,12 @@
         scenario: character.scenario || '',
       };
 
+      // 格式化为文本供prompt使用
+      window.storyWeaverData.characterContent = `Name: ${character.name}
+Description: ${character.description || 'N/A'}
+Personality: ${character.personality || 'N/A'}
+Scenario: ${character.scenario || 'N/A'}`;
+
       updateStatus(statusDiv, `✅ 成功读取角色: ${character.name}`, 'success');
     } catch (error) {
       console.error('[Story Weaver] Error reading character:', error);
@@ -316,9 +365,48 @@
   }
 
   /**
+   * Constructs the final prompt by reading the template and injecting data.
+   */
+  function constructPrompt(panel) {
+    // 1. 从UI获取当前的Prompt模板
+    const template = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
+
+    // 2. 收集所有需要的数据
+    // 世界书和角色数据
+    const worldbookData = window.storyWeaverData?.worldbookContent || 'N/A';
+    const characterData = window.storyWeaverData?.characterContent || 'N/A';
+
+    // 从UI收集用户需求
+    const requirements = {
+      story_type: panel.querySelector('#story-type')?.value || '',
+      story_theme: panel.querySelector('#story-theme')?.value || '',
+      story_style: panel.querySelector('#story-style')?.value || '',
+      chapter_count: panel.querySelector('#chapter-count')?.value || '5',
+      detail_level: panel.querySelector('#detail-level')?.value || '',
+      special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
+      include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
+      include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
+      include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
+    };
+
+    // 3. 替换占位符
+    let finalPrompt = template;
+    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
+    finalPrompt = finalPrompt.replace(/{character}/g, characterData);
+
+    for (const key in requirements) {
+      const placeholder = new RegExp(`{${key}}`, 'g');
+      finalPrompt = finalPrompt.replace(placeholder, requirements[key]);
+    }
+
+    console.log('[Story Weaver] Final prompt constructed:', finalPrompt);
+    return finalPrompt;
+  }
+
+  /**
    * Handle generate outline
    */
-  function handleGenerateOutline(panel) {
+  async function handleGenerateOutline(panel) {
     console.log('[Story Weaver] Generating outline...');
 
     const generateBtn = panel.querySelector('#generate-outline');
@@ -328,44 +416,88 @@
 
     if (!generateBtn || !outputDiv) return;
 
-    // Get form data
-    const storyType = panel.querySelector('#story-type')?.value || 'fantasy';
-    const storyTheme = panel.querySelector('#story-theme')?.value || '';
-    const chapterCount = parseInt(panel.querySelector('#chapter-count')?.value) || 5;
-
     // Validate data
-    const hasWorldbook = window.storyWeaverData?.worldbook?.length > 0;
-    const hasCharacter = window.storyWeaverData?.character?.name;
+    const storyTheme = panel.querySelector('#story-theme')?.value || '';
+    const hasWorldbook = window.storyWeaverData?.worldbookContent;
+    const hasCharacter = window.storyWeaverData?.characterContent;
 
     if (!hasWorldbook && !hasCharacter && !storyTheme.trim()) {
       showNotification('请先读取世界书/角色数据或填写故事主题', 'error');
       return;
     }
 
+    // 构建最终的 Prompt
+    const prompt = constructPrompt(panel);
+
     // Update UI
     generateBtn.disabled = true;
     if (btnText) btnText.classList.add('hidden');
     if (btnLoading) btnLoading.classList.remove('hidden');
+    outputDiv.innerHTML = '<div class="generating-indicator">🔄 正在与AI沟通，请稍候...</div>';
 
-    // Simulate generation
-    setTimeout(() => {
-      const outline = generateMockOutline({
-        storyType,
-        storyTheme,
-        chapterCount,
+    try {
+      // === 真实API调用 ===
+      const response = await fetch('/api/v1/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          mode: 'instruct', // 使用instruct模式而不是chat模式
+          max_new_tokens: 2048,
+          temperature: 0.7,
+          top_p: 0.9,
+          top_k: 50,
+          stop_sequence: [],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      const resultText = data.results?.[0]?.text || data.text || '生成失败，未获取到有效内容';
+
+      // 显示结果
+      const pre = document.createElement('pre');
+      pre.textContent = resultText;
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.fontFamily = 'inherit';
+      pre.style.fontSize = '14px';
+      pre.style.lineHeight = '1.6';
+      outputDiv.innerHTML = '';
+      outputDiv.appendChild(pre);
+
+      showNotification('故事大纲生成完成！', 'success');
+    } catch (error) {
+      console.error('[Story Weaver] Error generating outline:', error);
+
+      // 如果API调用失败，回退到Mock生成
+      console.log('[Story Weaver] Falling back to mock generation...');
+      const mockOutline = generateMockOutline({
+        storyType: panel.querySelector('#story-type')?.value || 'fantasy',
+        storyTheme: storyTheme,
+        chapterCount: parseInt(panel.querySelector('#chapter-count')?.value) || 5,
         worldbook: window.storyWeaverData?.worldbook || [],
         character: window.storyWeaverData?.character || null,
       });
 
-      outputDiv.innerHTML = outline;
+      outputDiv.innerHTML = `
+        <div class="output-placeholder warning">
+          ⚠️ API调用失败，使用本地模拟生成
+          <p style="font-size: 12px; color: #ffa500; margin-top: 8px;">错误: ${error.message}</p>
+        </div>
+        ${mockOutline}
+      `;
 
-      // Restore UI
+      showNotification('API调用失败，已使用本地模拟生成', 'warning');
+    } finally {
+      // 恢复UI
       generateBtn.disabled = false;
       if (btnText) btnText.classList.remove('hidden');
       if (btnLoading) btnLoading.classList.add('hidden');
-
-      showNotification('故事大纲生成完成！', 'success');
-    }, 2000);
+    }
   }
 
   /**
