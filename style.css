@@ -83,7 +83,9 @@
   border-radius: var(--sw-border-radius-large);
   box-shadow: var(--sw-shadow-heavy);
   z-index: 10000;
-  overflow: hidden;
+  /* 横向隐藏，纵向滚动作为兜底，避免父级样式干扰导致无法滚动 */
+  overflow-x: hidden;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
