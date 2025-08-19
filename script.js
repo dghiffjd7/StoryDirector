@@ -125,6 +125,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         </button>
       </div>
       <div class="story-weaver-content">
+        <!-- 世界观数据读取区 -->
         <section class="content-section">
           <h3 class="section-title">
             <span class="section-icon">🌍</span>
@@ -145,9 +146,36 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
               <span class="status-icon">ℹ️</span>
               点击上方按钮读取世界观数据...
             </div>
+            <div id="data-preview" class="data-preview hidden">
+              <h4>数据预览：</h4>
+              <div id="preview-content" class="preview-content"></div>
+            </div>
           </div>
         </section>
-        
+
+        <!-- 剧情上下文设定区 -->
+        <section class="content-section">
+          <h3 class="section-title">
+            <span class="section-icon">📖</span>
+            剧情上下文设定
+          </h3>
+          <div class="section-content">
+            <div class="form-group">
+              <label for="context-length" class="form-label"> 读取对话历史长度： </label>
+              <div class="input-with-unit">
+                <input type="number" id="context-length" value="100" min="0" max="500" class="form-input" />
+                <span class="input-unit">条消息</span>
+              </div>
+              <div class="form-help">设置为0则不读取对话历史，仅基于世界观生成</div>
+            </div>
+            <div id="context-status" class="status-display">
+              <span class="status-icon">ℹ️</span>
+              将根据设定自动读取最近的对话内容
+            </div>
+          </div>
+        </section>
+
+        <!-- 创作需求设定区 -->
         <section class="content-section">
           <h3 class="section-title">
             <span class="section-icon">✨</span>
@@ -161,21 +189,91 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                 <option value="romance">💖 浪漫爱情</option>
                 <option value="mystery">🔍 悬疑推理</option>
                 <option value="scifi">🚀 科幻未来</option>
+                <option value="slice-of-life">🌸 日常生活</option>
+                <option value="action">⚔️ 动作冒险</option>
+                <option value="drama">🎭 情感剧情</option>
+                <option value="horror">👻 恐怖惊悚</option>
+                <option value="comedy">😄 轻松喜剧</option>
                 <option value="custom">🎨 自定义</option>
               </select>
             </div>
+
             <div class="form-group">
-              <label for="story-theme" class="form-label">故事主题：</label>
-              <textarea id="story-theme" class="form-textarea" rows="3" 
-                placeholder="描述您想要的故事主题..."></textarea>
+              <label for="story-theme" class="form-label"> 故事主题/核心冲突： </label>
+              <textarea
+                id="story-theme"
+                class="form-textarea"
+                placeholder="例如：主角需要拯救被诅咒的王国，同时面对内心的恐惧与过去的阴霾。在这个过程中，主角将遇到值得信赖的伙伴，也会面临艰难的道德选择..."
+                rows="4"
+              ></textarea>
+              <div class="form-help">详细描述您希望故事围绕的核心主题、冲突或目标</div>
             </div>
+
             <div class="form-group">
-              <label for="chapter-count" class="form-label">章节数：</label>
-              <input type="number" id="chapter-count" value="5" min="3" max="15" class="form-input">
+              <label for="story-style" class="form-label">叙事风格：</label>
+              <select id="story-style" class="form-select">
+                <option value="descriptive">📝 详细描述型</option>
+                <option value="dialogue">💬 对话推进型</option>
+                <option value="action">⚡ 快节奏动作型</option>
+                <option value="introspective">🤔 内心独白型</option>
+                <option value="episodic">📚 章节式结构</option>
+              </select>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label for="chapter-count" class="form-label"> 期望章节数： </label>
+                <input type="number" id="chapter-count" value="5" min="3" max="20" class="form-input" />
+              </div>
+              <div class="form-group flex-1">
+                <label for="detail-level" class="form-label"> 大纲详细程度： </label>
+                <select id="detail-level" class="form-select">
+                  <option value="brief">简要大纲</option>
+                  <option value="detailed" selected>详细大纲</option>
+                  <option value="comprehensive">全面大纲</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="special-requirements" class="form-label"> 特殊要求（可选）： </label>
+              <textarea
+                id="special-requirements"
+                class="form-textarea"
+                placeholder="例如：需要包含特定角色的发展弧线、某些情节元素、特定的情感基调等..."
+                rows="3"
+              ></textarea>
             </div>
           </div>
         </section>
 
+        <!-- Prompt模板编辑器区 -->
+        <section class="content-section">
+          <details id="prompt-editor-container">
+            <summary class="section-title prompt-summary">
+              <span class="section-icon">🧠</span>
+              编辑底层提示词模板 (Prompt)
+              <span class="summary-arrow">▶</span>
+            </summary>
+            <div class="section-content">
+              <div class="form-group">
+                <label for="prompt-template-editor" class="form-label">
+                  您可以在此自定义用于生成大纲的完整提示词。插件会将 \`{worldbook}\`, \`{character}\`, \`{requirements}\` 等占位符替换为实际内容。
+                </label>
+                <textarea
+                  id="prompt-template-editor"
+                  class="form-textarea prompt-editor"
+                  rows="15"
+                ></textarea>
+                <div class="form-help">
+                  提示：修改后将立即生效。如需恢复默认设置，可刷新插件或重新加载。
+                </div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- 生成控制区 -->
         <section class="content-section">
           <div class="generate-section">
             <button id="generate-outline" class="generate-btn">
@@ -183,16 +281,41 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
               <span class="btn-text">生成故事大纲</span>
               <span class="btn-loading hidden">🔄</span>
             </button>
+            <div class="generate-options">
+              <label class="checkbox-label">
+                <input type="checkbox" id="include-summary" checked />
+                <span class="checkmark"></span>
+                包含整体摘要
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="include-characters" checked />
+                <span class="checkmark"></span>
+                包含角色发展
+              </label>
+              <label class="checkbox-label">
+                <input type="checkbox" id="include-themes" />
+                <span class="checkmark"></span>
+                包含主题分析
+              </label>
+            </div>
           </div>
         </section>
 
-        <section class="content-section">
+        <!-- 生成结果区 -->
+        <section id="output-section" class="content-section">
           <h3 class="section-title">
             <span class="section-icon">📄</span>
             生成结果
             <div class="title-actions">
-              <button id="copy-result" class="action-btn" title="复制">📋</button>
-              <button id="save-result" class="action-btn" title="保存">💾</button>
+              <button id="copy-result" class="action-btn" title="复制到剪贴板">
+                <span class="btn-icon">📋</span>
+              </button>
+              <button id="save-result" class="action-btn" title="保存为文件">
+                <span class="btn-icon">💾</span>
+              </button>
+              <button id="export-result" class="action-btn" title="导出为Markdown">
+                <span class="btn-icon">📤</span>
+              </button>
             </div>
           </h3>
           <div class="section-content">
@@ -200,6 +323,21 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
               <div class="output-placeholder">
                 <span class="placeholder-icon">📝</span>
                 <p>故事大纲将在这里显示...</p>
+                <p class="placeholder-help">填写上方信息后点击"生成故事大纲"开始创作</p>
+              </div>
+            </div>
+            <div id="output-stats" class="output-stats hidden">
+              <div class="stat-item">
+                <span class="stat-label">字数统计：</span>
+                <span id="word-count" class="stat-value">0</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">生成时间：</span>
+                <span id="generation-time" class="stat-value">--</span>
+              </div>
+              <div class="stat-item">
+                <span class="stat-label">章节数量：</span>
+                <span id="actual-chapters" class="stat-value">0</span>
               </div>
             </div>
           </div>
