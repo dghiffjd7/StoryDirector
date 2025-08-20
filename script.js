@@ -58,11 +58,13 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     const pattern = /\{\{\s*([a-zA-Z0-9_.-]+)(?:\s+([^}]*?))?\s*\}\}/g;
     return inputText.replace(pattern, (full, key, argStr = '') => {
       const handler = placeholderRegistry.get(key) || placeholderRegistry.get(`sw.${key}`);
-      if (!handler) return full; // unknown placeholder: keep as-is for native pipeline
+      if (!handler) return full; // unknown placeholder: keep for native pipeline
       const args = argStr ? argStr.trim().split(/\s+/) : [];
       try {
         const value = handler({ args, env });
-        return value == null ? '' : String(value);
+        if (value == null) return full; // keep for native pipeline
+        const str = String(value);
+        return str.trim().length === 0 ? full : str;
       } catch (e) {
         console.warn(`[Story Weaver] Placeholder '${key}' failed:`, e);
         return full;
@@ -121,10 +123,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   }
 
   // Default placeholders
-  registerPlaceholder('sw.lorebook', () => formatWorldbookFromContext());
-  registerPlaceholder('lorebook', () => formatWorldbookFromContext());
-  registerPlaceholder('sw.character', () => formatCharacterFromContext());
-  registerPlaceholder('character', () => formatCharacterFromContext());
+  registerPlaceholder('sw.lorebook', () => formatWorldbookFromContext() || '');
+  registerPlaceholder('lorebook', () => formatWorldbookFromContext() || '');
+  registerPlaceholder('sw.character', () => formatCharacterFromContext() || '');
+  registerPlaceholder('character', () => formatCharacterFromContext() || '');
   registerPlaceholder('sw.context', ({ args }) => {
     const n = parseInt(args?.[0] ?? '0', 10);
     return formatContextMessages(Number.isFinite(n) && n > 0 ? n : undefined);
@@ -691,7 +693,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     try {
       // === 真实API调用 ===
-      const response = await fetch('/api/v1/generate', {
+      const apiUrl = (window?.extension_settings?.api_base || window?.SillyTavern?.api_base || '') + '/api/v1/generate';
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -711,7 +714,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       }
 
       const data = await response.json();
-      const resultText = data.results?.[0]?.text || data.text || '生成失败，未获取到有效内容';
+      const resultText =
+        data.results?.[0]?.text || data.choices?.[0]?.text || data.text || '生成失败，未获取到有效内容';
 
       // 显示结果
       const pre = document.createElement('pre');
