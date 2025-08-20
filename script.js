@@ -703,47 +703,54 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       // 使用SillyTavern的标准Generate函数
       let resultText = '';
 
-      // 使用SillyTavern的内部API调用机制
-      console.log('[Story Weaver] Using SillyTavern internal API...');
+      // 使用SillyTavern的消息系统来触发生成
+      console.log('[Story Weaver] Using SillyTavern message system...');
+
+      const originalChatLength = window.chat ? window.chat.length : 0;
 
       try {
-        // 创建一个临时消息来通过ST的生成系统处理
-        const tempMessage = {
-          mes: prompt,
+        // 创建临时用户消息
+        const tempUserMessage = {
+          name: 'User',
           is_user: true,
+          is_system: false,
           send_date: Date.now(),
+          mes: prompt,
+          extra: { isStoryWeaverPrompt: true },
         };
 
-        // 尝试使用ST的内部fetch机制
-        const response = await fetch('/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': window.token || '', // ST可能使用CSRF token
-            Authorization: `Bearer ${window.api_key || ''}`, // ST可能使用API key
-          },
-          credentials: 'same-origin', // 包含cookies和session
-          body: JSON.stringify({
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: 2048,
-            temperature: 0.7,
-            top_p: 0.9,
-            stream: false,
-          }),
-        });
+        // 临时添加到聊天
+        if (window.chat && Array.isArray(window.chat)) {
+          window.chat.push(tempUserMessage);
 
-        if (response.ok) {
-          const data = await response.json();
-          resultText = data.choices?.[0]?.message?.content || data.text || '';
-          if (resultText && resultText.trim()) {
-            apiSuccess = true;
-            console.log('[Story Weaver] Success with ST internal API');
+          // 尝试触发ST的生成流程
+          if (typeof window.Generate === 'function') {
+            console.log('[Story Weaver] Triggering ST Generate...');
+            await window.Generate('normal');
+
+            // 检查是否生成了回复
+            if (window.chat.length > originalChatLength + 1) {
+              const assistantMessage = window.chat[window.chat.length - 1];
+              if (assistantMessage && !assistantMessage.is_user) {
+                resultText = assistantMessage.mes || '';
+                apiSuccess = true;
+                console.log('[Story Weaver] Generated via ST Generate function');
+              }
+            }
+          } else {
+            console.warn('[Story Weaver] ST Generate function not available');
           }
         } else {
-          console.warn('[Story Weaver] ST internal API failed:', response.status, response.statusText);
+          console.warn('[Story Weaver] Chat array not available');
         }
       } catch (error) {
-        console.warn('[Story Weaver] ST internal API error:', error.message);
+        console.warn('[Story Weaver] ST message system error:', error.message);
+      } finally {
+        // 确保清理临时消息
+        if (window.chat && Array.isArray(window.chat) && window.chat.length > originalChatLength) {
+          window.chat.splice(originalChatLength);
+          console.log('[Story Weaver] Cleaned up temporary messages');
+        }
       }
 
       if (!apiSuccess || !resultText) {
@@ -1061,20 +1068,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       console.error('Test data read failed:', error);
     }
 
-    // 测试API端点
-    console.log('Testing API endpoints...');
-    const testEndpoints = ['/api/v1/chat/completions', '/api/v1/generate'];
-    testEndpoints.forEach(async endpoint => {
-      try {
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: 'test', max_tokens: 1 }),
-        });
-        console.log(`${endpoint}: ${response.status} ${response.statusText}`);
-      } catch (error) {
-        console.log(`${endpoint}: Error - ${error.message}`);
-      }
-    });
+    // 检查ST的生成能力
+    console.log('Checking ST generation capability...');
+    console.log('Generate function available:', typeof window.Generate);
+    console.log('Chat array available:', Array.isArray(window.chat));
+    console.log('Chat length:', window.chat ? window.chat.length : 'N/A');
   };
 })();
