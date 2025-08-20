@@ -519,32 +519,47 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   /**
    * 获取世界书信息 - 使用SillyTavern标准方法
    */
-  function getWorldInfoData(chatHistory = '') {
+  async function getWorldInfoData(chatHistory = '') {
     try {
-      // 尝试通过全局对象访问
-      const ST = window.SillyTavern || globalThis.SillyTavern;
+      // 使用SillyTavern的标准世界书API
+      if (typeof window.getGlobalLore === 'function' || typeof window.getChatLore === 'function') {
+        const globalEntries = window.getGlobalLore ? await window.getGlobalLore() : [];
+        const chatEntries = window.getChatLore ? await window.getChatLore() : [];
+        const allEntries = [...globalEntries, ...chatEntries];
+        
+        if (allEntries.length > 0) {
+          const formattedEntries = allEntries
+            .filter(entry => !entry.disable && entry.content?.trim())
+            .slice(0, 10)
+            .map(entry => `**${entry.comment || entry.key?.[0] || 'Entry'}**\n${entry.content}`)
+            .join('\n\n');
 
-      // 方法1: 直接访问全局函数
+          console.log(`[Story Weaver] Found ${allEntries.length} world info entries via ST API`);
+          return formattedEntries;
+        }
+      }
+
+      // 备用方法：如果有getWorldInfoPrompt函数，直接使用它
       if (typeof window.getWorldInfoPrompt === 'function') {
-        const context = getCurrentContext();
-        const worldInfoPrompt = window.getWorldInfoPrompt(context, chatHistory);
-        console.log('[Story Weaver] Using native getWorldInfoPrompt');
-        return worldInfoPrompt || 'N/A';
+        const worldInfoResult = await window.getWorldInfoPrompt([], {});
+        if (worldInfoResult) {
+          const combinedWI = [
+            worldInfoResult.worldInfoBefore || '',
+            worldInfoResult.worldInfoAfter || ''
+          ].filter(Boolean).join('\n\n');
+          
+          if (combinedWI.trim()) {
+            console.log('[Story Weaver] Got world info via getWorldInfoPrompt');
+            return combinedWI;
+          }
+        }
       }
 
-      // 方法2: 通过ST对象访问
-      if (ST?.getWorldInfoPrompt) {
-        const context = getCurrentContext();
-        const worldInfoPrompt = ST.getWorldInfoPrompt(context, chatHistory);
-        console.log('[Story Weaver] Using ST.getWorldInfoPrompt');
-        return worldInfoPrompt || 'N/A';
-      }
-
-      console.warn('[Story Weaver] getWorldInfoPrompt function not available');
+      console.log('[Story Weaver] No world info found');
       return 'N/A';
     } catch (error) {
       console.error('[Story Weaver] Error getting world info:', error);
-      return 'Error reading world info';
+      return 'N/A';
     }
   }
 
@@ -553,7 +568,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   function getCharacterData() {
     try {
-      // 直接从全局变量获取
+      // 使用SillyTavern的标准方式获取角色数据
       const characterId = window.this_chid;
       const characters = window.characters;
 
@@ -563,16 +578,25 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       }
 
       const character = characters[characterId];
-      const characterContent = `**${character.name}**
-性格: ${character.personality || 'N/A'}
-描述: ${character.description || 'N/A'}
-背景: ${character.scenario || 'N/A'}`;
+      
+      // 使用ST的标准格式化方式
+      const charDescription = character.description || '';
+      const charPersonality = character.personality || '';
+      const scenario = character.scenario || '';
+      
+      const characterContent = `**角色名称**: ${character.name || 'Unknown'}
+
+**角色描述**: ${charDescription}
+
+**性格特征**: ${charPersonality}
+
+**背景设定**: ${scenario}`;
 
       console.log('[Story Weaver] Character data loaded:', character.name);
       return characterContent;
     } catch (error) {
       console.error('[Story Weaver] Error reading character:', error);
-      return 'Error reading character';
+      return 'N/A';
     }
   }
 
@@ -607,7 +631,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   /**
    * Constructs the final prompt by reading the template and injecting data.
    */
-  function constructPrompt(panel) {
+  async function constructPrompt(panel) {
     // 1. 从UI获取当前的Prompt模板
     const template = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
 
@@ -616,7 +640,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     const chatHistory = buildChatHistoryText(chatHistoryLimit);
 
     // 3. 使用ST标准方法获取数据
-    const worldbookData = getWorldInfoData(chatHistory);
+    const worldbookData = await getWorldInfoData(chatHistory);
     const characterData = getCharacterData();
 
     // 4. 从UI收集用户需求
@@ -681,18 +705,16 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     if (!generateBtn || !outputDiv) return;
 
-    // Validate data
+    // Validate data - 只要有故事主题就可以生成
     const storyTheme = panel.querySelector('#story-theme')?.value || '';
-    const hasWorldbook = window.storyWeaverData?.worldbookContent;
-    const hasCharacter = window.storyWeaverData?.characterContent;
 
-    if (!hasWorldbook && !hasCharacter && !storyTheme.trim()) {
-      showNotification('请先读取世界书/角色数据或填写故事主题', 'error');
+    if (!storyTheme.trim()) {
+      showNotification('请填写故事主题或核心冲突', 'error');
       return;
     }
 
     // 构建最终的 Prompt
-    const prompt = constructPrompt(panel);
+    const prompt = await constructPrompt(panel);
 
     // Update UI
     generateBtn.disabled = true;
@@ -704,45 +726,78 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       // 使用SillyTavern的标准Generate函数
       let resultText = '';
 
-      // 尝试多种方式调用生成函数
-      if (typeof window.Generate === 'function') {
-        console.log('[Story Weaver] Using window.Generate function...');
+      // 使用HTTP API直接调用
+      console.log('[Story Weaver] Using direct HTTP API call...');
+      
+      // 尝试不同的API端点
+      const apiEndpoints = [
+        '/api/v1/chat/completions',
+        '/api/v1/generate',
+        '/v1/chat/completions',
+        '/v1/generate'
+      ];
 
-        // 临时创建一个消息对象来触发生成
-        const tempMessage = {
-          mes: prompt,
-          is_user: true,
-          is_system: false,
-          send_date: Date.now(),
-        };
-
-        // 添加到聊天历史（临时）
-        const chat = window.chat || [];
-        const originalChatLength = chat.length;
-        chat.push(tempMessage);
-
+      let apiSuccess = false;
+      
+      for (const endpoint of apiEndpoints) {
+        if (apiSuccess) break;
+        
         try {
-          // 调用ST的Generate函数
-          const result = await window.Generate('normal');
-
-          // 获取最后生成的消息
-          if (chat.length > originalChatLength + 1) {
-            const lastMessage = chat[chat.length - 1];
-            resultText = lastMessage.mes || '';
+          console.log(`[Story Weaver] Trying endpoint: ${endpoint}`);
+          
+          let requestBody;
+          if (endpoint.includes('chat/completions')) {
+            requestBody = {
+              messages: [{ role: 'user', content: prompt }],
+              max_tokens: 2048,
+              temperature: 0.7,
+              top_p: 0.9,
+              stream: false
+            };
+          } else {
+            requestBody = {
+              prompt: prompt,
+              max_new_tokens: 2048,
+              max_tokens: 2048,
+              temperature: 0.7,
+              top_p: 0.9,
+              top_k: 50,
+              stream: false
+            };
           }
 
-          // 移除临时添加的消息（保持聊天历史干净）
-          chat.splice(originalChatLength);
-        } catch (generateError) {
-          // 确保移除临时消息
-          chat.splice(originalChatLength);
-          throw generateError;
+          const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestBody)
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            
+            // 尝试不同的响应格式
+            resultText = data.choices?.[0]?.message?.content || 
+                        data.results?.[0]?.text || 
+                        data.text || 
+                        data.response ||
+                        '';
+            
+            if (resultText && resultText.trim()) {
+              console.log(`[Story Weaver] Success with endpoint: ${endpoint}`);
+              apiSuccess = true;
+              break;
+            }
+          }
+        } catch (error) {
+          console.warn(`[Story Weaver] Endpoint ${endpoint} failed:`, error.message);
         }
-      } else if (typeof window.generateRaw === 'function') {
-        console.log('[Story Weaver] Using generateRaw function...');
-        resultText = await window.generateRaw(prompt);
-      } else {
-        throw new Error('SillyTavern Generate function not available');
+      }
+
+      if (!apiSuccess || !resultText) {
+        throw new Error('所有API端点都无法生成内容。请确保SillyTavern已正确配置AI后端。');
       }
 
       if (!resultText) {
@@ -1000,17 +1055,38 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   window.storyWeaverDebug = () => {
     console.log('=== Story Weaver Debug Info ===');
     console.log('Extension initialized:', isInitialized);
-    console.log('Available functions:', {
-      Generate: typeof window.Generate,
-      generateRaw: typeof window.generateRaw,
-      getContext: typeof window.getContext,
-      getWorldInfoPrompt: typeof window.getWorldInfoPrompt,
-    });
-    console.log('Available data:', {
-      chat: Array.isArray(window.chat) ? window.chat.length : 'N/A',
-      characters: Array.isArray(window.characters) ? window.characters.length : 'N/A',
+    
+    // 检查可用的全局对象
+    console.log('Global objects:', {
+      SillyTavern: typeof window.SillyTavern,
+      chat: Array.isArray(window.chat) ? `Array(${window.chat.length})` : typeof window.chat,
+      characters: Array.isArray(window.characters) ? `Array(${window.characters.length})` : typeof window.characters,
       this_chid: window.this_chid,
+      world_info: typeof window.world_info,
+      worldInfoData: typeof window.worldInfoData
     });
+
+    // 检查所有可能的全局变量
+    const possibleGlobals = Object.keys(window).filter(key => 
+      key.toLowerCase().includes('chat') || 
+      key.toLowerCase().includes('character') || 
+      key.toLowerCase().includes('world') ||
+      key.toLowerCase().includes('generate') ||
+      key.toLowerCase().includes('context')
+    );
+    console.log('Possible relevant globals:', possibleGlobals);
+
+    // 检查可用的函数
+    const possibleFunctions = [
+      'Generate', 'generateRaw', 'getContext', 'getWorldInfoPrompt',
+      'getGlobalLore', 'getChatLore', 'sendSystemMessage', 'addOneMessage'
+    ];
+    
+    const availableFunctions = {};
+    possibleFunctions.forEach(fn => {
+      availableFunctions[fn] = typeof window[fn];
+    });
+    console.log('Available functions:', availableFunctions);
 
     // 测试数据读取
     try {
@@ -1019,9 +1095,27 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       console.log('Test data:', {
         worldbookAvailable: worldbook !== 'N/A',
         characterAvailable: character !== 'N/A',
+        worldbookPreview: worldbook !== 'N/A' ? worldbook.substring(0, 100) + '...' : 'N/A',
+        characterPreview: character !== 'N/A' ? character.substring(0, 100) + '...' : 'N/A'
       });
     } catch (error) {
       console.error('Test data read failed:', error);
     }
+
+    // 测试API端点
+    console.log('Testing API endpoints...');
+    const testEndpoints = ['/api/v1/chat/completions', '/api/v1/generate'];
+    testEndpoints.forEach(async (endpoint) => {
+      try {
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: 'test', max_tokens: 1 })
+        });
+        console.log(`${endpoint}: ${response.status} ${response.statusText}`);
+      } catch (error) {
+        console.log(`${endpoint}: Error - ${error.message}`);
+      }
+    });
   };
 })();
