@@ -704,78 +704,33 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       let resultText = '';
       let apiSuccess = false;
 
-      // 使用SillyTavern的消息系统来触发生成
-      console.log('[Story Weaver] Using SillyTavern message system...');
-
-      const originalChatLength = window.chat ? window.chat.length : 0;
+      // 使用类似phone.html的生成方式
+      console.log('[Story Weaver] Using SillyTavern generate function like phone.html...');
+      console.log(`[Story Weaver] 触发生成: ${prompt.substring(0, 200)}...`);
 
       try {
-        // 创建临时用户消息
-        const tempUserMessage = {
-          name: 'User',
-          is_user: true,
-          is_system: false,
-          send_date: Date.now(),
-          mes: prompt,
-          extra: { isStoryWeaverPrompt: true },
-        };
+        // 模仿phone.html中QQ_Gen的实现
+        if (typeof window.generate === 'function') {
+          console.log('[Story Weaver] Calling window.generate...');
 
-        // 尝试多种方式访问聊天数组
-        let chatArray = window.chat || window.SillyTavern?.chat || [];
-        
-        if (Array.isArray(chatArray)) {
-          chatArray.push(tempUserMessage);
+          // 使用ST的generate函数，参考phone.html中的QQ_Gen实现
+          const result = await window.generate({
+            user_input: prompt,
+            should_stream: false,
+          });
 
-          // 尝试触发ST的生成流程
-          if (typeof window.Generate === 'function') {
-            console.log('[Story Weaver] Triggering ST Generate...');
-            await window.Generate('normal');
-
-            // 检查是否生成了回复
-            if (chatArray.length > originalChatLength + 1) {
-              const assistantMessage = chatArray[chatArray.length - 1];
-              if (assistantMessage && !assistantMessage.is_user) {
-                resultText = assistantMessage.mes || '';
-                apiSuccess = true;
-                console.log('[Story Weaver] Generated via ST Generate function');
-              }
-            }
+          if (result && typeof result === 'string' && result.trim()) {
+            resultText = result;
+            apiSuccess = true;
+            console.log(`[Story Weaver] 生成结果:${result.substring(0, 200)}...`);
           } else {
-            console.warn('[Story Weaver] ST Generate function not available');
+            console.warn('[Story Weaver] Generate returned empty result:', result);
           }
         } else {
-          console.warn('[Story Weaver] Chat array not available, using basic template...');
-          
-          // 如果无法访问聊天数组，提供基本模板
-          resultText = `# 故事大纲
-
-基于您的设定，这里是一个基本的故事大纲：
-
-## 故事主题
-${panel.querySelector('#story-theme')?.value || '未指定主题'}
-
-## 章节规划
-`;
-          
-          const chapterCount = parseInt(panel.querySelector('#chapter-count')?.value || '5');
-          for (let i = 1; i <= chapterCount; i++) {
-            resultText += `### 第${i}章\n- 主要情节发展\n- 角色关系变化\n\n`;
-          }
-          
-          resultText += `*注意：这是基本模板，建议确保SillyTavern正确配置AI后端以获得更好的生成效果。*`;
-          
-          apiSuccess = true;
-          console.log('[Story Weaver] Used basic template generation');
+          console.warn('[Story Weaver] window.generate function not available');
         }
       } catch (error) {
-        console.warn('[Story Weaver] ST message system error:', error.message);
-      } finally {
-        // 确保清理临时消息
-        const chatArray = window.chat || window.SillyTavern?.chat || [];
-        if (Array.isArray(chatArray) && chatArray.length > originalChatLength) {
-          chatArray.splice(originalChatLength);
-          console.log('[Story Weaver] Cleaned up temporary messages');
-        }
+        console.warn('[Story Weaver] Generation error:', error.message);
       }
 
       if (!apiSuccess || !resultText) {
@@ -1061,6 +1016,7 @@ ${panel.querySelector('#story-theme')?.value || '未指定主题'}
 
     // 检查可用的函数
     const possibleFunctions = [
+      'generate', // phone.html中使用的核心生成函数
       'Generate',
       'generateRaw',
       'getContext',
@@ -1095,7 +1051,8 @@ ${panel.querySelector('#story-theme')?.value || '未指定主题'}
 
     // 检查ST的生成能力
     console.log('Checking ST generation capability...');
-    console.log('Generate function available:', typeof window.Generate);
+    console.log('window.generate (phone.html style):', typeof window.generate);
+    console.log('window.Generate:', typeof window.Generate);
     console.log('Chat array available:', Array.isArray(window.chat));
     console.log('Chat length:', window.chat ? window.chat.length : 'N/A');
   };
