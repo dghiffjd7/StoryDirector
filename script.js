@@ -596,40 +596,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     outputDiv.innerHTML = '<div class="generating-indicator">🔄 正在与AI沟通，请稍候...</div>';
 
     try {
-      // === 真实API调用 ===
-      const response = await fetch('/api/v1/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt: prompt,
-          mode: 'instruct', // 使用instruct模式而不是chat模式
-          max_new_tokens: 2048,
-          temperature: 0.7,
-          top_p: 0.9,
-          top_k: 50,
-          stop_sequence: [],
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
-      }
-
-      const data = await response.json();
-      const resultText = data.results?.[0]?.text || data.text || '生成失败，未获取到有效内容';
-
-      // 显示结果
-      const pre = document.createElement('pre');
-      pre.textContent = resultText;
-      pre.style.whiteSpace = 'pre-wrap';
-      pre.style.fontFamily = 'inherit';
-      pre.style.fontSize = '14px';
-      pre.style.lineHeight = '1.6';
-      outputDiv.innerHTML = '';
-      outputDiv.appendChild(pre);
-
-      showNotification('故事大纲生成完成！', 'success');
+      // === 通过SillyTavern原生管线发送 ===
+      const submitted = sendViaNativePipeline(prompt);
+      if (!submitted) throw new Error('未找到SillyTavern原生发送入口');
+      outputDiv.innerHTML =
+        '<div class="generating-indicator">🗂️ 已通过SillyTavern管线提交，请在聊天输出查看结果…</div>';
+      showNotification('已提交到SillyTavern原生管线', 'success');
     } catch (error) {
       console.error('[Story Weaver] Error generating outline:', error);
 
@@ -657,6 +629,40 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       generateBtn.disabled = false;
       if (btnText) btnText.classList.remove('hidden');
       if (btnLoading) btnLoading.classList.add('hidden');
+    }
+  }
+
+  /**
+   * Submit prompt via SillyTavern native pipeline if available.
+   * Returns true if submitted, false otherwise.
+   */
+  function sendViaNativePipeline(prompt) {
+    try {
+      // Common front-end hooks seen across versions
+      // 1) window.send_message / processChatInput style
+      if (typeof window.send_message === 'function') {
+        window.send_message(prompt, { force_send: true, is_direct_prompt: true });
+        return true;
+      }
+      if (typeof window.processChatInput === 'function') {
+        window.processChatInput(prompt, { bypassInputBox: true });
+        return true;
+      }
+      // 2) Global event bus or jQuery hooks
+      if (typeof window.$ === 'function' && typeof $('#send_but')?.click === 'function') {
+        // Put prompt into main input if available
+        const input = document.getElementById('send_textarea') || document.querySelector('#send_textarea');
+        if (input) {
+          input.value = prompt;
+          $('#send_but').click();
+          return true;
+        }
+      }
+      // 3) Fallback: not available
+      return false;
+    } catch (e) {
+      console.warn('[Story Weaver] Failed to submit via native pipeline:', e);
+      return false;
     }
   }
 
