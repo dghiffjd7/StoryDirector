@@ -702,6 +702,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     try {
       // 使用SillyTavern的标准Generate函数
       let resultText = '';
+      let apiSuccess = false;
 
       // 使用SillyTavern的消息系统来触发生成
       console.log('[Story Weaver] Using SillyTavern message system...');
@@ -719,9 +720,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           extra: { isStoryWeaverPrompt: true },
         };
 
-        // 临时添加到聊天
-        if (window.chat && Array.isArray(window.chat)) {
-          window.chat.push(tempUserMessage);
+        // 尝试多种方式访问聊天数组
+        let chatArray = window.chat || window.SillyTavern?.chat || [];
+        
+        if (Array.isArray(chatArray)) {
+          chatArray.push(tempUserMessage);
 
           // 尝试触发ST的生成流程
           if (typeof window.Generate === 'function') {
@@ -729,8 +732,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
             await window.Generate('normal');
 
             // 检查是否生成了回复
-            if (window.chat.length > originalChatLength + 1) {
-              const assistantMessage = window.chat[window.chat.length - 1];
+            if (chatArray.length > originalChatLength + 1) {
+              const assistantMessage = chatArray[chatArray.length - 1];
               if (assistantMessage && !assistantMessage.is_user) {
                 resultText = assistantMessage.mes || '';
                 apiSuccess = true;
@@ -741,14 +744,36 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
             console.warn('[Story Weaver] ST Generate function not available');
           }
         } else {
-          console.warn('[Story Weaver] Chat array not available');
+          console.warn('[Story Weaver] Chat array not available, using basic template...');
+          
+          // 如果无法访问聊天数组，提供基本模板
+          resultText = `# 故事大纲
+
+基于您的设定，这里是一个基本的故事大纲：
+
+## 故事主题
+${panel.querySelector('#story-theme')?.value || '未指定主题'}
+
+## 章节规划
+`;
+          
+          const chapterCount = parseInt(panel.querySelector('#chapter-count')?.value || '5');
+          for (let i = 1; i <= chapterCount; i++) {
+            resultText += `### 第${i}章\n- 主要情节发展\n- 角色关系变化\n\n`;
+          }
+          
+          resultText += `*注意：这是基本模板，建议确保SillyTavern正确配置AI后端以获得更好的生成效果。*`;
+          
+          apiSuccess = true;
+          console.log('[Story Weaver] Used basic template generation');
         }
       } catch (error) {
         console.warn('[Story Weaver] ST message system error:', error.message);
       } finally {
         // 确保清理临时消息
-        if (window.chat && Array.isArray(window.chat) && window.chat.length > originalChatLength) {
-          window.chat.splice(originalChatLength);
+        const chatArray = window.chat || window.SillyTavern?.chat || [];
+        if (Array.isArray(chatArray) && chatArray.length > originalChatLength) {
+          chatArray.splice(originalChatLength);
           console.log('[Story Weaver] Cleaned up temporary messages');
         }
       }
