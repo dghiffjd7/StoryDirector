@@ -521,41 +521,23 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   async function getWorldInfoData(chatHistory = '') {
     try {
-      // 使用SillyTavern的标准世界书API
-      if (typeof window.getGlobalLore === 'function' || typeof window.getChatLore === 'function') {
-        const globalEntries = window.getGlobalLore ? await window.getGlobalLore() : [];
-        const chatEntries = window.getChatLore ? await window.getChatLore() : [];
-        const allEntries = [...globalEntries, ...chatEntries];
-        
-        if (allEntries.length > 0) {
-          const formattedEntries = allEntries
+      // 直接访问世界书数据对象
+      const worldInfo = window.world_info;
+      if (worldInfo && worldInfo.entries) {
+        const entries = Object.values(worldInfo.entries);
+        if (entries.length > 0) {
+          const formattedEntries = entries
             .filter(entry => !entry.disable && entry.content?.trim())
             .slice(0, 10)
             .map(entry => `**${entry.comment || entry.key?.[0] || 'Entry'}**\n${entry.content}`)
             .join('\n\n');
 
-          console.log(`[Story Weaver] Found ${allEntries.length} world info entries via ST API`);
+          console.log(`[Story Weaver] Found ${entries.length} world info entries from world_info object`);
           return formattedEntries;
         }
       }
 
-      // 备用方法：如果有getWorldInfoPrompt函数，直接使用它
-      if (typeof window.getWorldInfoPrompt === 'function') {
-        const worldInfoResult = await window.getWorldInfoPrompt([], {});
-        if (worldInfoResult) {
-          const combinedWI = [
-            worldInfoResult.worldInfoBefore || '',
-            worldInfoResult.worldInfoAfter || ''
-          ].filter(Boolean).join('\n\n');
-          
-          if (combinedWI.trim()) {
-            console.log('[Story Weaver] Got world info via getWorldInfoPrompt');
-            return combinedWI;
-          }
-        }
-      }
-
-      console.log('[Story Weaver] No world info found');
+      console.log('[Story Weaver] No world info found in world_info object');
       return 'N/A';
     } catch (error) {
       console.error('[Story Weaver] Error getting world info:', error);
@@ -568,32 +550,27 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   function getCharacterData() {
     try {
-      // 使用SillyTavern的标准方式获取角色数据
-      const characterId = window.this_chid;
-      const characters = window.characters;
+      // 从chat对象获取角色信息
+      const chat = window.chat;
+      if (chat && Array.isArray(chat) && chat.length > 0) {
+        // 寻找最近的系统消息或角色消息来提取角色信息
+        const characterMessages = chat.filter(msg => msg.is_system || (!msg.is_user && msg.name));
+        
+        if (characterMessages.length > 0) {
+          const latestCharMsg = characterMessages[characterMessages.length - 1];
+          const characterName = latestCharMsg.name || 'Character';
+          
+          const characterContent = `**角色名称**: ${characterName}
 
-      if (typeof characterId === 'undefined' || !characters || !characters[characterId]) {
-        console.log('[Story Weaver] No character data found');
-        return 'N/A';
+**基于对话历史的角色信息**: 根据最近的对话内容分析角色特征`;
+
+          console.log('[Story Weaver] Character data extracted from chat:', characterName);
+          return characterContent;
+        }
       }
 
-      const character = characters[characterId];
-      
-      // 使用ST的标准格式化方式
-      const charDescription = character.description || '';
-      const charPersonality = character.personality || '';
-      const scenario = character.scenario || '';
-      
-      const characterContent = `**角色名称**: ${character.name || 'Unknown'}
-
-**角色描述**: ${charDescription}
-
-**性格特征**: ${charPersonality}
-
-**背景设定**: ${scenario}`;
-
-      console.log('[Story Weaver] Character data loaded:', character.name);
-      return characterContent;
+      console.log('[Story Weaver] No character data found in chat');
+      return 'N/A';
     } catch (error) {
       console.error('[Story Weaver] Error reading character:', error);
       return 'N/A';
@@ -726,74 +703,47 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       // 使用SillyTavern的标准Generate函数
       let resultText = '';
 
-      // 使用HTTP API直接调用
-      console.log('[Story Weaver] Using direct HTTP API call...');
+      // 使用SillyTavern的内部API调用机制
+      console.log('[Story Weaver] Using SillyTavern internal API...');
       
-      // 尝试不同的API端点
-      const apiEndpoints = [
-        '/api/v1/chat/completions',
-        '/api/v1/generate',
-        '/v1/chat/completions',
-        '/v1/generate'
-      ];
+      try {
+        // 创建一个临时消息来通过ST的生成系统处理
+        const tempMessage = {
+          mes: prompt,
+          is_user: true,
+          send_date: Date.now()
+        };
 
-      let apiSuccess = false;
-      
-      for (const endpoint of apiEndpoints) {
-        if (apiSuccess) break;
-        
-        try {
-          console.log(`[Story Weaver] Trying endpoint: ${endpoint}`);
-          
-          let requestBody;
-          if (endpoint.includes('chat/completions')) {
-            requestBody = {
-              messages: [{ role: 'user', content: prompt }],
-              max_tokens: 2048,
-              temperature: 0.7,
-              top_p: 0.9,
-              stream: false
-            };
-          } else {
-            requestBody = {
-              prompt: prompt,
-              max_new_tokens: 2048,
-              max_tokens: 2048,
-              temperature: 0.7,
-              top_p: 0.9,
-              top_k: 50,
-              stream: false
-            };
+        // 尝试使用ST的内部fetch机制
+        const response = await fetch('/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': window.token || '',  // ST可能使用CSRF token
+            'Authorization': `Bearer ${window.api_key || ''}` // ST可能使用API key
+          },
+          credentials: 'same-origin', // 包含cookies和session
+          body: JSON.stringify({
+            messages: [{ role: 'user', content: prompt }],
+            max_tokens: 2048,
+            temperature: 0.7,
+            top_p: 0.9,
+            stream: false
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          resultText = data.choices?.[0]?.message?.content || data.text || '';
+          if (resultText && resultText.trim()) {
+            apiSuccess = true;
+            console.log('[Story Weaver] Success with ST internal API');
           }
-
-          const response = await fetch(endpoint, {
-            method: 'POST',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestBody)
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            
-            // 尝试不同的响应格式
-            resultText = data.choices?.[0]?.message?.content || 
-                        data.results?.[0]?.text || 
-                        data.text || 
-                        data.response ||
-                        '';
-            
-            if (resultText && resultText.trim()) {
-              console.log(`[Story Weaver] Success with endpoint: ${endpoint}`);
-              apiSuccess = true;
-              break;
-            }
-          }
-        } catch (error) {
-          console.warn(`[Story Weaver] Endpoint ${endpoint} failed:`, error.message);
+        } else {
+          console.warn('[Story Weaver] ST internal API failed:', response.status, response.statusText);
         }
+      } catch (error) {
+        console.warn('[Story Weaver] ST internal API error:', error.message);
       }
 
       if (!apiSuccess || !resultText) {
@@ -1090,13 +1040,13 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     // 测试数据读取
     try {
-      const worldbook = getWorldInfoData();
+      const worldbook = await getWorldInfoData();
       const character = getCharacterData();
       console.log('Test data:', {
         worldbookAvailable: worldbook !== 'N/A',
         characterAvailable: character !== 'N/A',
-        worldbookPreview: worldbook !== 'N/A' ? worldbook.substring(0, 100) + '...' : 'N/A',
-        characterPreview: character !== 'N/A' ? character.substring(0, 100) + '...' : 'N/A'
+        worldbookPreview: worldbook !== 'N/A' && typeof worldbook === 'string' ? worldbook.substring(0, 100) + '...' : 'N/A',
+        characterPreview: character !== 'N/A' && typeof character === 'string' ? character.substring(0, 100) + '...' : 'N/A'
       });
     } catch (error) {
       console.error('Test data read failed:', error);
