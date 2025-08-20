@@ -43,6 +43,91 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   // Extension state
   let isInitialized = false;
 
+  // -----------------------------
+  // Placeholder Engine (Custom)
+  // -----------------------------
+  const placeholderRegistry = new Map();
+
+  function registerPlaceholder(name, handler) {
+    placeholderRegistry.set(name, handler);
+  }
+
+  function applyCustomPlaceholders(inputText, env = {}) {
+    if (!inputText) return '';
+    // Match: {{ name [args...] }}  (args are free-form, space-separated)
+    const pattern = /\{\{\s*([a-zA-Z0-9_.-]+)(?:\s+([^}]*?))?\s*\}\}/g;
+    return inputText.replace(pattern, (full, key, argStr = '') => {
+      const handler = placeholderRegistry.get(key) || placeholderRegistry.get(`sw.${key}`);
+      if (!handler) return full; // unknown placeholder: keep as-is for native pipeline
+      const args = argStr ? argStr.trim().split(/\s+/) : [];
+      try {
+        const value = handler({ args, env });
+        return value == null ? '' : String(value);
+      } catch (e) {
+        console.warn(`[Story Weaver] Placeholder '${key}' failed:`, e);
+        return full;
+      }
+    });
+  }
+
+  function getSTContext() {
+    try {
+      return typeof getContext === 'function' ? getContext() : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function formatWorldbookFromContext() {
+    const ctx = getSTContext();
+    const entries = ctx?.worldInfoData?.entries || [];
+    const active = entries.filter(e => !e.disable);
+    // Try to respect an 'order' or 'position' property if present
+    active.sort((a, b) => (a.order ?? a.position ?? 0) - (b.order ?? b.position ?? 0));
+    return active
+      .map(entry => {
+        const keys = Array.isArray(entry.key) ? entry.key : [entry.key];
+        return `- Keywords: ${keys.filter(Boolean).join(', ')}\n  Content: ${entry.content || ''}`;
+      })
+      .join('\n\n');
+  }
+
+  function formatCharacterFromContext() {
+    const ctx = getSTContext();
+    const char = ctx?.characters?.[ctx?.characterId];
+    if (!char) return '';
+    return `Name: ${char.name || ''}\nDescription: ${char.description || ''}\nPersonality: ${
+      char.personality || ''
+    }\nScenario: ${char.scenario || ''}`;
+  }
+
+  function formatContextMessages(limit) {
+    const ctx = getSTContext();
+    const messages = ctx?.chat || ctx?.messages || [];
+    const slice = Number.isFinite(limit) ? messages.slice(-limit) : messages;
+    return slice
+      .map(m => {
+        const who = m?.is_user ? 'User' : m?.is_system ? 'System' : 'Assistant';
+        const text = m?.mes ?? m?.text ?? '';
+        return `${who}: ${text}`;
+      })
+      .join('\n');
+  }
+
+  // Default placeholders
+  registerPlaceholder('sw.lorebook', () => formatWorldbookFromContext());
+  registerPlaceholder('lorebook', () => formatWorldbookFromContext());
+  registerPlaceholder('sw.character', () => formatCharacterFromContext());
+  registerPlaceholder('character', () => formatCharacterFromContext());
+  registerPlaceholder('sw.context', ({ args }) => {
+    const n = parseInt(args?.[0] ?? '0', 10);
+    return formatContextMessages(Number.isFinite(n) && n > 0 ? n : undefined);
+  });
+  registerPlaceholder('context', ({ args }) => {
+    const n = parseInt(args?.[0] ?? '0', 10);
+    return formatContextMessages(Number.isFinite(n) && n > 0 ? n : undefined);
+  });
+
   /**
    * Load extension settings
    */
@@ -516,15 +601,16 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
     };
 
-    // 3. 替换占位符
+    // 3. 替换占位符（我们先用键值替换，再跑自建占位符，再尝试原生占位符）
     let finalPrompt = template;
     finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
     finalPrompt = finalPrompt.replace(/{character}/g, characterData);
-
     for (const key in requirements) {
       const placeholder = new RegExp(`{${key}}`, 'g');
       finalPrompt = finalPrompt.replace(placeholder, requirements[key]);
     }
+    // 自建占位符引擎
+    finalPrompt = applyCustomPlaceholders(finalPrompt, { context: getSTContext() });
 
     // 4. 可选：尝试走 SillyTavern 原生占位符解析（若前端暴露该函数）
     finalPrompt = applyNativePlaceholdersIfAvailable(finalPrompt);
@@ -596,12 +682,40 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     outputDiv.innerHTML = '<div class="generating-indicator">🔄 正在与AI沟通，请稍候...</div>';
 
     try {
-      // === 通过SillyTavern原生管线发送 ===
-      const submitted = sendViaNativePipeline(prompt);
-      if (!submitted) throw new Error('未找到SillyTavern原生发送入口');
-      outputDiv.innerHTML =
-        '<div class="generating-indicator">🗂️ 已通过SillyTavern管线提交，请在聊天输出查看结果…</div>';
-      showNotification('已提交到SillyTavern原生管线', 'success');
+      // === 真实API调用 ===
+      const response = await fetch('/api/v1/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: prompt,
+          mode: 'instruct', // 使用instruct模式而不是chat模式
+          max_new_tokens: 2048,
+          temperature: 0.7,
+          top_p: 0.9,
+          top_k: 50,
+          stop_sequence: [],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      const resultText = data.results?.[0]?.text || data.text || '生成失败，未获取到有效内容';
+
+      // 显示结果
+      const pre = document.createElement('pre');
+      pre.textContent = resultText;
+      pre.style.whiteSpace = 'pre-wrap';
+      pre.style.fontFamily = 'inherit';
+      pre.style.fontSize = '14px';
+      pre.style.lineHeight = '1.6';
+      outputDiv.innerHTML = '';
+      outputDiv.appendChild(pre);
+
+      showNotification('故事大纲生成完成！', 'success');
     } catch (error) {
       console.error('[Story Weaver] Error generating outline:', error);
 
@@ -629,40 +743,6 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       generateBtn.disabled = false;
       if (btnText) btnText.classList.remove('hidden');
       if (btnLoading) btnLoading.classList.add('hidden');
-    }
-  }
-
-  /**
-   * Submit prompt via SillyTavern native pipeline if available.
-   * Returns true if submitted, false otherwise.
-   */
-  function sendViaNativePipeline(prompt) {
-    try {
-      // Common front-end hooks seen across versions
-      // 1) window.send_message / processChatInput style
-      if (typeof window.send_message === 'function') {
-        window.send_message(prompt, { force_send: true, is_direct_prompt: true });
-        return true;
-      }
-      if (typeof window.processChatInput === 'function') {
-        window.processChatInput(prompt, { bypassInputBox: true });
-        return true;
-      }
-      // 2) Global event bus or jQuery hooks
-      if (typeof window.$ === 'function' && typeof $('#send_but')?.click === 'function') {
-        // Put prompt into main input if available
-        const input = document.getElementById('send_textarea') || document.querySelector('#send_textarea');
-        if (input) {
-          input.value = prompt;
-          $('#send_but').click();
-          return true;
-        }
-      }
-      // 3) Fallback: not available
-      return false;
-    } catch (e) {
-      console.warn('[Story Weaver] Failed to submit via native pipeline:', e);
-      return false;
     }
   }
 
