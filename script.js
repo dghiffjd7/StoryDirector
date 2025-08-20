@@ -555,11 +555,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       if (chat && Array.isArray(chat) && chat.length > 0) {
         // 寻找最近的系统消息或角色消息来提取角色信息
         const characterMessages = chat.filter(msg => msg.is_system || (!msg.is_user && msg.name));
-        
+
         if (characterMessages.length > 0) {
           const latestCharMsg = characterMessages[characterMessages.length - 1];
           const characterName = latestCharMsg.name || 'Character';
-          
+
           const characterContent = `**角色名称**: ${characterName}
 
 **基于对话历史的角色信息**: 根据最近的对话内容分析角色特征`;
@@ -705,13 +705,13 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
       // 使用SillyTavern的内部API调用机制
       console.log('[Story Weaver] Using SillyTavern internal API...');
-      
+
       try {
         // 创建一个临时消息来通过ST的生成系统处理
         const tempMessage = {
           mes: prompt,
           is_user: true,
-          send_date: Date.now()
+          send_date: Date.now(),
         };
 
         // 尝试使用ST的内部fetch机制
@@ -719,8 +719,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': window.token || '',  // ST可能使用CSRF token
-            'Authorization': `Bearer ${window.api_key || ''}` // ST可能使用API key
+            'X-CSRF-Token': window.token || '', // ST可能使用CSRF token
+            Authorization: `Bearer ${window.api_key || ''}`, // ST可能使用API key
           },
           credentials: 'same-origin', // 包含cookies和session
           body: JSON.stringify({
@@ -728,8 +728,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
             max_tokens: 2048,
             temperature: 0.7,
             top_p: 0.9,
-            stream: false
-          })
+            stream: false,
+          }),
         });
 
         if (response.ok) {
@@ -1002,10 +1002,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
   // Make functions globally accessible for testing and debugging
   window.showStoryWeaverPanel = showStoryWeaverPanel;
-  window.storyWeaverDebug = () => {
+  window.storyWeaverDebug = async () => {
     console.log('=== Story Weaver Debug Info ===');
     console.log('Extension initialized:', isInitialized);
-    
+
     // 检查可用的全局对象
     console.log('Global objects:', {
       SillyTavern: typeof window.SillyTavern,
@@ -1013,25 +1013,32 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       characters: Array.isArray(window.characters) ? `Array(${window.characters.length})` : typeof window.characters,
       this_chid: window.this_chid,
       world_info: typeof window.world_info,
-      worldInfoData: typeof window.worldInfoData
+      worldInfoData: typeof window.worldInfoData,
     });
 
     // 检查所有可能的全局变量
-    const possibleGlobals = Object.keys(window).filter(key => 
-      key.toLowerCase().includes('chat') || 
-      key.toLowerCase().includes('character') || 
-      key.toLowerCase().includes('world') ||
-      key.toLowerCase().includes('generate') ||
-      key.toLowerCase().includes('context')
+    const possibleGlobals = Object.keys(window).filter(
+      key =>
+        key.toLowerCase().includes('chat') ||
+        key.toLowerCase().includes('character') ||
+        key.toLowerCase().includes('world') ||
+        key.toLowerCase().includes('generate') ||
+        key.toLowerCase().includes('context'),
     );
     console.log('Possible relevant globals:', possibleGlobals);
 
     // 检查可用的函数
     const possibleFunctions = [
-      'Generate', 'generateRaw', 'getContext', 'getWorldInfoPrompt',
-      'getGlobalLore', 'getChatLore', 'sendSystemMessage', 'addOneMessage'
+      'Generate',
+      'generateRaw',
+      'getContext',
+      'getWorldInfoPrompt',
+      'getGlobalLore',
+      'getChatLore',
+      'sendSystemMessage',
+      'addOneMessage',
     ];
-    
+
     const availableFunctions = {};
     possibleFunctions.forEach(fn => {
       availableFunctions[fn] = typeof window[fn];
@@ -1045,8 +1052,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       console.log('Test data:', {
         worldbookAvailable: worldbook !== 'N/A',
         characterAvailable: character !== 'N/A',
-        worldbookPreview: worldbook !== 'N/A' && typeof worldbook === 'string' ? worldbook.substring(0, 100) + '...' : 'N/A',
-        characterPreview: character !== 'N/A' && typeof character === 'string' ? character.substring(0, 100) + '...' : 'N/A'
+        worldbookPreview:
+          worldbook !== 'N/A' && typeof worldbook === 'string' ? worldbook.substring(0, 100) + '...' : 'N/A',
+        characterPreview:
+          character !== 'N/A' && typeof character === 'string' ? character.substring(0, 100) + '...' : 'N/A',
       });
     } catch (error) {
       console.error('Test data read failed:', error);
@@ -1055,12 +1064,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     // 测试API端点
     console.log('Testing API endpoints...');
     const testEndpoints = ['/api/v1/chat/completions', '/api/v1/generate'];
-    testEndpoints.forEach(async (endpoint) => {
+    testEndpoints.forEach(async endpoint => {
       try {
         const response = await fetch(endpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: 'test', max_tokens: 1 })
+          body: JSON.stringify({ prompt: 'test', max_tokens: 1 }),
         });
         console.log(`${endpoint}: ${response.status} ${response.statusText}`);
       } catch (error) {
