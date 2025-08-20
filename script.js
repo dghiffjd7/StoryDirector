@@ -7,16 +7,25 @@
   const MODULE_NAME = 'story-weaver';
 
   // Default Prompt Template
-  const DEFAULT_PROMPT_TEMPLATE = `You are an expert storyteller and world-building assistant. Your task is to generate a compelling and structured story outline for <user> ({{user}}).
+  const DEFAULT_PROMPT_TEMPLATE = `You are an expert storyteller and world-building assistant. Your task is to generate a compelling and structured story outline.
 
 ### CONTEXT & LORE ###
 Here is the established context, including world settings and character information.
 
+-- World Info (before chat) --
+{worldInfoBefore}
+
 **Worldbook Entries:**
-{{lorebook}}
+{worldbook}
 
 **Character Information:**
-{{character}}
+{character}
+
+-- Recent Chat History --
+{chat_history}
+
+-- World Info (after chat) --
+{worldInfoAfter}
 
 ### USER REQUIREMENTS ###
 Based on the context above, generate a story outline that meets the following user requirements.
@@ -42,101 +51,6 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
   // Extension state
   let isInitialized = false;
-
-  // -----------------------------
-  // Placeholder Engine (Custom)
-  // -----------------------------
-  const placeholderRegistry = new Map();
-
-  function registerPlaceholder(name, handler) {
-    placeholderRegistry.set(name, handler);
-  }
-
-  function applyCustomPlaceholders(inputText, env = {}) {
-    if (!inputText) return '';
-    // Match: {{ name [args...] }}  (args are free-form, space-separated)
-    const pattern = /\{\{\s*([a-zA-Z0-9_.-]+)(?:\s+([^}]*?))?\s*\}\}/g;
-    return inputText.replace(pattern, (full, key, argStr = '') => {
-      const handler = placeholderRegistry.get(key) || placeholderRegistry.get(`sw.${key}`);
-      if (!handler) return full; // unknown placeholder: keep for native pipeline
-      const args = argStr ? argStr.trim().split(/\s+/) : [];
-      try {
-        const value = handler({ args, env });
-        if (value == null) return full; // keep for native pipeline
-        const str = String(value);
-        return str.trim().length === 0 ? full : str;
-      } catch (e) {
-        console.warn(`[Story Weaver] Placeholder '${key}' failed:`, e);
-        return full;
-      }
-    });
-  }
-
-  function getSTContext() {
-    try {
-      return typeof getContext === 'function' ? getContext() : {};
-    } catch (_) {
-      return {};
-    }
-  }
-
-  function formatWorldbookFromContext() {
-    const ctx = getSTContext();
-    const entries = ctx?.worldInfoData?.entries || [];
-    const active = entries.filter(e => !e.disable);
-    // Try to respect an 'order' or 'position' property if present
-    active.sort((a, b) => (a.order ?? a.position ?? 0) - (b.order ?? b.position ?? 0));
-    return active
-      .map(entry => {
-        const keys = Array.isArray(entry.key) ? entry.key : [entry.key];
-        return `- Keywords: ${keys.filter(Boolean).join(', ')}\n  Content: ${entry.content || ''}`;
-      })
-      .join('\n\n');
-  }
-
-  function formatCharacterFromContext() {
-    const ctx = getSTContext();
-    const char = ctx?.characters?.[ctx?.characterId];
-    if (!char) return '';
-    return `Name: ${char.name || ''}\nDescription: ${char.description || ''}\nPersonality: ${
-      char.personality || ''
-    }\nScenario: ${char.scenario || ''}`;
-  }
-
-  function formatContextMessages(limit) {
-    const ctx = getSTContext();
-    const messages = ctx?.chat || ctx?.messages || [];
-    const slice = Number.isFinite(limit) ? messages.slice(-limit) : messages;
-    return slice
-      .map(m => {
-        const who = m?.is_user ? 'User' : m?.is_system ? 'System' : 'Assistant';
-        const text = m?.mes ?? m?.text ?? '';
-        return `${who}: ${text}`;
-      })
-      .join('\n');
-  }
-
-  function getUserNameFromContext() {
-    const ctx = getSTContext();
-    // 尝试多种可能字段
-    return ctx?.userName || ctx?.username || ctx?.profile?.name || ctx?.settings?.user_name || 'User';
-  }
-
-  // Default placeholders
-  registerPlaceholder('sw.lorebook', () => formatWorldbookFromContext() || '');
-  registerPlaceholder('lorebook', () => formatWorldbookFromContext() || '');
-  registerPlaceholder('sw.character', () => formatCharacterFromContext() || '');
-  registerPlaceholder('character', () => formatCharacterFromContext() || '');
-  registerPlaceholder('sw.context', ({ args }) => {
-    const n = parseInt(args?.[0] ?? '0', 10);
-    return formatContextMessages(Number.isFinite(n) && n > 0 ? n : undefined);
-  });
-  registerPlaceholder('context', ({ args }) => {
-    const n = parseInt(args?.[0] ?? '0', 10);
-    return formatContextMessages(Number.isFinite(n) && n > 0 ? n : undefined);
-  });
-  registerPlaceholder('user', () => getUserNameFromContext());
-  registerPlaceholder('sw.user', () => getUserNameFromContext());
 
   /**
    * Load extension settings
@@ -592,11 +506,20 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   function constructPrompt(panel) {
     // 1. 从UI获取当前的Prompt模板
     const template = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
+    const ctx = getContextSafe();
 
     // 2. 收集所有需要的数据
     // 世界书和角色数据
     const worldbookData = window.storyWeaverData?.worldbookContent || 'N/A';
     const characterData = window.storyWeaverData?.characterContent || 'N/A';
+    const chatHistoryLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
+    const chatHistoryText = buildChatHistoryText(ctx, chatHistoryLimit);
+
+    // World Info 分段（before/after）— 若原生占位可用，则跳过本地替换
+    const hasNative = hasNativePlaceholderApplier();
+    const { before: wiBefore, after: wiAfter } = hasNative
+      ? { before: '{worldInfoBefore}', after: '{worldInfoAfter}' }
+      : buildWorldInfoSegments(ctx, chatHistoryText);
 
     // 从UI收集用户需求
     const requirements = {
@@ -611,21 +534,103 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
     };
 
-    // 3. 替换占位符（先用键值替换，再跑自建占位符，再尝试原生占位符）
+    // 3. 替换占位符
     let finalPrompt = template;
-    // 注意：我们不再替换 {worldbook}/{character} 以避免破坏 {{lorebook}}/{{character}} 双花括号占位符
+    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
+    finalPrompt = finalPrompt.replace(/{character}/g, characterData);
+    finalPrompt = finalPrompt.replace(/{chat_history}/g, chatHistoryText || '');
+    if (!hasNative) {
+      finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wiBefore || '');
+      finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wiAfter || '');
+    }
+
     for (const key in requirements) {
       const placeholder = new RegExp(`{${key}}`, 'g');
       finalPrompt = finalPrompt.replace(placeholder, requirements[key]);
     }
-    // 自建占位符引擎
-    finalPrompt = applyCustomPlaceholders(finalPrompt, { context: getSTContext() });
 
     // 4. 可选：尝试走 SillyTavern 原生占位符解析（若前端暴露该函数）
     finalPrompt = applyNativePlaceholdersIfAvailable(finalPrompt);
 
     console.log('[Story Weaver] Final prompt constructed:', finalPrompt);
     return finalPrompt;
+  }
+
+  function hasNativePlaceholderApplier() {
+    const candidates = [
+      window?.replacePlaceholders,
+      window?.applyPlaceholders,
+      window?.formatPromptPlaceholders,
+      window?.ST?.placeholders?.apply,
+    ];
+    return candidates.some(fn => typeof fn === 'function');
+  }
+
+  function getContextSafe() {
+    try {
+      return typeof getContext === 'function' ? getContext() : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function buildChatHistoryText(ctx, limit) {
+    if (!limit || limit <= 0) return '';
+    const messages = ctx?.chat?.messages || ctx?.messages || ctx?.chatHistory || [];
+    const take = messages.slice(Math.max(0, messages.length - limit));
+    // 尝试兼容不同字段命名
+    const parts = take.map(m => m?.mes || m?.text || m?.content || m?.message || '');
+    return parts.filter(Boolean).join('\n');
+  }
+
+  function buildWorldInfoSegments(ctx, chatText) {
+    const entries = ctx?.worldInfoData?.entries || [];
+    const active = activateWorldInfo(entries, chatText);
+    const { before, after } = splitWorldInfoByPosition(active);
+    const formatTemplate = resolveWorldInfoFormatTemplate(ctx);
+    return {
+      before: formatWorldInfo(before, formatTemplate),
+      after: formatWorldInfo(after, formatTemplate),
+    };
+  }
+
+  function activateWorldInfo(entries, chatText) {
+    if (!entries?.length) return [];
+    const text = (chatText || '').toLowerCase();
+    // 简化激活：若原生扫描不可用，则用关键词匹配最近聊天
+    const activated = entries.filter(e => {
+      if (e?.disable) return false;
+      const keys = Array.isArray(e?.key) ? e.key : typeof e?.key === 'string' ? [e.key] : [];
+      if (!keys.length) return false;
+      return keys.some(k => String(k).toLowerCase() && text.includes(String(k).toLowerCase()));
+    });
+    // 依据可能存在的priority/order字段排序
+    return activated.sort((a, b) => (a.order ?? a.position ?? 0) - (b.order ?? b.position ?? 0));
+  }
+
+  function splitWorldInfoByPosition(entries) {
+    const before = [];
+    const after = [];
+    for (const e of entries) {
+      const pos = e?.position; // 可能为0/1或'before'/'after'
+      if (pos === 1 || pos === 'after') after.push(e);
+      else before.push(e);
+    }
+    return { before, after };
+  }
+
+  function resolveWorldInfoFormatTemplate(ctx) {
+    // 从设置里寻找“World Info Format Template”，否则降级为"{0}"
+    return ctx?.settings?.worldInfoFormatTemplate || ctx?.worldInfoFormatTemplate || '{0}';
+  }
+
+  function formatWorldInfo(entries, template) {
+    if (!entries?.length) return '';
+    const wrap = content => (template && template.includes('{0}') ? template.replace('{0}', content) : content);
+    return entries
+      .map(e => wrap(e?.content || ''))
+      .filter(Boolean)
+      .join('\n\n');
   }
 
   /**
@@ -692,13 +697,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     try {
       // === 真实API调用 ===
-      // 读取SillyTavern前端已配置的API基址；多重兜底
-      const st = window?.SillyTavern || window?.ST || {};
-      const settingsApi = window?.extension_settings?.api_base || window?.extension_settings?.apiUrl;
-      const stApi = st.api_base || st.apiUrl || window?.API_URL;
-      const base = settingsApi || stApi || '';
-      const apiUrl = (base.endsWith('/api') ? base : base + '') + '/v1/generate';
-      const response = await fetch(apiUrl, {
+      const response = await fetch('/api/v1/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -714,14 +713,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        // 将更多诊断信息写入控制台
-        console.error('[Story Weaver] API error payload:', errorData, 'URL:', apiUrl);
-        throw new Error(`API Error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
+        throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
       }
 
       const data = await response.json();
-      const resultText =
-        data.results?.[0]?.text || data.choices?.[0]?.text || data.text || '生成失败，未获取到有效内容';
+      const resultText = data.results?.[0]?.text || data.text || '生成失败，未获取到有效内容';
 
       // 显示结果
       const pre = document.createElement('pre');
