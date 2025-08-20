@@ -709,28 +709,79 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       console.log(`[Story Weaver] 触发生成: ${prompt.substring(0, 200)}...`);
 
       try {
-        // 模仿phone.html中QQ_Gen的实现
-        if (typeof window.generate === 'function') {
-          console.log('[Story Weaver] Calling window.generate...');
+        // 使用box.js中的AI生成方式 - 模仿box.js中generateAdventureLetter的实现
+        console.log('[Story Weaver] Using box.js style AI generation...');
 
-          // 使用ST的generate函数，参考phone.html中的QQ_Gen实现
-          const result = await window.generate({
-            user_input: prompt,
-            should_stream: false,
-          });
+        let retryCount = 0;
+        const maxRetries = 3;
 
-          if (result && typeof result === 'string' && result.trim()) {
-            resultText = result;
-            apiSuccess = true;
-            console.log(`[Story Weaver] 生成结果:${result.substring(0, 200)}...`);
-          } else {
-            console.warn('[Story Weaver] Generate returned empty result:', result);
+        while (retryCount < maxRetries && !apiSuccess) {
+          try {
+            // 优先使用TavernHelper.generateRaw - 与box.js相同的方式
+            if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
+              console.log('[Story Weaver] Using TavernHelper.generateRaw...');
+              const result = await window.TavernHelper.generateRaw({
+                ordered_prompts: [
+                  { role: 'user', content: prompt }
+                ],
+                max_chat_history: 0, // 不使用聊天历史
+                should_stream: false, // 确保稳定性
+              });
+
+              if (result && typeof result === 'string' && result.trim().length > 10) {
+                resultText = result.trim();
+                apiSuccess = true;
+                console.log(`[Story Weaver] TavernHelper生成成功:${result.substring(0, 200)}...`);
+                break;
+              }
+            }
+            // 备用方案：使用全局generateRaw
+            else if (typeof generateRaw !== 'undefined') {
+              console.log('[Story Weaver] Using global generateRaw...');
+              const result = await generateRaw({
+                ordered_prompts: [
+                  { role: 'user', content: prompt }
+                ],
+                max_chat_history: 0,
+                should_stream: false,
+              });
+
+              if (result && typeof result === 'string' && result.trim().length > 10) {
+                resultText = result.trim();
+                apiSuccess = true;
+                console.log(`[Story Weaver] generateRaw生成成功:${result.substring(0, 200)}...`);
+                break;
+              }
+            }
+            // 最后备用：使用triggerSlash调用/gen命令
+            else if (typeof triggerSlash !== 'undefined') {
+              console.log('[Story Weaver] Using triggerSlash /gen command...');
+              const result = await triggerSlash(`/gen ${prompt}`);
+
+              if (result && typeof result === 'string' && result.trim().length > 10) {
+                resultText = result.trim();
+                apiSuccess = true;
+                console.log(`[Story Weaver] triggerSlash生成成功:${result.substring(0, 200)}...`);
+                break;
+              }
+            }
+            else {
+              throw new Error('没有可用的generateRaw或triggerSlash函数');
+            }
+          } catch (error) {
+            console.warn(`[Story Weaver] Generation attempt ${retryCount + 1} failed:`, error.message);
+            retryCount++;
+
+            if (retryCount >= maxRetries) {
+              throw error;
+            }
+
+            // 等待一秒后重试
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
-        } else {
-          console.warn('[Story Weaver] window.generate function not available');
         }
       } catch (error) {
-        console.warn('[Story Weaver] Generation error:', error.message);
+        console.warn('[Story Weaver] All generation methods failed:', error.message);
       }
 
       if (!apiSuccess || !resultText) {
