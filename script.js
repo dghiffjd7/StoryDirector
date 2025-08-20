@@ -521,10 +521,22 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   function getWorldInfoData(chatHistory = '') {
     try {
-      // 使用SillyTavern的原生getWorldInfoPrompt函数
-      if (typeof getWorldInfoPrompt === 'function') {
-        const worldInfoPrompt = getWorldInfoPrompt(getContext(), chatHistory);
+      // 尝试通过全局对象访问
+      const ST = window.SillyTavern || globalThis.SillyTavern;
+
+      // 方法1: 直接访问全局函数
+      if (typeof window.getWorldInfoPrompt === 'function') {
+        const context = getCurrentContext();
+        const worldInfoPrompt = window.getWorldInfoPrompt(context, chatHistory);
         console.log('[Story Weaver] Using native getWorldInfoPrompt');
+        return worldInfoPrompt || 'N/A';
+      }
+
+      // 方法2: 通过ST对象访问
+      if (ST?.getWorldInfoPrompt) {
+        const context = getCurrentContext();
+        const worldInfoPrompt = ST.getWorldInfoPrompt(context, chatHistory);
+        console.log('[Story Weaver] Using ST.getWorldInfoPrompt');
         return worldInfoPrompt || 'N/A';
       }
 
@@ -541,14 +553,16 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   function getCharacterData() {
     try {
-      const context = getContext();
-      const character = context?.characters?.[context?.characterId];
+      // 直接从全局变量获取
+      const characterId = window.this_chid;
+      const characters = window.characters;
 
-      if (!character) {
+      if (typeof characterId === 'undefined' || !characters || !characters[characterId]) {
         console.log('[Story Weaver] No character data found');
         return 'N/A';
       }
 
+      const character = characters[characterId];
       const characterContent = `**${character.name}**
 性格: ${character.personality || 'N/A'}
 描述: ${character.description || 'N/A'}
@@ -559,6 +573,34 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     } catch (error) {
       console.error('[Story Weaver] Error reading character:', error);
       return 'Error reading character';
+    }
+  }
+
+  /**
+   * 获取当前上下文
+   */
+  function getCurrentContext() {
+    try {
+      // 尝试多种方式获取上下文
+      if (typeof window.getContext === 'function') {
+        return window.getContext();
+      }
+
+      // 手动构建上下文
+      return {
+        chat: window.chat || [],
+        characters: window.characters || [],
+        characterId: window.this_chid,
+        groupId: window.selected_group,
+      };
+    } catch (error) {
+      console.error('[Story Weaver] Error getting context:', error);
+      return {
+        chat: [],
+        characters: [],
+        characterId: undefined,
+        groupId: undefined,
+      };
     }
   }
 
@@ -611,10 +653,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     if (!limit || limit <= 0) return '';
 
     try {
-      const context = getContext();
-      const chat = context.chat;
+      const chat = window.chat || [];
 
-      if (!chat || !Array.isArray(chat)) return '';
+      if (!Array.isArray(chat)) return '';
 
       const messages = chat.slice(Math.max(0, chat.length - limit));
       return messages
@@ -663,8 +704,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       // 使用SillyTavern的标准Generate函数
       let resultText = '';
 
-      if (typeof Generate === 'function') {
-        console.log('[Story Weaver] Using SillyTavern Generate function...');
+      // 尝试多种方式调用生成函数
+      if (typeof window.Generate === 'function') {
+        console.log('[Story Weaver] Using window.Generate function...');
 
         // 临时创建一个消息对象来触发生成
         const tempMessage = {
@@ -675,27 +717,30 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         };
 
         // 添加到聊天历史（临时）
-        const context = getContext();
-        const originalChatLength = context.chat.length;
-        context.chat.push(tempMessage);
+        const chat = window.chat || [];
+        const originalChatLength = chat.length;
+        chat.push(tempMessage);
 
         try {
           // 调用ST的Generate函数
-          const result = await Generate('normal');
+          const result = await window.Generate('normal');
 
           // 获取最后生成的消息
-          if (context.chat.length > originalChatLength + 1) {
-            const lastMessage = context.chat[context.chat.length - 1];
+          if (chat.length > originalChatLength + 1) {
+            const lastMessage = chat[chat.length - 1];
             resultText = lastMessage.mes || '';
           }
 
           // 移除临时添加的消息（保持聊天历史干净）
-          context.chat.splice(originalChatLength);
+          chat.splice(originalChatLength);
         } catch (generateError) {
           // 确保移除临时消息
-          context.chat.splice(originalChatLength);
+          chat.splice(originalChatLength);
           throw generateError;
         }
+      } else if (typeof window.generateRaw === 'function') {
+        console.log('[Story Weaver] Using generateRaw function...');
+        resultText = await window.generateRaw(prompt);
       } else {
         throw new Error('SillyTavern Generate function not available');
       }
@@ -956,9 +1001,15 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     console.log('=== Story Weaver Debug Info ===');
     console.log('Extension initialized:', isInitialized);
     console.log('Available functions:', {
-      Generate: typeof Generate,
-      getContext: typeof getContext,
-      getWorldInfoPrompt: typeof getWorldInfoPrompt,
+      Generate: typeof window.Generate,
+      generateRaw: typeof window.generateRaw,
+      getContext: typeof window.getContext,
+      getWorldInfoPrompt: typeof window.getWorldInfoPrompt,
+    });
+    console.log('Available data:', {
+      chat: Array.isArray(window.chat) ? window.chat.length : 'N/A',
+      characters: Array.isArray(window.characters) ? window.characters.length : 'N/A',
+      this_chid: window.this_chid,
     });
 
     // 测试数据读取
