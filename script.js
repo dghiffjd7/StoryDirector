@@ -7,16 +7,16 @@
   const MODULE_NAME = 'story-weaver';
 
   // Default Prompt Template
-  const DEFAULT_PROMPT_TEMPLATE = `You are an expert storyteller and world-building assistant. Your task is to generate a compelling and structured story outline.
+  const DEFAULT_PROMPT_TEMPLATE = `You are an expert storyteller and world-building assistant. Your task is to generate a compelling and structured story outline for <user> ({{user}}).
 
 ### CONTEXT & LORE ###
 Here is the established context, including world settings and character information.
 
 **Worldbook Entries:**
-{worldbook}
+{{lorebook}}
 
 **Character Information:**
-{character}
+{{character}}
 
 ### USER REQUIREMENTS ###
 Based on the context above, generate a story outline that meets the following user requirements.
@@ -114,6 +114,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       .join('\n');
   }
 
+  function getUserNameFromContext() {
+    const ctx = getSTContext();
+    // 尝试多种可能字段
+    return ctx?.userName || ctx?.username || ctx?.profile?.name || ctx?.settings?.user_name || 'User';
+  }
+
   // Default placeholders
   registerPlaceholder('sw.lorebook', () => formatWorldbookFromContext());
   registerPlaceholder('lorebook', () => formatWorldbookFromContext());
@@ -127,6 +133,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     const n = parseInt(args?.[0] ?? '0', 10);
     return formatContextMessages(Number.isFinite(n) && n > 0 ? n : undefined);
   });
+  registerPlaceholder('user', () => getUserNameFromContext());
+  registerPlaceholder('sw.user', () => getUserNameFromContext());
 
   /**
    * Load extension settings
