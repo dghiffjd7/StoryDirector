@@ -611,10 +611,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
     };
 
-    // 3. 替换占位符（我们先用键值替换，再跑自建占位符，再尝试原生占位符）
+    // 3. 替换占位符（先用键值替换，再跑自建占位符，再尝试原生占位符）
     let finalPrompt = template;
-    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
-    finalPrompt = finalPrompt.replace(/{character}/g, characterData);
+    // 注意：我们不再替换 {worldbook}/{character} 以避免破坏 {{lorebook}}/{{character}} 双花括号占位符
     for (const key in requirements) {
       const placeholder = new RegExp(`{${key}}`, 'g');
       finalPrompt = finalPrompt.replace(placeholder, requirements[key]);
@@ -693,7 +692,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     try {
       // === 真实API调用 ===
-      const apiUrl = (window?.extension_settings?.api_base || window?.SillyTavern?.api_base || '') + '/api/v1/generate';
+      // 读取SillyTavern前端已配置的API基址；多重兜底
+      const st = window?.SillyTavern || window?.ST || {};
+      const settingsApi = window?.extension_settings?.api_base || window?.extension_settings?.apiUrl;
+      const stApi = st.api_base || st.apiUrl || window?.API_URL;
+      const base = settingsApi || stApi || '';
+      const apiUrl = (base.endsWith('/api') ? base : base + '') + '/v1/generate';
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -710,7 +714,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(`API Error: ${response.status} - ${errorData.error || 'Unknown error'}`);
+        // 将更多诊断信息写入控制台
+        console.error('[Story Weaver] API error payload:', errorData, 'URL:', apiUrl);
+        throw new Error(`API Error: ${response.status} - ${errorData.error || errorData.message || 'Unknown error'}`);
       }
 
       const data = await response.json();
