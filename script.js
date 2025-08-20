@@ -606,21 +606,18 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   }
 
   /**
-   * Constructs the final prompt by reading the template and injecting data.
+   * Constructs the final prompt using ordered_prompts format like box.js
    */
-  async function constructPrompt(panel) {
-    // 1. 从UI获取当前的Prompt模板
-    const template = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
-
-    // 2. 获取聊天历史
+  async function constructOrderedPrompts(panel) {
+    // 1. 获取聊天历史
     const chatHistoryLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
     const chatHistory = buildChatHistoryText(chatHistoryLimit);
 
-    // 3. 使用ST标准方法获取数据
+    // 2. 使用ST标准方法获取数据
     const worldbookData = await getWorldInfoData(chatHistory);
     const characterData = getCharacterData();
 
-    // 4. 从UI收集用户需求
+    // 3. 从UI收集用户需求
     const requirements = {
       story_type: panel.querySelector('#story-type')?.value || '',
       story_theme: panel.querySelector('#story-theme')?.value || '',
@@ -633,21 +630,64 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
     };
 
-    // 5. 替换占位符
-    let finalPrompt = template;
-    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
-    finalPrompt = finalPrompt.replace(/{character}/g, characterData);
-    finalPrompt = finalPrompt.replace(/{chat_history}/g, chatHistory || '');
-    finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, worldbookData);
-    finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, '');
+    // 4. 尝试获取SillyTavern当前预设 - 像phone.html那样自动包含预设内容
+    let systemPrompt = '';
+    let characterPrompt = '';
+    
+    try {
+      // 检查常见的预设相关全局变量
+      if (typeof window.power_user !== 'undefined' && window.power_user.context) {
+        systemPrompt = window.power_user.context.story_string || window.power_user.context.system_prompt || '';
+      }
+      
+      // 检查角色卡信息
+      if (typeof window.characters !== 'undefined' && window.this_chid !== undefined) {
+        const currentChar = window.characters[window.this_chid];
+        if (currentChar) {
+          characterPrompt = currentChar.description || currentChar.personality || '';
+        }
+      }
+      
+      console.log('[Story Weaver] Detected presets:', {
+        systemPrompt: systemPrompt ? 'Found' : 'Not found',
+        characterPrompt: characterPrompt ? 'Found' : 'Not found'
+      });
+    } catch (error) {
+      console.warn('[Story Weaver] Failed to get ST presets:', error.message);
+    }
+
+    // 5. 构建用户任务prompt
+    const template = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
+    let taskPrompt = template;
+    taskPrompt = taskPrompt.replace(/{worldbook}/g, worldbookData);
+    taskPrompt = taskPrompt.replace(/{character}/g, characterData);
+    taskPrompt = taskPrompt.replace(/{chat_history}/g, chatHistory || '');
+    taskPrompt = taskPrompt.replace(/{worldInfoBefore}/g, worldbookData);
+    taskPrompt = taskPrompt.replace(/{worldInfoAfter}/g, '');
 
     for (const key in requirements) {
       const placeholder = new RegExp(`{${key}}`, 'g');
-      finalPrompt = finalPrompt.replace(placeholder, requirements[key]);
+      taskPrompt = taskPrompt.replace(placeholder, requirements[key]);
     }
 
-    console.log('[Story Weaver] Final prompt constructed');
-    return finalPrompt;
+    // 6. 构建ordered_prompts数组 - 模仿box.js的结构
+    const orderedPrompts = [];
+    
+    // 系统预设 (如果可用)
+    if (systemPrompt.trim()) {
+      orderedPrompts.push({ role: 'system', content: systemPrompt });
+    }
+    
+    // 角色预设 (如果可用)  
+    if (characterPrompt.trim()) {
+      orderedPrompts.push({ role: 'system', content: characterPrompt });
+    }
+    
+    // 任务指令
+    orderedPrompts.push({ role: 'user', content: taskPrompt });
+
+    console.log('[Story Weaver] Ordered prompts constructed:', orderedPrompts.length, 'prompts');
+    return orderedPrompts;
   }
 
   function buildChatHistoryText(limit) {
@@ -690,8 +730,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       return;
     }
 
-    // 构建最终的 Prompt
-    const prompt = await constructPrompt(panel);
+    // 构建ordered_prompts - 包含系统预设，像box.js和phone.html那样
+    const orderedPrompts = await constructOrderedPrompts(panel);
 
     // Update UI
     generateBtn.disabled = true;
@@ -704,84 +744,38 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       let resultText = '';
       let apiSuccess = false;
 
-      // 使用类似phone.html的生成方式
-      console.log('[Story Weaver] Using SillyTavern generate function like phone.html...');
-      console.log(`[Story Weaver] 触发生成: ${prompt.substring(0, 200)}...`);
+      // 使用像box.js一样的生成方式 - 完整的ordered_prompts包含预设
+      console.log('[Story Weaver] Using TavernHelper.generateRaw with full ordered_prompts...');
+      console.log(`[Story Weaver] Prompts count: ${orderedPrompts.length}`);
 
       try {
-        // 使用box.js中的AI生成方式 - 模仿box.js中generateAdventureLetter的实现
-        console.log('[Story Weaver] Using box.js style AI generation...');
+        // 使用TavernHelper.generateRaw - 唯一工作的方式
+        console.log('[Story Weaver] Calling TavernHelper.generateRaw...');
 
-        let retryCount = 0;
-        const maxRetries = 3;
+        if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
+          const result = await window.TavernHelper.generateRaw({
+            ordered_prompts: orderedPrompts,
+            max_chat_history: 0, // 不使用聊天历史，我们已经手动处理了上下文
+            should_stream: false, // 确保稳定性
+          });
 
-        while (retryCount < maxRetries && !apiSuccess) {
-          try {
-            // 优先使用TavernHelper.generateRaw - 与box.js相同的方式
-            if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
-              console.log('[Story Weaver] Using TavernHelper.generateRaw...');
-              const result = await window.TavernHelper.generateRaw({
-                ordered_prompts: [
-                  { role: 'user', content: prompt }
-                ],
-                max_chat_history: 0, // 不使用聊天历史
-                should_stream: false, // 确保稳定性
-              });
-
-              if (result && typeof result === 'string' && result.trim().length > 10) {
-                resultText = result.trim();
-                apiSuccess = true;
-                console.log(`[Story Weaver] TavernHelper生成成功:${result.substring(0, 200)}...`);
-                break;
-              }
-            }
-            // 备用方案：使用全局generateRaw
-            else if (typeof generateRaw !== 'undefined') {
-              console.log('[Story Weaver] Using global generateRaw...');
-              const result = await generateRaw({
-                ordered_prompts: [
-                  { role: 'user', content: prompt }
-                ],
-                max_chat_history: 0,
-                should_stream: false,
-              });
-
-              if (result && typeof result === 'string' && result.trim().length > 10) {
-                resultText = result.trim();
-                apiSuccess = true;
-                console.log(`[Story Weaver] generateRaw生成成功:${result.substring(0, 200)}...`);
-                break;
-              }
-            }
-            // 最后备用：使用triggerSlash调用/gen命令
-            else if (typeof triggerSlash !== 'undefined') {
-              console.log('[Story Weaver] Using triggerSlash /gen command...');
-              const result = await triggerSlash(`/gen ${prompt}`);
-
-              if (result && typeof result === 'string' && result.trim().length > 10) {
-                resultText = result.trim();
-                apiSuccess = true;
-                console.log(`[Story Weaver] triggerSlash生成成功:${result.substring(0, 200)}...`);
-                break;
-              }
-            }
-            else {
-              throw new Error('没有可用的generateRaw或triggerSlash函数');
-            }
-          } catch (error) {
-            console.warn(`[Story Weaver] Generation attempt ${retryCount + 1} failed:`, error.message);
-            retryCount++;
-
-            if (retryCount >= maxRetries) {
-              throw error;
-            }
-
-            // 等待一秒后重试
-            await new Promise(resolve => setTimeout(resolve, 1000));
+          if (result && typeof result === 'string' && result.trim().length > 10) {
+            resultText = result.trim();
+            apiSuccess = true;
+            console.log(`[Story Weaver] TavernHelper生成成功:${result.substring(0, 200)}...`);
+          } else {
+            console.warn('[Story Weaver] TavernHelper returned empty result:', result);
           }
+        } else {
+          throw new Error('TavernHelper.generateRaw 不可用');
         }
+        
+        // 备用方法已注释 - 根据用户要求只保留第一个成功的方法
+        // else if (typeof generateRaw !== 'undefined') { ... }
+        // else if (typeof triggerSlash !== 'undefined') { ... }
+        
       } catch (error) {
-        console.warn('[Story Weaver] All generation methods failed:', error.message);
+        console.warn('[Story Weaver] TavernHelper generation failed:', error.message);
       }
 
       if (!apiSuccess || !resultText) {
@@ -792,15 +786,31 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         throw new Error('生成失败，未获取到有效内容');
       }
 
-      // 显示结果
-      const pre = document.createElement('pre');
-      pre.textContent = resultText;
-      pre.style.whiteSpace = 'pre-wrap';
-      pre.style.fontFamily = 'inherit';
-      pre.style.fontSize = '14px';
-      pre.style.lineHeight = '1.6';
+      // 显示结果 - 可编辑的文本域
+      const textarea = document.createElement('textarea');
+      textarea.value = resultText;
+      textarea.style.width = '100%';
+      textarea.style.minHeight = '300px';
+      textarea.style.fontFamily = 'inherit';
+      textarea.style.fontSize = '14px';
+      textarea.style.lineHeight = '1.6';
+      textarea.style.border = '1px solid #ddd';
+      textarea.style.borderRadius = '4px';
+      textarea.style.padding = '10px';
+      textarea.style.resize = 'vertical';
+      textarea.style.whiteSpace = 'pre-wrap';
+      textarea.className = 'story-result-editor';
+      
       outputDiv.innerHTML = '';
-      outputDiv.appendChild(pre);
+      outputDiv.appendChild(textarea);
+      
+      // 添加编辑提示
+      const editHint = document.createElement('div');
+      editHint.style.fontSize = '12px';
+      editHint.style.color = '#666';
+      editHint.style.marginTop = '8px';
+      editHint.textContent = '✏️ 生成结果可直接编辑修改';
+      outputDiv.appendChild(editHint);
 
       showNotification('故事大纲生成完成！', 'success');
     } catch (error) {
@@ -833,7 +843,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       return;
     }
 
-    const content = outputDiv.innerText || outputDiv.textContent;
+    // 从可编辑的文本域获取内容
+    const textarea = outputDiv.querySelector('.story-result-editor');
+    const content = textarea ? textarea.value : (outputDiv.innerText || outputDiv.textContent);
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(content).then(() => {
@@ -841,12 +853,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       });
     } else {
       // Fallback
-      const textarea = document.createElement('textarea');
-      textarea.value = content;
-      textarea.style.position = 'fixed';
-      textarea.style.opacity = '0';
-      document.body.appendChild(textarea);
-      textarea.select();
+      const tempTextarea = document.createElement('textarea');
+      tempTextarea.value = content;
+      tempTextarea.style.position = 'fixed';
+      tempTextarea.style.opacity = '0';
+      document.body.appendChild(tempTextarea);
+      tempTextarea.select();
 
       try {
         document.execCommand('copy');
@@ -855,7 +867,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         showNotification('复制失败', 'error');
       }
 
-      document.body.removeChild(textarea);
+      document.body.removeChild(tempTextarea);
     }
   }
 
@@ -869,7 +881,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       return;
     }
 
-    const content = outputDiv.innerText || outputDiv.textContent;
+    // 从可编辑的文本域获取内容
+    const textarea = outputDiv.querySelector('.story-result-editor');
+    const content = textarea ? textarea.value : (outputDiv.innerText || outputDiv.textContent);
     const timestamp = new Date().toISOString().slice(0, 16).replace(/[:-]/g, '');
     const filename = `story-outline-${timestamp}.txt`;
 
@@ -1052,7 +1066,33 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       this_chid: window.this_chid,
       world_info: typeof window.world_info,
       worldInfoData: typeof window.worldInfoData,
+      power_user: typeof window.power_user,
+      TavernHelper: typeof window.TavernHelper,
     });
+
+    // 检查预设相关信息
+    try {
+      const presetInfo = {
+        power_user_context: window.power_user?.context ? 'Available' : 'Not found',
+        system_prompt: window.power_user?.context?.system_prompt ? 'Found' : 'Not found',
+        story_string: window.power_user?.context?.story_string ? 'Found' : 'Not found',
+        current_character: window.this_chid !== undefined && window.characters?.[window.this_chid] ? 'Available' : 'Not found'
+      };
+      console.log('Preset information:', presetInfo);
+      
+      if (window.characters && window.this_chid !== undefined) {
+        const currentChar = window.characters[window.this_chid];
+        if (currentChar) {
+          console.log('Current character info:', {
+            name: currentChar.name,
+            description: currentChar.description ? `${currentChar.description.substring(0, 100)}...` : 'Not found',
+            personality: currentChar.personality ? `${currentChar.personality.substring(0, 100)}...` : 'Not found'
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Failed to check preset info:', error);
+    }
 
     // 检查所有可能的全局变量
     const possibleGlobals = Object.keys(window).filter(
