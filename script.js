@@ -515,11 +515,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     const chatHistoryLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
     const chatHistoryText = buildChatHistoryText(ctx, chatHistoryLimit);
 
-    // World Info 分段（before/after）— 若原生占位可用，则跳过本地替换
-    const hasNative = hasNativePlaceholderApplier();
-    const { before: wiBefore, after: wiAfter } = hasNative
-      ? { before: '{worldInfoBefore}', after: '{worldInfoAfter}' }
-      : buildWorldInfoSegments(ctx, chatHistoryText);
+    // World Info 分段（before/after）— 优先走原生扫描/组装；失败则回退
+    const { before: wiBefore, after: wiAfter } = buildWorldInfoSegmentsSmart(ctx, chatHistoryText);
 
     // 从UI收集用户需求
     const requirements = {
@@ -539,10 +536,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
     finalPrompt = finalPrompt.replace(/{character}/g, characterData);
     finalPrompt = finalPrompt.replace(/{chat_history}/g, chatHistoryText || '');
-    if (!hasNative) {
-      finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wiBefore || '');
-      finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wiAfter || '');
-    }
+    finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wiBefore || '');
+    finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wiAfter || '');
 
     for (const key in requirements) {
       const placeholder = new RegExp(`{${key}}`, 'g');
@@ -592,6 +587,53 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       before: formatWorldInfo(before, formatTemplate),
       after: formatWorldInfo(after, formatTemplate),
     };
+  }
+
+  // 智能选择：优先原生 getWorldInfoPrompt / checkWorldInfo，其次本地关键词匹配
+  function buildWorldInfoSegmentsSmart(ctx, chatText) {
+    try {
+      const wiApi = resolveNativeWorldInfoAPI();
+      if (wiApi) {
+        const result = wiApi(chatText, ctx);
+        if (result && (result.worldInfoBefore || result.worldInfoAfter)) {
+          return {
+            before: String(result.worldInfoBefore || ''),
+            after: String(result.worldInfoAfter || ''),
+          };
+        }
+      }
+    } catch (_) {}
+    return buildWorldInfoSegments(ctx, chatText);
+  }
+
+  function resolveNativeWorldInfoAPI() {
+    // 可能的导出：window.getWorldInfoPrompt(text, ctx) 或 window.checkWorldInfo(text, ctx)
+    const candidates = [window?.getWorldInfoPrompt, window?.checkWorldInfo, window?.ST?.worldInfo?.getWorldInfoPrompt];
+    for (const fn of candidates) {
+      if (typeof fn === 'function') {
+        return (text, ctx) => {
+          // 尝试不同签名： (ctx) 或 (text, ctx)
+          try {
+            const res = fn.length >= 2 ? fn(text, ctx) : fn(ctx);
+            // 标准化返回结构
+            if (res?.worldInfoBefore !== undefined || res?.worldInfoAfter !== undefined) return res;
+            if (Array.isArray(res)) {
+              // 如果只返回激活条目数组，则按模板拼接
+              const { before, after } = splitWorldInfoByPosition(res);
+              const formatTemplate = resolveWorldInfoFormatTemplate(ctx);
+              return {
+                worldInfoBefore: formatWorldInfo(before, formatTemplate),
+                worldInfoAfter: formatWorldInfo(after, formatTemplate),
+              };
+            }
+          } catch (_) {
+            // 忽略并尝试下一个
+          }
+          return null;
+        };
+      }
+    }
+    return null;
   }
 
   function activateWorldInfo(entries, chatText) {
