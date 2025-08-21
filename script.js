@@ -606,18 +606,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   }
 
   /**
-   * Constructs the final prompt using ordered_prompts format like box.js
+   * 构建简单的用户输入 - 让SillyTavern的generate函数自动处理预设包含
    */
-  async function constructOrderedPrompts(panel) {
-    // 1. 获取聊天历史
-    const chatHistoryLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
-    const chatHistory = buildChatHistoryText(chatHistoryLimit);
-
-    // 2. 使用ST标准方法获取数据
-    const worldbookData = await getWorldInfoData(chatHistory);
-    const characterData = getCharacterData();
-
-    // 3. 从UI收集用户需求
+  async function constructSimpleUserInput(panel) {
+    // 从UI收集用户需求
     const requirements = {
       story_type: panel.querySelector('#story-type')?.value || '',
       story_theme: panel.querySelector('#story-theme')?.value || '',
@@ -630,64 +622,25 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
     };
 
-    // 4. 尝试获取SillyTavern当前预设 - 像phone.html那样自动包含预设内容
-    let systemPrompt = '';
-    let characterPrompt = '';
-    
-    try {
-      // 检查常见的预设相关全局变量
-      if (typeof window.power_user !== 'undefined' && window.power_user.context) {
-        systemPrompt = window.power_user.context.story_string || window.power_user.context.system_prompt || '';
-      }
-      
-      // 检查角色卡信息
-      if (typeof window.characters !== 'undefined' && window.this_chid !== undefined) {
-        const currentChar = window.characters[window.this_chid];
-        if (currentChar) {
-          characterPrompt = currentChar.description || currentChar.personality || '';
-        }
-      }
-      
-      console.log('[Story Weaver] Detected presets:', {
-        systemPrompt: systemPrompt ? 'Found' : 'Not found',
-        characterPrompt: characterPrompt ? 'Found' : 'Not found'
-      });
-    } catch (error) {
-      console.warn('[Story Weaver] Failed to get ST presets:', error.message);
-    }
+    // 构建简单清晰的用户指令 - 让ST自动加载预设和世界书
+    const userInput = `请帮我生成一个故事大纲：
 
-    // 5. 构建用户任务prompt
-    const template = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
-    let taskPrompt = template;
-    taskPrompt = taskPrompt.replace(/{worldbook}/g, worldbookData);
-    taskPrompt = taskPrompt.replace(/{character}/g, characterData);
-    taskPrompt = taskPrompt.replace(/{chat_history}/g, chatHistory || '');
-    taskPrompt = taskPrompt.replace(/{worldInfoBefore}/g, worldbookData);
-    taskPrompt = taskPrompt.replace(/{worldInfoAfter}/g, '');
+**故事类型**: ${requirements.story_type}
+**故事主题/核心冲突**: ${requirements.story_theme}
+**叙事风格**: ${requirements.story_style}
+**章节数量**: ${requirements.chapter_count}章
+**详细程度**: ${requirements.detail_level}
+**特殊要求**: ${requirements.special_requirements}
 
-    for (const key in requirements) {
-      const placeholder = new RegExp(`{${key}}`, 'g');
-      taskPrompt = taskPrompt.replace(placeholder, requirements[key]);
-    }
+**输出选项**:
+- 包含整体摘要: ${requirements.include_summary}
+- 包含角色发展: ${requirements.include_characters}  
+- 包含主题分析: ${requirements.include_themes}
 
-    // 6. 构建ordered_prompts数组 - 模仿box.js的结构
-    const orderedPrompts = [];
-    
-    // 系统预设 (如果可用)
-    if (systemPrompt.trim()) {
-      orderedPrompts.push({ role: 'system', content: systemPrompt });
-    }
-    
-    // 角色预设 (如果可用)  
-    if (characterPrompt.trim()) {
-      orderedPrompts.push({ role: 'system', content: characterPrompt });
-    }
-    
-    // 任务指令
-    orderedPrompts.push({ role: 'user', content: taskPrompt });
+请基于当前的角色设定、世界观背景和聊天历史，生成一个结构化的故事大纲。大纲应该分为${requirements.chapter_count}个章节，每个章节包含详细的情节描述。请使用Markdown格式输出。`;
 
-    console.log('[Story Weaver] Ordered prompts constructed:', orderedPrompts.length, 'prompts');
-    return orderedPrompts;
+    console.log('[Story Weaver] Simple user input constructed:', userInput.length, 'characters');
+    return userInput;
   }
 
   function buildChatHistoryText(limit) {
@@ -730,8 +683,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       return;
     }
 
-    // 构建ordered_prompts - 包含系统预设，像box.js和phone.html那样
-    const orderedPrompts = await constructOrderedPrompts(panel);
+    // 构建简单的用户输入 - 让SillyTavern自动处理预设和世界书包含
+    const userInput = await constructSimpleUserInput(panel);
 
     // Update UI
     generateBtn.disabled = true;
@@ -744,38 +697,32 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       let resultText = '';
       let apiSuccess = false;
 
-      // 使用像box.js一样的生成方式 - 完整的ordered_prompts包含预设
-      console.log('[Story Weaver] Using TavernHelper.generateRaw with full ordered_prompts...');
-      console.log(`[Story Weaver] Prompts count: ${orderedPrompts.length}`);
+      // 使用phone.html完全相同的generate方式 - QQ_Gen函数的实现
+      console.log('[Story Weaver] Using phone.html style generate function...');
+      console.log(`[Story Weaver] 调用window.generate，输入长度: ${userInput.length}`);
+      console.log(`[Story Weaver] 输入预览: ${userInput.substring(0, 300)}...`);
 
       try {
-        // 使用TavernHelper.generateRaw - 唯一工作的方式
-        console.log('[Story Weaver] Calling TavernHelper.generateRaw...');
-
-        if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
-          const result = await window.TavernHelper.generateRaw({
-            ordered_prompts: orderedPrompts,
-            max_chat_history: 0, // 不使用聊天历史，我们已经手动处理了上下文
-            should_stream: false, // 确保稳定性
+        if (typeof window.generate === 'function') {
+          // 完全模仿QQ_Gen的调用方式 - 让ST自动加载所有预设和世界书
+          const result = await window.generate({
+            user_input: userInput,
+            should_stream: false, // 不使用流式传输，确保我们能完整截取结果
           });
 
           if (result && typeof result === 'string' && result.trim().length > 10) {
             resultText = result.trim();
             apiSuccess = true;
-            console.log(`[Story Weaver] TavernHelper生成成功:${result.substring(0, 200)}...`);
+            console.log(`[Story Weaver] window.generate生成成功:${result.substring(0, 200)}...`);
           } else {
-            console.warn('[Story Weaver] TavernHelper returned empty result:', result);
+            console.warn('[Story Weaver] window.generate returned empty result:', result);
           }
         } else {
-          throw new Error('TavernHelper.generateRaw 不可用');
+          throw new Error('window.generate 函数不可用 - 可能需要在聊天界面中使用此插件');
         }
         
-        // 备用方法已注释 - 根据用户要求只保留第一个成功的方法
-        // else if (typeof generateRaw !== 'undefined') { ... }
-        // else if (typeof triggerSlash !== 'undefined') { ... }
-        
       } catch (error) {
-        console.warn('[Story Weaver] TavernHelper generation failed:', error.message);
+        console.warn('[Story Weaver] window.generate failed:', error.message);
       }
 
       if (!apiSuccess || !resultText) {
