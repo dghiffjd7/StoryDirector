@@ -1292,22 +1292,49 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   // 统一调用主API的函数：不入聊天楼层，直接返回文本
   async function callMainApiWithPrompt(promptText) {
     try {
-      // 优先使用SillyTavern封装
-      if (typeof window.sendOpenAIRequest === 'function') {
-        const requestData = {
-          messages: [{ role: 'user', content: promptText }],
-          model: window.oai_settings?.openai_model || 'gpt-3.5-turbo',
-          stream: false,
-        };
-        const resp = await window.sendOpenAIRequest('chat/completions', requestData);
-        const text = resp?.choices?.[0]?.message?.content;
+      // 1) 优先使用SillyTavern封装：sendGenerationRequest
+      if (typeof window.sendGenerationRequest === 'function') {
+        const res = await window.sendGenerationRequest('text', { prompt: promptText }, { quiet: true });
+        const text =
+          res?.choices?.[0]?.message?.content ||
+          res?.output_text ||
+          res?.text ||
+          res?.results?.[0]?.text ||
+          (typeof res === 'string' ? res : '');
         return typeof text === 'string' ? text : '';
       }
 
-      // 退回到通用生成端点
+      // 2) 使用 getGenerateUrl + getRequestHeaders（与内核一致的请求头）
+      if (
+        typeof window.getGenerateUrl === 'function' &&
+        typeof window.getRequestHeaders === 'function' &&
+        window.main_api
+      ) {
+        const url = window.getGenerateUrl(window.main_api);
+        const resp = await fetch(url, {
+          method: 'POST',
+          headers: window.getRequestHeaders(),
+          cache: 'no-cache',
+          body: JSON.stringify({ prompt: promptText }),
+        });
+        if (!resp.ok) {
+          const errTxt = await resp.text().catch(() => '');
+          throw new Error(`HTTP ${resp.status} ${errTxt}`);
+        }
+        const data = await resp.json();
+        const text =
+          data?.choices?.[0]?.message?.content || data?.output_text || data?.text || data?.results?.[0]?.text || '';
+        return text;
+      }
+
+      // 3) 最后兜底：/api/v1/generate，尽量带上请求头
+      const headers =
+        typeof window.getRequestHeaders === 'function'
+          ? window.getRequestHeaders()
+          : { 'Content-Type': 'application/json' };
       const resp = await fetch('/api/v1/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           prompt: promptText,
           mode: 'instruct',
