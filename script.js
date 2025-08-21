@@ -966,7 +966,32 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
             console.log(`[Story Weaver] sendOpenAIRequest生成成功:${resultText.substring(0, 200)}...`);
           }
         } else {
-          throw new Error('未找到可用的SillyTavern生成函数 - 请确保在聊天界面中使用此插件');
+          // 方式5: 直接操作原生输入框与发送按钮，走完整楼层管线
+          const sendTextarea = document.querySelector('#send_textarea');
+          const sendButton = document.querySelector('#send_but');
+          if (sendTextarea && sendButton) {
+            console.log('[Story Weaver] 使用DOM方式触发原生发送...');
+            // 备份原文本
+            const prev = sendTextarea.value;
+            sendTextarea.value = userInput;
+            // 触发输入事件以便原生监听器拿到内容
+            sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+            // 点击发送
+            sendButton.click();
+
+            // 恢复原文本（避免污染用户输入框）
+            setTimeout(() => {
+              try {
+                sendTextarea.value = prev;
+                sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
+              } catch (_) {}
+            }, 100);
+
+            apiSuccess = true;
+            resultText = '(已通过原生输入框触发生成，请在聊天窗口查看结果)';
+          } else {
+            throw new Error('未找到可用的SillyTavern生成函数/控件 - 请确保位于聊天界面');
+          }
         }
       } catch (error) {
         console.warn('[Story Weaver] SillyTavern生成失败:', error.message);
