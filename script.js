@@ -60,7 +60,7 @@ Based on the context above, generate a story outline that meets the following us
     * Include Thematic Analysis: {include_themes}
 
 ### TASK ###
-Generate a story outline divided into {chapter_count} chapters. The outline should be creative, coherent, and strictly adhere to all the user requirements provided above. The output should be in clean, well-structured Markdown format.`;
+Generate a story outline divided into {chapter_count} chapters. The outline should be creative, coherent, and strictly adhere to all the user requirements provided above. The output should be in clean, well-structured Markdown format, and in Simplified Chinese.`;
 
   // Settings
   let settings = {
@@ -695,6 +695,41 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     }
   }
 
+  // 解析可用的内部生成函数：优先window，其次getContext()注入
+  function resolveGenFns() {
+    const ctx = getContextSafe();
+    return {
+      quiet:
+        typeof window.generateQuietPrompt === 'function'
+          ? window.generateQuietPrompt
+          : typeof ctx.generateQuietPrompt === 'function'
+          ? ctx.generateQuietPrompt
+          : null,
+      raw:
+        typeof window.generateRaw === 'function'
+          ? window.generateRaw
+          : typeof ctx.generateRaw === 'function'
+          ? ctx.generateRaw
+          : null,
+      webllm:
+        typeof window.generateWebLlmChatPrompt === 'function'
+          ? window.generateWebLlmChatPrompt
+          : typeof ctx.generateWebLlmChatPrompt === 'function'
+          ? ctx.generateWebLlmChatPrompt
+          : null,
+    };
+  }
+
+  async function waitForGenerationFns(timeoutMs = 2500, intervalMs = 100) {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const fns = resolveGenFns();
+      if (fns.quiet || fns.raw || fns.webllm) return fns;
+      await new Promise(r => setTimeout(r, intervalMs));
+    }
+    return resolveGenFns();
+  }
+
   function resolveSystemPrompt(ctx) {
     return (
       window?.power_user?.context?.story_string || ctx?.power_user?.context?.story_string || ctx?.system_prompt || ''
@@ -847,6 +882,13 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     const outputDiv = panel.querySelector('#output-content');
 
     if (!generateBtn || !outputDiv) return;
+
+    // 确保内核生成函数可用
+    const fnsReady = await waitForGenerationFns();
+    if (!fnsReady.quiet && !fnsReady.raw && !fnsReady.webllm) {
+      showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
+      return;
+    }
 
     // Validate data - 只要有故事主题就可以生成
     const storyTheme = panel.querySelector('#story-theme')?.value || '';
@@ -1172,12 +1214,15 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     // 下拉菜单中的立即生成与仅注入
     document.getElementById('story_weaver_generate_now')?.addEventListener('click', async () => {
       try {
+        const fnsReady = await waitForGenerationFns();
+        if (!fnsReady.quiet && !fnsReady.raw && !fnsReady.webllm) {
+          return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
+        }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
         const prompt = constructFullPrompt(panel);
         const result = await callMainApiWithPrompt(prompt);
         if (!result?.trim()) return showNotification('生成失败', 'error');
         showNotification('已生成(不入楼层)', 'success');
-        // 直接注入到面板中显示
         const outputDiv = panel.querySelector('#output-content');
         if (outputDiv) {
           outputDiv.innerText = result;
@@ -1189,6 +1234,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     document.getElementById('story_weaver_inject_now')?.addEventListener('click', async () => {
       try {
+        const fnsReady = await waitForGenerationFns();
+        if (!fnsReady.quiet && !fnsReady.raw && !fnsReady.webllm) {
+          return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
+        }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
         const prompt = constructFullPrompt(panel);
         const result = await callMainApiWithPrompt(prompt);
@@ -1386,15 +1435,14 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   // 统一调用主API的函数：不入聊天楼层，直接返回文本
   async function callMainApiWithPrompt(promptText) {
     try {
-      // 仅使用与内置 Memory 扩展一致的内部生成函数，避免任何直连HTTP
-      // 1) 默认：静默生成（主API）
-      if (typeof window.generateQuietPrompt === 'function') {
-        console.log('[Story Weaver] Using internal generateQuietPrompt');
+      const fns = resolveGenFns();
+      // 仅使用与内置 Memory 扩展一致的内部生成函数
+      if (fns.quiet) {
         try {
           if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
         } catch (_) {}
         try {
-          const res = await window.generateQuietPrompt({ quietPrompt: promptText, skipWIAN: true });
+          const res = await fns.quiet({ quietPrompt: promptText, skipWIAN: true });
           const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
           if (text) return text;
         } finally {
@@ -1403,15 +1451,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           } catch (_) {}
         }
       }
-
-      // 2) 原始生成（Raw 模式）
-      if (typeof window.generateRaw === 'function') {
-        console.log('[Story Weaver] Using internal generateRaw');
+      if (fns.raw) {
         try {
           if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
         } catch (_) {}
         try {
-          const res = await window.generateRaw({ prompt: promptText });
+          const res = await fns.raw({ prompt: promptText });
           const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
           if (text) return text;
         } finally {
@@ -1420,16 +1465,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           } catch (_) {}
         }
       }
-
-      // 3) WebLLM（若安装）
-      if (typeof window.generateWebLlmChatPrompt === 'function') {
-        console.log('[Story Weaver] Using internal generateWebLlmChatPrompt');
+      if (fns.webllm) {
         try {
           if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
         } catch (_) {}
         try {
-          const messages = [{ role: 'user', content: promptText }];
-          const res = await window.generateWebLlmChatPrompt(messages, {});
+          const res = await fns.webllm([{ role: 'user', content: promptText }], {});
           const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
           if (text) return text;
         } finally {
@@ -1438,9 +1479,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           } catch (_) {}
         }
       }
-
-      // 若三种内核函数都不可用，返回空并提示在聊天主界面使用
-      console.warn('[Story Weaver] No internal generation functions available. Please open in main chat view.');
+      console.warn('[Story Weaver] Internal generation functions not available in this view.');
       return '';
     } catch (e) {
       console.error('[Story Weaver] callMainApiWithPrompt error:', e);
