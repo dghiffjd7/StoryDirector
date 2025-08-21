@@ -1386,8 +1386,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   // 统一调用主API的函数：不入聊天楼层，直接返回文本
   async function callMainApiWithPrompt(promptText) {
     try {
-      // 0) 内部生成函数（与内置Memory扩展同路由）
+      // 仅使用与内置 Memory 扩展一致的内部生成函数，避免任何直连HTTP
+      // 1) 默认：静默生成（主API）
       if (typeof window.generateQuietPrompt === 'function') {
+        console.log('[Story Weaver] Using internal generateQuietPrompt');
         try {
           if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
         } catch (_) {}
@@ -1401,7 +1403,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           } catch (_) {}
         }
       }
+
+      // 2) 原始生成（Raw 模式）
       if (typeof window.generateRaw === 'function') {
+        console.log('[Story Weaver] Using internal generateRaw');
         try {
           if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
         } catch (_) {}
@@ -1416,63 +1421,27 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         }
       }
 
-      // 1) 优先使用SillyTavern封装：sendGenerationRequest
-      if (typeof window.sendGenerationRequest === 'function') {
-        const res = await window.sendGenerationRequest('text', { prompt: promptText }, { quiet: true });
-        const text =
-          res?.choices?.[0]?.message?.content ||
-          res?.output_text ||
-          res?.text ||
-          res?.results?.[0]?.text ||
-          (typeof res === 'string' ? res : '');
-        return typeof text === 'string' ? text : '';
-      }
-
-      // 2) 使用 getGenerateUrl + getRequestHeaders（与内核一致的请求头）
-      if (
-        typeof window.getGenerateUrl === 'function' &&
-        typeof window.getRequestHeaders === 'function' &&
-        window.main_api
-      ) {
-        const url = window.getGenerateUrl(window.main_api);
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: window.getRequestHeaders(),
-          cache: 'no-cache',
-          body: JSON.stringify({ prompt: promptText }),
-        });
-        if (!resp.ok) {
-          const errTxt = await resp.text().catch(() => '');
-          throw new Error(`HTTP ${resp.status} ${errTxt}`);
+      // 3) WebLLM（若安装）
+      if (typeof window.generateWebLlmChatPrompt === 'function') {
+        console.log('[Story Weaver] Using internal generateWebLlmChatPrompt');
+        try {
+          if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
+        } catch (_) {}
+        try {
+          const messages = [{ role: 'user', content: promptText }];
+          const res = await window.generateWebLlmChatPrompt(messages, {});
+          const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
+          if (text) return text;
+        } finally {
+          try {
+            if (typeof window.inApiCall !== 'undefined') window.inApiCall = false;
+          } catch (_) {}
         }
-        const data = await resp.json();
-        const text =
-          data?.choices?.[0]?.message?.content || data?.output_text || data?.text || data?.results?.[0]?.text || '';
-        return text;
       }
 
-      // 3) 最后兜底：/api/v1/generate，尽量带上请求头
-      const headers =
-        typeof window.getRequestHeaders === 'function'
-          ? window.getRequestHeaders()
-          : { 'Content-Type': 'application/json' };
-      const resp = await fetch('/api/v1/generate', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          prompt: promptText,
-          mode: 'instruct',
-          max_new_tokens: 2048,
-          temperature: 0.7,
-          top_p: 0.9,
-        }),
-      });
-      if (!resp.ok) {
-        const err = await resp.text().catch(() => '');
-        throw new Error(`HTTP ${resp.status} ${err}`);
-      }
-      const data = await resp.json();
-      return data?.results?.[0]?.text || data?.text || '';
+      // 若三种内核函数都不可用，返回空并提示在聊天主界面使用
+      console.warn('[Story Weaver] No internal generation functions available. Please open in main chat view.');
+      return '';
     } catch (e) {
       console.error('[Story Weaver] callMainApiWithPrompt error:', e);
       return '';
