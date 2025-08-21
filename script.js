@@ -1386,6 +1386,36 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   // 统一调用主API的函数：不入聊天楼层，直接返回文本
   async function callMainApiWithPrompt(promptText) {
     try {
+      // 0) 内部生成函数（与内置Memory扩展同路由）
+      if (typeof window.generateQuietPrompt === 'function') {
+        try {
+          if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
+        } catch (_) {}
+        try {
+          const res = await window.generateQuietPrompt({ quietPrompt: promptText, skipWIAN: true });
+          const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
+          if (text) return text;
+        } finally {
+          try {
+            if (typeof window.inApiCall !== 'undefined') window.inApiCall = false;
+          } catch (_) {}
+        }
+      }
+      if (typeof window.generateRaw === 'function') {
+        try {
+          if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
+        } catch (_) {}
+        try {
+          const res = await window.generateRaw({ prompt: promptText });
+          const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
+          if (text) return text;
+        } finally {
+          try {
+            if (typeof window.inApiCall !== 'undefined') window.inApiCall = false;
+          } catch (_) {}
+        }
+      }
+
       // 1) 优先使用SillyTavern封装：sendGenerationRequest
       if (typeof window.sendGenerationRequest === 'function') {
         const res = await window.sendGenerationRequest('text', { prompt: promptText }, { quiet: true });
