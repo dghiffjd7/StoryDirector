@@ -967,8 +967,16 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           }
         } else {
           // 方式5: 直接操作原生输入框与发送按钮，走完整楼层管线
-          const sendTextarea = document.querySelector('#send_textarea');
-          const sendButton = document.querySelector('#send_but');
+          let { textarea: sendTextarea, button: sendButton } = findSendControls();
+
+          // 若未找到，尝试自动切换到聊天页面后重试
+          if (!sendTextarea || !sendButton) {
+            try {
+              autoOpenChatTab();
+            } catch (_) {}
+            ({ textarea: sendTextarea, button: sendButton } = findSendControls());
+          }
+
           if (sendTextarea && sendButton) {
             console.log('[Story Weaver] 使用DOM方式触发原生发送...');
             // 备份原文本
@@ -1152,6 +1160,35 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       toastr[type](message);
     } else {
       console.log(`[Story Weaver] ${type}: ${message}`);
+    }
+  }
+
+  // 查找原生发送控件（多选择器兼容）
+  function findSendControls() {
+    const textarea =
+      document.querySelector('#send_textarea') ||
+      document.querySelector('textarea.send-text') ||
+      document.querySelector('textarea[name="send_textarea"]') ||
+      document.querySelector('#user_input');
+
+    const button =
+      document.querySelector('#send_but') ||
+      document.querySelector('button.send-button') ||
+      document.querySelector('button[name="send_but"]') ||
+      document.querySelector('#send_button');
+
+    return { textarea, button };
+  }
+
+  // 自动切换到聊天标签页（若UI存在）
+  function autoOpenChatTab() {
+    const tabs = document.querySelectorAll('.menu_button, .tab-button, [data-tab]');
+    for (const el of tabs) {
+      const txt = (el.textContent || '').trim();
+      if (/^chat$/i.test(txt) || /聊天|会话/.test(txt)) {
+        el.click();
+        break;
+      }
     }
   }
 
