@@ -873,134 +873,14 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         // 尝试多种SillyTavern生成方式
         console.log('[Story Weaver] 尝试SillyTavern原生生成API...');
 
-        // 方式1: 尝试使用主Generate函数 (大写G)
-        if (typeof window.Generate === 'function') {
-          console.log('[Story Weaver] 使用window.Generate函数...');
-
-          // 构建生成请求 - 模拟正常的聊天流程但不保存到历史
-          const genRequest = {
-            text: userInput,
-            isUser: true,
-            addToHistory: false, // 关键：不添加到聊天历史
-            quiet: true, // 静默模式，不触发UI更新
-          };
-
-          const result = await window.Generate(genRequest);
-
-          if (result && typeof result === 'string' && result.trim().length > 10) {
-            resultText = result.trim();
-            apiSuccess = true;
-            console.log(`[Story Weaver] Generate生成成功:${result.substring(0, 200)}...`);
-          }
+        // >>> 替换为直接调用主API（不入楼层），与内置Memory扩展相同思路
+        const apiResult = await callMainApiWithPrompt(userInput);
+        if (!apiResult || !apiResult.trim()) {
+          throw new Error('主API未返回有效内容');
         }
-        // 方式2: 尝试使用小写generate函数
-        else if (typeof window.generate === 'function') {
-          console.log('[Story Weaver] 使用window.generate函数...');
-
-          const result = await window.generate({
-            user_input: userInput,
-            should_stream: false,
-            quiet: true, // 尝试静默模式
-          });
-
-          if (result && typeof result === 'string' && result.trim().length > 10) {
-            resultText = result.trim();
-            apiSuccess = true;
-            console.log(`[Story Weaver] generate生成成功:${result.substring(0, 200)}...`);
-          }
-        }
-        // 方式3: 尝试使用可能的静默生成函数
-        else if (typeof window.generateQuietly === 'function') {
-          console.log('[Story Weaver] 使用generateQuietly函数...');
-
-          const result = await window.generateQuietly(userInput);
-
-          if (result && typeof result === 'string' && result.trim().length > 10) {
-            resultText = result.trim();
-            apiSuccess = true;
-            console.log(`[Story Weaver] generateQuietly生成成功:${result.substring(0, 200)}...`);
-          }
-        }
-        // 方式4: 尝试直接调用OpenAI请求函数 (最直接的方式)
-        else if (typeof window.sendOpenAIRequest === 'function') {
-          console.log('[Story Weaver] 使用sendOpenAIRequest函数...');
-
-          // 构建完整的上下文 - 包含系统预设和世界书
-          const messages = [];
-
-          // 添加系统预设
-          if (window.power_user?.context?.story_string) {
-            messages.push({ role: 'system', content: window.power_user.context.story_string });
-          }
-
-          // 添加角色设定
-          if (window.characters && window.this_chid !== undefined) {
-            const currentChar = window.characters[window.this_chid];
-            if (currentChar?.description) {
-              messages.push({ role: 'system', content: currentChar.description });
-            }
-          }
-
-          // 添加世界书内容
-          const worldbookData = await getWorldInfoData();
-          if (worldbookData && worldbookData !== 'N/A') {
-            messages.push({ role: 'system', content: `世界背景信息:\n${worldbookData}` });
-          }
-
-          // 添加用户请求
-          messages.push({ role: 'user', content: userInput });
-
-          const requestData = {
-            messages: messages,
-            model: window.oai_settings?.openai_model || 'gpt-3.5-turbo',
-            stream: false,
-          };
-
-          console.log(`[Story Weaver] 发送包含${messages.length}条消息的请求到OpenAI...`);
-
-          const response = await window.sendOpenAIRequest('chat/completions', requestData);
-
-          if (response && response.choices && response.choices[0]?.message?.content) {
-            resultText = response.choices[0].message.content.trim();
-            apiSuccess = true;
-            console.log(`[Story Weaver] sendOpenAIRequest生成成功:${resultText.substring(0, 200)}...`);
-          }
-        } else {
-          // 方式5: 直接操作原生输入框与发送按钮，走完整楼层管线
-          let { textarea: sendTextarea, button: sendButton } = findSendControls();
-
-          // 若未找到，尝试自动切换到聊天页面后重试
-          if (!sendTextarea || !sendButton) {
-            try {
-              autoOpenChatTab();
-            } catch (_) {}
-            ({ textarea: sendTextarea, button: sendButton } = findSendControls());
-          }
-
-          if (sendTextarea && sendButton) {
-            console.log('[Story Weaver] 使用DOM方式触发原生发送...');
-            // 备份原文本
-            const prev = sendTextarea.value;
-            sendTextarea.value = userInput;
-            // 触发输入事件以便原生监听器拿到内容
-            sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-            // 点击发送
-            sendButton.click();
-
-            // 恢复原文本（避免污染用户输入框）
-            setTimeout(() => {
-              try {
-                sendTextarea.value = prev;
-                sendTextarea.dispatchEvent(new Event('input', { bubbles: true }));
-              } catch (_) {}
-            }, 100);
-
-            apiSuccess = true;
-            resultText = '(已通过原生输入框触发生成，请在聊天窗口查看结果)';
-          } else {
-            throw new Error('未找到可用的SillyTavern生成函数/控件 - 请确保位于聊天界面');
-          }
-        }
+        resultText = apiResult.trim();
+        apiSuccess = true;
+        // <<<
       } catch (error) {
         console.warn('[Story Weaver] SillyTavern生成失败:', error.message);
       }
@@ -1408,4 +1288,43 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     console.log('Chat array available:', Array.isArray(window.chat));
     console.log('Chat length:', window.chat ? window.chat.length : 'N/A');
   };
+
+  // 统一调用主API的函数：不入聊天楼层，直接返回文本
+  async function callMainApiWithPrompt(promptText) {
+    try {
+      // 优先使用SillyTavern封装
+      if (typeof window.sendOpenAIRequest === 'function') {
+        const requestData = {
+          messages: [{ role: 'user', content: promptText }],
+          model: window.oai_settings?.openai_model || 'gpt-3.5-turbo',
+          stream: false,
+        };
+        const resp = await window.sendOpenAIRequest('chat/completions', requestData);
+        const text = resp?.choices?.[0]?.message?.content;
+        return typeof text === 'string' ? text : '';
+      }
+
+      // 退回到通用生成端点
+      const resp = await fetch('/api/v1/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: promptText,
+          mode: 'instruct',
+          max_new_tokens: 2048,
+          temperature: 0.7,
+          top_p: 0.9,
+        }),
+      });
+      if (!resp.ok) {
+        const err = await resp.text().catch(() => '');
+        throw new Error(`HTTP ${resp.status} ${err}`);
+      }
+      const data = await resp.json();
+      return data?.results?.[0]?.text || data?.text || '';
+    } catch (e) {
+      console.error('[Story Weaver] callMainApiWithPrompt error:', e);
+      return '';
+    }
+  }
 })();
