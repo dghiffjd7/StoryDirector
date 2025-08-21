@@ -65,6 +65,12 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   // Settings
   let settings = {
     enabled: true,
+    injectEnabled: false,
+    position: 0,
+    depth: 0,
+    scan: false,
+    role: 'system',
+    template: '',
   };
 
   // Extension state
@@ -1092,30 +1098,118 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           <div class="inline-drawer-content">
             <label class="checkbox_label">
               <input id="story_weaver_enabled" type="checkbox" ${settings.enabled ? 'checked' : ''}>
-              <span>启用Story Weaver扩展</span>
+              <span>启用 Story Weaver 扩展</span>
             </label>
-            <small>故事大纲生成器 - 基于世界书和角色设定生成结构化故事大纲</small>
-            <br><br>
-            <div class="storyweaver_controls">
-              <input id="story_weaver_open_panel" class="menu_button" type="submit" value="📖 打开Story Weaver面板" />
+
+            <div class="flex-container" style="gap:10px;margin:8px 0;">
+              <label class="checkbox_label">
+                <input id="story_weaver_inject" type="checkbox" ${settings.injectEnabled ? 'checked' : ''}>
+                <span>将结果注入上下文（不创建楼层）</span>
+              </label>
+            </div>
+
+            <div class="flex-container" style="gap:10px;margin:8px 0;align-items:center;">
+              <div>
+                <small>位置(position)</small>
+                <input id="story_weaver_position" type="number" class="text_pole widthUnset" value="${
+                  settings.position
+                }" />
+              </div>
+              <div>
+                <small>深度(depth)</small>
+                <input id="story_weaver_depth" type="number" class="text_pole widthUnset" value="${settings.depth}" />
+              </div>
+              <div>
+                <small>扫描(scan)</small>
+                <input id="story_weaver_scan" type="checkbox" ${settings.scan ? 'checked' : ''} />
+              </div>
+              <div>
+                <small>角色(role)</small>
+                <input id="story_weaver_role" type="text" class="text_pole widthUnset" value="${settings.role}" />
+              </div>
+            </div>
+
+            <div class="storyweaver_controls" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+              <input id="story_weaver_open_panel" class="menu_button" type="submit" value="📖 打开 Story Weaver 面板" />
+              <input id="story_weaver_generate_now" class="menu_button" type="submit" value="⚡ 立即生成(不入楼层)" />
+              <input id="story_weaver_inject_now" class="menu_button" type="submit" value="🧩 仅注入到上下文" />
             </div>
           </div>
         </div>
-      </div>
-    `;
+      </div>`;
 
-    $('#extensions_settings').append(settingsHtml);
+    const container = document.getElementById('extensions_settings');
+    container.insertAdjacentHTML('beforeend', settingsHtml);
 
-    // Bind events
-    $('#story_weaver_open_panel').on('click', showStoryWeaverPanel);
+    const openBtn = document.getElementById('story_weaver_open_panel');
+    if (openBtn) openBtn.onclick = showStoryWeaverPanel;
 
-    $('#story_weaver_enabled').on('change', function () {
-      settings.enabled = this.checked;
+    document.getElementById('story_weaver_enabled')?.addEventListener('change', e => {
+      settings.enabled = e.target.checked;
       saveSettings();
-      console.log('[Story Weaver] Extension', this.checked ? 'enabled' : 'disabled');
+    });
+    document.getElementById('story_weaver_inject')?.addEventListener('change', e => {
+      settings.injectEnabled = e.target.checked;
+      saveSettings();
+    });
+    document.getElementById('story_weaver_position')?.addEventListener('change', e => {
+      settings.position = parseInt(e.target.value || '0');
+      saveSettings();
+    });
+    document.getElementById('story_weaver_depth')?.addEventListener('change', e => {
+      settings.depth = parseInt(e.target.value || '0');
+      saveSettings();
+    });
+    document.getElementById('story_weaver_scan')?.addEventListener('change', e => {
+      settings.scan = e.target.checked;
+      saveSettings();
+    });
+    document.getElementById('story_weaver_role')?.addEventListener('change', e => {
+      settings.role = e.target.value || 'system';
+      saveSettings();
     });
 
-    console.log('[Story Weaver] Extension UI setup complete');
+    // 下拉菜单中的立即生成与仅注入
+    document.getElementById('story_weaver_generate_now')?.addEventListener('click', async () => {
+      try {
+        const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
+        const prompt = constructFullPrompt(panel);
+        const result = await callMainApiWithPrompt(prompt);
+        if (!result?.trim()) return showNotification('生成失败', 'error');
+        showNotification('已生成(不入楼层)', 'success');
+        // 直接注入到面板中显示
+        const outputDiv = panel.querySelector('#output-content');
+        if (outputDiv) {
+          outputDiv.innerText = result;
+        }
+      } catch (e) {
+        showNotification('生成失败: ' + e.message, 'error');
+      }
+    });
+
+    document.getElementById('story_weaver_inject_now')?.addEventListener('click', async () => {
+      try {
+        const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
+        const prompt = constructFullPrompt(panel);
+        const result = await callMainApiWithPrompt(prompt);
+        if (!result?.trim()) return showNotification('生成失败', 'error');
+        if (typeof window.setExtensionPrompt === 'function') {
+          window.setExtensionPrompt(
+            MODULE_NAME,
+            result,
+            settings.position ?? 0,
+            settings.depth ?? 0,
+            settings.scan ?? false,
+            settings.role || 'system',
+          );
+          showNotification('已注入上下文(扩展提示)，不入楼层', 'success');
+        } else {
+          showNotification('未找到 setExtensionPrompt，无法注入上下文', 'warning');
+        }
+      } catch (e) {
+        showNotification('注入失败: ' + e.message, 'error');
+      }
+    });
   }
 
   /**
