@@ -703,26 +703,108 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       console.log(`[Story Weaver] 输入预览: ${userInput.substring(0, 300)}...`);
 
       try {
-        if (typeof window.generate === 'function') {
-          // 完全模仿QQ_Gen的调用方式 - 让ST自动加载所有预设和世界书
+        // 尝试多种SillyTavern生成方式
+        console.log('[Story Weaver] 尝试SillyTavern原生生成API...');
+        
+        // 方式1: 尝试使用主Generate函数 (大写G)
+        if (typeof window.Generate === 'function') {
+          console.log('[Story Weaver] 使用window.Generate函数...');
+          
+          // 构建生成请求 - 模拟正常的聊天流程但不保存到历史
+          const genRequest = {
+            text: userInput,
+            isUser: true,
+            addToHistory: false, // 关键：不添加到聊天历史
+            quiet: true, // 静默模式，不触发UI更新
+          };
+          
+          const result = await window.Generate(genRequest);
+          
+          if (result && typeof result === 'string' && result.trim().length > 10) {
+            resultText = result.trim();
+            apiSuccess = true;
+            console.log(`[Story Weaver] Generate生成成功:${result.substring(0, 200)}...`);
+          }
+        }
+        // 方式2: 尝试使用小写generate函数
+        else if (typeof window.generate === 'function') {
+          console.log('[Story Weaver] 使用window.generate函数...');
+          
           const result = await window.generate({
             user_input: userInput,
-            should_stream: false, // 不使用流式传输，确保我们能完整截取结果
+            should_stream: false,
+            quiet: true, // 尝试静默模式
           });
 
           if (result && typeof result === 'string' && result.trim().length > 10) {
             resultText = result.trim();
             apiSuccess = true;
-            console.log(`[Story Weaver] window.generate生成成功:${result.substring(0, 200)}...`);
-          } else {
-            console.warn('[Story Weaver] window.generate returned empty result:', result);
+            console.log(`[Story Weaver] generate生成成功:${result.substring(0, 200)}...`);
           }
-        } else {
-          throw new Error('window.generate 函数不可用 - 可能需要在聊天界面中使用此插件');
+        }
+        // 方式3: 尝试使用可能的静默生成函数
+        else if (typeof window.generateQuietly === 'function') {
+          console.log('[Story Weaver] 使用generateQuietly函数...');
+          
+          const result = await window.generateQuietly(userInput);
+          
+          if (result && typeof result === 'string' && result.trim().length > 10) {
+            resultText = result.trim();
+            apiSuccess = true;
+            console.log(`[Story Weaver] generateQuietly生成成功:${result.substring(0, 200)}...`);
+          }
+        }
+        // 方式4: 尝试直接调用OpenAI请求函数 (最直接的方式)
+        else if (typeof window.sendOpenAIRequest === 'function') {
+          console.log('[Story Weaver] 使用sendOpenAIRequest函数...');
+          
+          // 构建完整的上下文 - 包含系统预设和世界书
+          const messages = [];
+          
+          // 添加系统预设
+          if (window.power_user?.context?.story_string) {
+            messages.push({ role: 'system', content: window.power_user.context.story_string });
+          }
+          
+          // 添加角色设定
+          if (window.characters && window.this_chid !== undefined) {
+            const currentChar = window.characters[window.this_chid];
+            if (currentChar?.description) {
+              messages.push({ role: 'system', content: currentChar.description });
+            }
+          }
+          
+          // 添加世界书内容
+          const worldbookData = await getWorldInfoData();
+          if (worldbookData && worldbookData !== 'N/A') {
+            messages.push({ role: 'system', content: `世界背景信息:\n${worldbookData}` });
+          }
+          
+          // 添加用户请求
+          messages.push({ role: 'user', content: userInput });
+          
+          const requestData = {
+            messages: messages,
+            model: window.oai_settings?.openai_model || 'gpt-3.5-turbo',
+            stream: false,
+          };
+          
+          console.log(`[Story Weaver] 发送包含${messages.length}条消息的请求到OpenAI...`);
+          
+          const response = await window.sendOpenAIRequest('chat/completions', requestData);
+          
+          if (response && response.choices && response.choices[0]?.message?.content) {
+            resultText = response.choices[0].message.content.trim();
+            apiSuccess = true;
+            console.log(`[Story Weaver] sendOpenAIRequest生成成功:${resultText.substring(0, 200)}...`);
+          }
+        }
+        else {
+          throw new Error('未找到可用的SillyTavern生成函数 - 请确保在聊天界面中使用此插件');
         }
         
       } catch (error) {
-        console.warn('[Story Weaver] window.generate failed:', error.message);
+        console.warn('[Story Weaver] SillyTavern生成失败:', error.message);
       }
 
       if (!apiSuccess || !resultText) {
@@ -1055,14 +1137,18 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     // 检查可用的函数
     const possibleFunctions = [
       'generate', // phone.html中使用的核心生成函数
-      'Generate',
+      'Generate', // SillyTavern主生成函数
       'generateRaw',
       'getContext',
       'getWorldInfoPrompt',
-      'getGlobalLore',
+      'getGlobalLore', 
       'getChatLore',
       'sendSystemMessage',
       'addOneMessage',
+      'callGenerate', // 可能的内部生成函数
+      'sendOpenAIRequest', // OpenAI请求函数
+      'generateQuietly', // 静默生成函数
+      'Generate_with_callback', // 带回调的生成函数
     ];
 
     const availableFunctions = {};
