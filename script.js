@@ -10,6 +10,9 @@
   const DEFAULT_PROMPT_TEMPLATE = `You are an expert storyteller and world-building assistant. Your task is to generate a compelling and structured story outline.
 
 ### CONTEXT & LORE ###
+-- System Prompt --
+{system_prompt}
+
 Here is the established context, including world settings and character information.
 
 -- World Info (before chat) --
@@ -20,6 +23,21 @@ Here is the established context, including world settings and character informat
 
 **Character Information:**
 {character}
+
+-- Character Persona --
+{char_persona}
+
+-- Scenario --
+{char_scenario}
+
+-- Memory Summary --
+{memory_summary}
+
+-- Author's Note --
+{authors_note}
+
+-- Jailbreak / Preset Prompt (if any) --
+{jailbreak}
 
 -- Recent Chat History --
 {chat_history}
@@ -662,6 +680,155 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     }
   }
 
+  // -------- Plan A: 构建包含全部原生段落的完整Prompt --------
+  function getContextSafe() {
+    try {
+      return typeof getContext === 'function' ? getContext() : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function resolveSystemPrompt(ctx) {
+    return (
+      window?.power_user?.context?.story_string || ctx?.power_user?.context?.story_string || ctx?.system_prompt || ''
+    );
+  }
+
+  function resolveCharPersona(ctx) {
+    try {
+      const idx = window?.this_chid ?? ctx?.characterId;
+      const ch = (window?.characters || ctx?.characters || [])[idx] || {};
+      return ch?.personality || ch?.persona || ch?.description || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function resolveCharScenario(ctx) {
+    try {
+      const idx = window?.this_chid ?? ctx?.characterId;
+      const ch = (window?.characters || ctx?.characters || [])[idx] || {};
+      return ch?.scenario || '';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  function resolveMemorySummary(ctx) {
+    return ctx?.memorySummary || window?.memory?.summary || window?.chat_metadata?.summary || '';
+  }
+
+  function resolveAuthorsNote(ctx) {
+    return window?.power_user?.context?.authors_note || ctx?.authors_note || '';
+  }
+
+  function resolveJailbreak(ctx) {
+    return window?.power_user?.jailbreak || ctx?.jailbreak || '';
+  }
+
+  function resolveWorldInfoFormatTemplate(ctx) {
+    return ctx?.settings?.worldInfoFormatTemplate || ctx?.worldInfoFormatTemplate || '{0}';
+  }
+
+  function splitWorldInfoByPosition(entries) {
+    const before = [];
+    const after = [];
+    for (const e of entries || []) {
+      const pos = e?.position;
+      if (pos === 1 || pos === 'after') after.push(e);
+      else before.push(e);
+    }
+    return { before, after };
+  }
+
+  function formatWorldInfo(entries, template) {
+    if (!entries?.length) return '';
+    const wrap = content => (template && template.includes('{0}') ? template.replace('{0}', content) : content);
+    return entries
+      .map(e => wrap(e?.content || ''))
+      .filter(Boolean)
+      .join('\n\n');
+  }
+
+  function activateWorldInfo(entries, chatText) {
+    if (!entries?.length) return [];
+    const text = (chatText || '').toLowerCase();
+    const activated = entries.filter(e => {
+      if (e?.disable) return false;
+      const keys = Array.isArray(e?.key) ? e.key : typeof e?.key === 'string' ? [e.key] : [];
+      if (!keys.length) return false;
+      return keys.some(k => String(k).toLowerCase() && text.includes(String(k).toLowerCase()));
+    });
+    return activated.sort((a, b) => (a.order ?? a.position ?? 0) - (b.order ?? b.position ?? 0));
+  }
+
+  function resolveNativeWorldInfoAPI() {
+    const candidates = [window?.getWorldInfoPrompt, window?.checkWorldInfo, window?.ST?.worldInfo?.getWorldInfoPrompt];
+    for (const fn of candidates) {
+      if (typeof fn === 'function') {
+        return (text, ctx) => {
+          try {
+            const res = fn.length >= 2 ? fn(text, ctx) : fn(ctx);
+            if (res?.worldInfoBefore !== undefined || res?.worldInfoAfter !== undefined) return res;
+            if (Array.isArray(res)) {
+              const { before, after } = splitWorldInfoByPosition(res);
+              const formatTemplate = resolveWorldInfoFormatTemplate(ctx);
+              return {
+                worldInfoBefore: formatWorldInfo(before, formatTemplate),
+                worldInfoAfter: formatWorldInfo(after, formatTemplate),
+              };
+            }
+          } catch (_) {}
+          return null;
+        };
+      }
+    }
+    return null;
+  }
+
+  function buildWorldInfoSegmentsSmart(ctx, chatText) {
+    try {
+      const wiApi = resolveNativeWorldInfoAPI();
+      if (wiApi) {
+        const result = wiApi(chatText, ctx);
+        if (result && (result.worldInfoBefore || result.worldInfoAfter)) {
+          return { before: String(result.worldInfoBefore || ''), after: String(result.worldInfoAfter || '') };
+        }
+      }
+    } catch (_) {}
+    const entries = ctx?.worldInfoData?.entries || [];
+    const active = activateWorldInfo(entries, chatText);
+    const { before, after } = splitWorldInfoByPosition(active);
+    const formatTemplate = resolveWorldInfoFormatTemplate(ctx);
+    return { before: formatWorldInfo(before, formatTemplate), after: formatWorldInfo(after, formatTemplate) };
+  }
+
+  function constructFullPrompt(panel) {
+    const ctx = getContextSafe();
+    const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
+    const chatText = buildChatHistoryText(chatLimit);
+    const wi = buildWorldInfoSegmentsSmart(ctx, chatText);
+
+    // worldbook/character 兼容：若已由WI / persona覆盖，可留空
+    const worldbookData = '';
+    const characterData = '';
+
+    let finalPrompt = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
+    finalPrompt = finalPrompt.replace(/{system_prompt}/g, resolveSystemPrompt(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{char_persona}/g, resolveCharPersona(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{char_scenario}/g, resolveCharScenario(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{memory_summary}/g, resolveMemorySummary(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{authors_note}/g, resolveAuthorsNote(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{jailbreak}/g, resolveJailbreak(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{chat_history}/g, chatText || '');
+    finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wi.before || '');
+    finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wi.after || '');
+    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
+    finalPrompt = finalPrompt.replace(/{character}/g, characterData);
+    return finalPrompt;
+  }
+
   /**
    * Handle generate outline
    */
@@ -683,8 +850,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       return;
     }
 
-    // 构建简单的用户输入 - 让SillyTavern自动处理预设和世界书包含
-    const userInput = await constructSimpleUserInput(panel);
+    // 采用方案A：我们构建包含全部原生段落的完整Prompt
+    const userInput = constructFullPrompt(panel);
 
     // Update UI
     generateBtn.disabled = true;
@@ -705,11 +872,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       try {
         // 尝试多种SillyTavern生成方式
         console.log('[Story Weaver] 尝试SillyTavern原生生成API...');
-        
+
         // 方式1: 尝试使用主Generate函数 (大写G)
         if (typeof window.Generate === 'function') {
           console.log('[Story Weaver] 使用window.Generate函数...');
-          
+
           // 构建生成请求 - 模拟正常的聊天流程但不保存到历史
           const genRequest = {
             text: userInput,
@@ -717,9 +884,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
             addToHistory: false, // 关键：不添加到聊天历史
             quiet: true, // 静默模式，不触发UI更新
           };
-          
+
           const result = await window.Generate(genRequest);
-          
+
           if (result && typeof result === 'string' && result.trim().length > 10) {
             resultText = result.trim();
             apiSuccess = true;
@@ -729,7 +896,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         // 方式2: 尝试使用小写generate函数
         else if (typeof window.generate === 'function') {
           console.log('[Story Weaver] 使用window.generate函数...');
-          
+
           const result = await window.generate({
             user_input: userInput,
             should_stream: false,
@@ -745,9 +912,9 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         // 方式3: 尝试使用可能的静默生成函数
         else if (typeof window.generateQuietly === 'function') {
           console.log('[Story Weaver] 使用generateQuietly函数...');
-          
+
           const result = await window.generateQuietly(userInput);
-          
+
           if (result && typeof result === 'string' && result.trim().length > 10) {
             resultText = result.trim();
             apiSuccess = true;
@@ -757,15 +924,15 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         // 方式4: 尝试直接调用OpenAI请求函数 (最直接的方式)
         else if (typeof window.sendOpenAIRequest === 'function') {
           console.log('[Story Weaver] 使用sendOpenAIRequest函数...');
-          
+
           // 构建完整的上下文 - 包含系统预设和世界书
           const messages = [];
-          
+
           // 添加系统预设
           if (window.power_user?.context?.story_string) {
             messages.push({ role: 'system', content: window.power_user.context.story_string });
           }
-          
+
           // 添加角色设定
           if (window.characters && window.this_chid !== undefined) {
             const currentChar = window.characters[window.this_chid];
@@ -773,36 +940,34 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
               messages.push({ role: 'system', content: currentChar.description });
             }
           }
-          
+
           // 添加世界书内容
           const worldbookData = await getWorldInfoData();
           if (worldbookData && worldbookData !== 'N/A') {
             messages.push({ role: 'system', content: `世界背景信息:\n${worldbookData}` });
           }
-          
+
           // 添加用户请求
           messages.push({ role: 'user', content: userInput });
-          
+
           const requestData = {
             messages: messages,
             model: window.oai_settings?.openai_model || 'gpt-3.5-turbo',
             stream: false,
           };
-          
+
           console.log(`[Story Weaver] 发送包含${messages.length}条消息的请求到OpenAI...`);
-          
+
           const response = await window.sendOpenAIRequest('chat/completions', requestData);
-          
+
           if (response && response.choices && response.choices[0]?.message?.content) {
             resultText = response.choices[0].message.content.trim();
             apiSuccess = true;
             console.log(`[Story Weaver] sendOpenAIRequest生成成功:${resultText.substring(0, 200)}...`);
           }
-        }
-        else {
+        } else {
           throw new Error('未找到可用的SillyTavern生成函数 - 请确保在聊天界面中使用此插件');
         }
-        
       } catch (error) {
         console.warn('[Story Weaver] SillyTavern生成失败:', error.message);
       }
@@ -829,10 +994,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       textarea.style.resize = 'vertical';
       textarea.style.whiteSpace = 'pre-wrap';
       textarea.className = 'story-result-editor';
-      
+
       outputDiv.innerHTML = '';
       outputDiv.appendChild(textarea);
-      
+
       // 添加编辑提示
       const editHint = document.createElement('div');
       editHint.style.fontSize = '12px';
@@ -874,7 +1039,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     // 从可编辑的文本域获取内容
     const textarea = outputDiv.querySelector('.story-result-editor');
-    const content = textarea ? textarea.value : (outputDiv.innerText || outputDiv.textContent);
+    const content = textarea ? textarea.value : outputDiv.innerText || outputDiv.textContent;
 
     if (navigator.clipboard) {
       navigator.clipboard.writeText(content).then(() => {
@@ -912,7 +1077,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     // 从可编辑的文本域获取内容
     const textarea = outputDiv.querySelector('.story-result-editor');
-    const content = textarea ? textarea.value : (outputDiv.innerText || outputDiv.textContent);
+    const content = textarea ? textarea.value : outputDiv.innerText || outputDiv.textContent;
     const timestamp = new Date().toISOString().slice(0, 16).replace(/[:-]/g, '');
     const filename = `story-outline-${timestamp}.txt`;
 
@@ -1105,17 +1270,18 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         power_user_context: window.power_user?.context ? 'Available' : 'Not found',
         system_prompt: window.power_user?.context?.system_prompt ? 'Found' : 'Not found',
         story_string: window.power_user?.context?.story_string ? 'Found' : 'Not found',
-        current_character: window.this_chid !== undefined && window.characters?.[window.this_chid] ? 'Available' : 'Not found'
+        current_character:
+          window.this_chid !== undefined && window.characters?.[window.this_chid] ? 'Available' : 'Not found',
       };
       console.log('Preset information:', presetInfo);
-      
+
       if (window.characters && window.this_chid !== undefined) {
         const currentChar = window.characters[window.this_chid];
         if (currentChar) {
           console.log('Current character info:', {
             name: currentChar.name,
             description: currentChar.description ? `${currentChar.description.substring(0, 100)}...` : 'Not found',
-            personality: currentChar.personality ? `${currentChar.personality.substring(0, 100)}...` : 'Not found'
+            personality: currentChar.personality ? `${currentChar.personality.substring(0, 100)}...` : 'Not found',
           });
         }
       }
@@ -1141,7 +1307,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       'generateRaw',
       'getContext',
       'getWorldInfoPrompt',
-      'getGlobalLore', 
+      'getGlobalLore',
       'getChatLore',
       'sendSystemMessage',
       'addOneMessage',
