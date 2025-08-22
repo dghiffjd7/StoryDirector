@@ -186,7 +186,15 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                 <span class="btn-icon">🔄</span>
                 手动刷新数据
               </button>
-              <div class="form-help">如果世界书或角色数据没有正确加载，可以点击此按钮手动刷新</div>
+              <button id="preview-worldinfo-btn" class="action-btn" type="button" style="margin-top: 10px; margin-left: 10px;">
+                <span class="btn-icon">👁️</span>
+                预览世界书内容
+              </button>
+              <button id="preview-prompt-btn" class="action-btn" type="button" style="margin-top: 10px; margin-left: 10px;">
+                <span class="btn-icon">📝</span>
+                预览完整提示词
+              </button>
+              <div class="form-help">如果世界书或角色数据没有正确加载，可以点击此按钮手动刷新。点击预览按钮可以查看当前获取的数据和构建的完整提示词</div>
             </div>
           </div>
         </section>
@@ -444,6 +452,42 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         } finally {
           refreshBtn.disabled = false;
           refreshBtn.innerHTML = '<span class="btn-icon">🔄</span> 手动刷新数据';
+        }
+      };
+    }
+
+    // Preview world info button
+    const previewBtn = panel.querySelector('#preview-worldinfo-btn');
+    if (previewBtn) {
+      previewBtn.onclick = async () => {
+        try {
+          previewBtn.disabled = true;
+          previewBtn.innerHTML = '<span class="btn-icon">⏳</span> 加载中...';
+          
+          await showWorldInfoPreview();
+        } catch (error) {
+          showNotification('预览世界书失败: ' + error.message, 'error');
+        } finally {
+          previewBtn.disabled = false;
+          previewBtn.innerHTML = '<span class="btn-icon">👁️</span> 预览世界书内容';
+        }
+      };
+    }
+
+    // Preview prompt button
+    const previewPromptBtn = panel.querySelector('#preview-prompt-btn');
+    if (previewPromptBtn) {
+      previewPromptBtn.onclick = async () => {
+        try {
+          previewPromptBtn.disabled = true;
+          previewPromptBtn.innerHTML = '<span class="btn-icon">⏳</span> 构建中...';
+          
+          await showPromptPreview(panel);
+        } catch (error) {
+          showNotification('预览提示词失败: ' + error.message, 'error');
+        } finally {
+          previewPromptBtn.disabled = false;
+          previewPromptBtn.innerHTML = '<span class="btn-icon">📝</span> 预览完整提示词';
         }
       };
     }
@@ -1478,6 +1522,273 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
       toastr[type](message);
     } else {
       console.log(`[Story Weaver] ${type}: ${message}`);
+    }
+  }
+
+  /**
+   * 显示世界书预览弹窗
+   */
+  async function showWorldInfoPreview() {
+    // 移除可能存在的旧弹窗
+    const existingModal = document.getElementById('worldinfo-preview-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    console.log('[Story Weaver] Starting world info preview...');
+
+    // 获取多种方式的世界书数据
+    const previewData = {
+      sortedEntries: null,
+      globalLore: null,
+      characterLore: null,
+      chatLore: null,
+      personaLore: null,
+      customData: null
+    };
+
+    try {
+      // 方法1: getSortedEntries
+      if (typeof window.getSortedEntries === 'function') {
+        console.log('[Story Weaver] Testing getSortedEntries...');
+        previewData.sortedEntries = await window.getSortedEntries();
+        console.log('[Story Weaver] getSortedEntries result:', previewData.sortedEntries?.length || 0, 'entries');
+      }
+
+      // 方法2: 分别获取各类世界书
+      if (typeof window.getGlobalLore === 'function') {
+        previewData.globalLore = await window.getGlobalLore();
+        console.log('[Story Weaver] getGlobalLore result:', previewData.globalLore?.length || 0, 'entries');
+      }
+      
+      if (typeof window.getCharacterLore === 'function') {
+        previewData.characterLore = await window.getCharacterLore();
+        console.log('[Story Weaver] getCharacterLore result:', previewData.characterLore?.length || 0, 'entries');
+      }
+      
+      if (typeof window.getChatLore === 'function') {
+        previewData.chatLore = await window.getChatLore();
+        console.log('[Story Weaver] getChatLore result:', previewData.chatLore?.length || 0, 'entries');
+      }
+      
+      if (typeof window.getPersonaLore === 'function') {
+        previewData.personaLore = await window.getPersonaLore();
+        console.log('[Story Weaver] getPersonaLore result:', previewData.personaLore?.length || 0, 'entries');
+      }
+
+      // 方法3: 我们的自定义函数
+      previewData.customData = await getWorldInfoData('');
+      console.log('[Story Weaver] Custom getWorldInfoData result:', previewData.customData?.length || 0, 'characters');
+
+    } catch (error) {
+      console.error('[Story Weaver] Error getting world info preview:', error);
+    }
+
+    // 构建预览内容
+    let previewHtml = '';
+    
+    // 显示getSortedEntries结果
+    if (previewData.sortedEntries && previewData.sortedEntries.length > 0) {
+      previewHtml += `<h3>📚 getSortedEntries() - ${previewData.sortedEntries.length}条条目</h3>`;
+      previewData.sortedEntries.slice(0, 5).forEach((entry, index) => {
+        previewHtml += `<div style="border: 1px solid #ddd; margin: 5px 0; padding: 10px;">
+          <strong>${entry.comment || entry.key || `条目${index + 1}`}</strong> 
+          <span style="color: #666;">(world: ${entry.world || 'unknown'})</span>
+          <div style="margin-top: 5px; font-size: 12px; color: #333;">${(entry.content || '').substring(0, 200)}...</div>
+        </div>`;
+      });
+      if (previewData.sortedEntries.length > 5) {
+        previewHtml += `<p style="color: #666;">...还有 ${previewData.sortedEntries.length - 5} 条条目</p>`;
+      }
+    }
+
+    // 显示分类世界书结果
+    const categories = [
+      { name: 'Global Lore', data: previewData.globalLore },
+      { name: 'Character Lore', data: previewData.characterLore },
+      { name: 'Chat Lore', data: previewData.chatLore },
+      { name: 'Persona Lore', data: previewData.personaLore }
+    ];
+
+    categories.forEach(category => {
+      if (category.data && category.data.length > 0) {
+        previewHtml += `<h3>🏷️ ${category.name} - ${category.data.length}条条目</h3>`;
+        category.data.slice(0, 3).forEach((entry, index) => {
+          previewHtml += `<div style="border: 1px solid #ddd; margin: 5px 0; padding: 10px;">
+            <strong>${entry.comment || entry.key || `条目${index + 1}`}</strong>
+            <div style="margin-top: 5px; font-size: 12px; color: #333;">${(entry.content || '').substring(0, 150)}...</div>
+          </div>`;
+        });
+      }
+    });
+
+    // 显示自定义函数结果
+    if (previewData.customData && previewData.customData.trim()) {
+      previewHtml += `<h3>🔧 自定义getWorldInfoData()结果</h3>`;
+      previewHtml += `<div style="border: 1px solid #ddd; margin: 5px 0; padding: 10px; font-size: 12px; color: #333; white-space: pre-wrap;">${previewData.customData.substring(0, 500)}...</div>`;
+    }
+
+    if (!previewHtml) {
+      previewHtml = '<p style="color: #666;">❌ 未能获取到任何世界书数据</p>';
+    }
+
+    // 创建弹窗
+    const modal = document.createElement('div');
+    modal.id = 'worldinfo-preview-modal';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 10000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    `;
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      max-width: 800px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    `;
+
+    modalContent.innerHTML = `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+        <h2 style="margin: 0;">🌍 世界书内容预览</h2>
+        <button id="close-preview-modal" style="background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">关闭</button>
+      </div>
+      <div style="max-height: 60vh; overflow-y: auto;">
+        ${previewHtml}
+      </div>
+    `;
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // 绑定关闭事件
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) modal.remove();
+    });
+    
+    modalContent.querySelector('#close-preview-modal').addEventListener('click', () => {
+      modal.remove();
+    });
+  }
+
+  /**
+   * 显示完整提示词预览
+   */
+  async function showPromptPreview(panel) {
+    // 移除可能存在的旧弹窗
+    const existingModal = document.getElementById('prompt-preview-modal');
+    if (existingModal) {
+      existingModal.remove();
+    }
+
+    console.log('[Story Weaver] Building prompt preview...');
+
+    try {
+      // 构建完整的结构化提示词
+      const structuredPrompt = await buildStructuredPrompt(panel);
+      
+      // 获取世界书数据用于对比
+      const worldInfoData = await getWorldInfoData('');
+      
+      // 构建预览内容
+      let previewHtml = '';
+      
+      previewHtml += `<h3>📋 构建的结构化提示词 (${structuredPrompt.length}条)</h3>`;
+      
+      structuredPrompt.forEach((prompt, index) => {
+        previewHtml += `
+          <div style="border: 1px solid #ddd; margin: 10px 0; border-radius: 4px;">
+            <div style="background: #f5f5f5; padding: 8px; font-weight: bold; border-bottom: 1px solid #ddd;">
+              提示词 ${index + 1} - 角色: ${prompt.role}
+            </div>
+            <div style="padding: 10px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 300px; overflow-y: auto;">
+${prompt.content}
+            </div>
+            <div style="background: #f9f9f9; padding: 5px 10px; font-size: 11px; color: #666;">
+              字符数: ${prompt.content.length}
+            </div>
+          </div>
+        `;
+      });
+
+      previewHtml += `<hr>`;
+      previewHtml += `<h3>📚 我们获取的世界书数据</h3>`;
+      if (worldInfoData && worldInfoData.trim()) {
+        previewHtml += `
+          <div style="border: 1px solid #ddd; margin: 10px 0; padding: 10px; font-family: monospace; font-size: 12px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; background: #f9f9f9;">
+${worldInfoData}
+          </div>
+          <div style="font-size: 11px; color: #666;">
+            字符数: ${worldInfoData.length}
+          </div>
+        `;
+      } else {
+        previewHtml += `<p style="color: #f44336;">❌ 我们的函数没有获取到世界书数据</p>`;
+      }
+
+      // 创建弹窗
+      const modal = document.createElement('div');
+      modal.id = 'prompt-preview-modal';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 10000;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      `;
+
+      const modalContent = document.createElement('div');
+      modalContent.style.cssText = `
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        max-width: 90%;
+        max-height: 90%;
+        overflow-y: auto;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      `;
+
+      modalContent.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; position: sticky; top: 0; background: white; z-index: 1;">
+          <h2 style="margin: 0;">📝 完整提示词预览</h2>
+          <button id="close-prompt-modal" style="background: #f44336; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">关闭</button>
+        </div>
+        <div>
+          ${previewHtml}
+        </div>
+      `;
+
+      modal.appendChild(modalContent);
+      document.body.appendChild(modal);
+
+      // 绑定关闭事件
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) modal.remove();
+      });
+      
+      modalContent.querySelector('#close-prompt-modal').addEventListener('click', () => {
+        modal.remove();
+      });
+
+    } catch (error) {
+      console.error('[Story Weaver] Error building prompt preview:', error);
+      showNotification('构建提示词预览失败: ' + error.message, 'error');
     }
   }
 
