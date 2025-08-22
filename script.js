@@ -600,51 +600,123 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   async function getWorldInfoData(chatHistory = '') {
     try {
-      // Use SillyTavern's proper World Info API
-      if (typeof window.getSortedEntries === 'function') {
-        console.log('[Story Weaver] Using getSortedEntries API...');
-        const entries = await window.getSortedEntries();
-        if (entries && entries.length > 0) {
-          const formattedEntries = entries
-            .filter(entry => !entry.disable && entry.content?.trim())
-            .slice(0, 20) // Increase limit for better context
-            .map(entry => {
-              const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
-              return `**${title}**\n${entry.content}`;
-            })
-            .join('\n\n');
-          
-          console.log(`[Story Weaver] Found ${entries.length} world info entries using getSortedEntries`);
-          return formattedEntries;
+      // Method 1: Try to access SillyTavern's world info functions through proper module imports
+      if (window.SillyTavern && window.SillyTavern.getModule) {
+        try {
+          const worldInfoModule = window.SillyTavern.getModule('world-info');
+          if (worldInfoModule && worldInfoModule.getSortedEntries) {
+            console.log('[Story Weaver] Using SillyTavern world-info module...');
+            const entries = await worldInfoModule.getSortedEntries();
+            if (entries && entries.length > 0) {
+              const formattedEntries = entries
+                .filter(entry => !entry.disable && entry.content?.trim())
+                .slice(0, 20)
+                .map(entry => {
+                  const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+                  const world = entry.world ? ` (${entry.world})` : '';
+                  return `**${title}${world}**\n${entry.content}`;
+                })
+                .join('\n\n');
+              
+              console.log(`[Story Weaver] Found ${entries.length} world info entries using module`);
+              return formattedEntries;
+            }
+          }
+        } catch (moduleError) {
+          console.log('[Story Weaver] Module access failed, trying other methods...');
         }
       }
 
-      // Fallback: Try accessing global, character, chat, and persona lore separately
+      // Method 2: Try accessing from global extension context
+      const context = getCurrentContext();
+      if (context && context.extensionContext) {
+        try {
+          const worldInfoAPI = context.extensionContext.worldInfo;
+          if (worldInfoAPI && worldInfoAPI.getSortedEntries) {
+            console.log('[Story Weaver] Using extension context world info...');
+            const entries = await worldInfoAPI.getSortedEntries();
+            if (entries && entries.length > 0) {
+              const formattedEntries = entries
+                .filter(entry => !entry.disable && entry.content?.trim())
+                .slice(0, 20)
+                .map(entry => {
+                  const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+                  const world = entry.world ? ` (${entry.world})` : '';
+                  return `**${title}${world}**\n${entry.content}`;
+                })
+                .join('\n\n');
+              
+              console.log(`[Story Weaver] Found ${entries.length} world info entries using extension context`);
+              return formattedEntries;
+            }
+          }
+        } catch (extError) {
+          console.log('[Story Weaver] Extension context access failed, trying direct access...');
+        }
+      }
+
+      // Method 3: Access world info through the actual loaded world data
       const allEntries = [];
       
-      if (typeof window.getGlobalLore === 'function') {
-        const globalLore = await window.getGlobalLore();
-        if (globalLore) allEntries.push(...globalLore);
+      // Try to get loaded world info data from different sources
+      const selectedWorldInfo = window.selected_world_info || [];
+      if (selectedWorldInfo.length > 0) {
+        console.log(`[Story Weaver] Found ${selectedWorldInfo.length} selected world info files:`, selectedWorldInfo);
+        
+        for (const worldName of selectedWorldInfo) {
+          try {
+            // Try to access the loaded world data
+            const worldData = window.world_info_data && window.world_info_data[worldName];
+            if (worldData && worldData.entries) {
+              const entries = Object.values(worldData.entries);
+              allEntries.push(...entries.map(entry => ({ ...entry, world: worldName })));
+              console.log(`[Story Weaver] Added ${entries.length} entries from world: ${worldName}`);
+            }
+          } catch (worldError) {
+            console.log(`[Story Weaver] Failed to access world ${worldName}:`, worldError);
+          }
+        }
       }
-      
-      if (typeof window.getCharacterLore === 'function') {
-        const characterLore = await window.getCharacterLore();
-        if (characterLore) allEntries.push(...characterLore);
+
+      // Method 4: Try to access chat-specific world info
+      const chatMetadata = window.chat_metadata;
+      if (chatMetadata && chatMetadata.world_info) {
+        const chatWorld = chatMetadata.world_info;
+        console.log(`[Story Weaver] Found chat-specific world: ${chatWorld}`);
+        
+        try {
+          const worldData = window.world_info_data && window.world_info_data[chatWorld];
+          if (worldData && worldData.entries) {
+            const entries = Object.values(worldData.entries);
+            allEntries.push(...entries.map(entry => ({ ...entry, world: chatWorld })));
+            console.log(`[Story Weaver] Added ${entries.length} entries from chat world: ${chatWorld}`);
+          }
+        } catch (chatWorldError) {
+          console.log(`[Story Weaver] Failed to access chat world ${chatWorld}:`, chatWorldError);
+        }
       }
-      
-      if (typeof window.getChatLore === 'function') {
-        const chatLore = await window.getChatLore();
-        if (chatLore) allEntries.push(...chatLore);
-      }
-      
-      if (typeof window.getPersonaLore === 'function') {
-        const personaLore = await window.getPersonaLore();
-        if (personaLore) allEntries.push(...personaLore);
+
+      // Method 5: Try to access character-specific world info
+      const currentChar = window.characters && window.characters[window.this_chid];
+      if (currentChar && currentChar.data && currentChar.data.extensions && currentChar.data.extensions.world) {
+        const charWorld = currentChar.data.extensions.world;
+        console.log(`[Story Weaver] Found character-specific world: ${charWorld}`);
+        
+        try {
+          const worldData = window.world_info_data && window.world_info_data[charWorld];
+          if (worldData && worldData.entries) {
+            const entries = Object.values(worldData.entries);
+            allEntries.push(...entries.map(entry => ({ ...entry, world: charWorld })));
+            console.log(`[Story Weaver] Added ${entries.length} entries from character world: ${charWorld}`);
+          }
+        } catch (charWorldError) {
+          console.log(`[Story Weaver] Failed to access character world ${charWorld}:`, charWorldError);
+        }
       }
 
       if (allEntries.length > 0) {
         const formattedEntries = allEntries
-          .filter(entry => !entry.disable && entry.content?.trim())
+          .filter(entry => !entry.disable && entry.content && entry.content.trim())
           .slice(0, 20)
           .map(entry => {
             const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
@@ -653,11 +725,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           })
           .join('\n\n');
         
-        console.log(`[Story Weaver] Found ${allEntries.length} world info entries using individual lore functions`);
+        console.log(`[Story Weaver] Found ${allEntries.length} total world info entries`);
         return formattedEntries;
       }
 
-      // Last resort: Direct access to world_info object
+      // Method 6: Last resort - try to access the global world_info object directly
       const worldInfo = window.world_info;
       if (worldInfo && worldInfo.entries) {
         const entries = Object.values(worldInfo.entries);
@@ -665,13 +737,23 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           const formattedEntries = entries
             .filter(entry => !entry.disable && entry.content?.trim())
             .slice(0, 10)
-            .map(entry => `**${entry.comment || entry.key?.[0] || 'Entry'}**\n${entry.content}`)
+            .map(entry => {
+              const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+              return `**${title}**\n${entry.content}`;
+            })
             .join('\n\n');
 
-          console.log(`[Story Weaver] Found ${entries.length} world info entries from world_info object`);
+          console.log(`[Story Weaver] Found ${entries.length} world info entries from global world_info object`);
           return formattedEntries;
         }
       }
+
+      // Debug: Log available world info related objects
+      console.log('[Story Weaver] Debugging world info access:');
+      console.log('- window.selected_world_info:', window.selected_world_info);
+      console.log('- window.world_info_data:', Object.keys(window.world_info_data || {}));
+      console.log('- window.chat_metadata.world_info:', chatMetadata?.world_info);
+      console.log('- window.world_info:', !!window.world_info);
 
       console.log('[Story Weaver] No world info found');
       return '';
