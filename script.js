@@ -596,14 +596,213 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   }
 
   /**
-   * 获取世界书信息 - 使用SillyTavern标准方法
+   * 获取世界书信息 - 使用跨窗口访问 SillyTavern 的世界书数据
    */
   async function getWorldInfoData(chatHistory = '') {
     try {
-      // Method 1: Try to call SillyTavern's global getSortedEntries function
-      // This function should be available globally if world-info.js has loaded
+      console.log('[Story Weaver] Starting cross-window world info access...');
+      
+      // Method 1: Access Parent Window's Context API
+      if (window.parent && window.parent !== window) {
+        console.log('[Story Weaver] Trying parent window context API...');
+        try {
+          const parentContext = window.parent.getContext && window.parent.getContext();
+          if (parentContext && parentContext.loadWorldInfo) {
+            console.log('[Story Weaver] Using parent context loadWorldInfo...');
+            
+            // Try to get selected world info names
+            const selectedWorlds = window.parent.selected_world_info || [];
+            console.log('[Story Weaver] Selected worlds from parent:', selectedWorlds);
+            
+            const allWorldData = [];
+            for (const worldName of selectedWorlds) {
+              try {
+                const worldData = await parentContext.loadWorldInfo(worldName);
+                if (worldData && worldData.entries) {
+                  const entries = Object.values(worldData.entries);
+                  allWorldData.push(...entries.map(entry => ({ ...entry, world: worldName })));
+                  console.log(`[Story Weaver] Loaded ${entries.length} entries from world: ${worldName}`);
+                }
+              } catch (worldError) {
+                console.log(`[Story Weaver] Failed to load world ${worldName}:`, worldError);
+              }
+            }
+            
+            if (allWorldData.length > 0) {
+              const formattedEntries = allWorldData
+                .filter(entry => !entry.disable && entry.content?.trim())
+                .slice(0, 20)
+                .map(entry => {
+                  const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+                  const world = entry.world ? ` (${entry.world})` : '';
+                  return `**${title}${world}**\n${entry.content}`;
+                })
+                .join('\n\n');
+              
+              console.log(`[Story Weaver] Found ${allWorldData.length} world info entries via parent context`);
+              return formattedEntries;
+            }
+          }
+        } catch (contextError) {
+          console.log('[Story Weaver] Parent context access failed:', contextError);
+        }
+        
+        // Method 2: Access World Info Variables Directly from Parent
+        console.log('[Story Weaver] Trying direct parent window access...');
+        try {
+          // Import world info functions from parent
+          const { getSortedEntries, selected_world_info, world_names } = window.parent;
+          
+          console.log('[Story Weaver] Parent window properties:');
+          console.log('- getSortedEntries:', typeof getSortedEntries);
+          console.log('- selected_world_info:', selected_world_info);
+          console.log('- world_names:', world_names);
+          
+          if (typeof getSortedEntries === 'function') {
+            console.log('[Story Weaver] Using parent getSortedEntries...');
+            const entries = await getSortedEntries();
+            if (entries && entries.length > 0) {
+              const formattedEntries = entries
+                .filter(entry => !entry.disable && entry.content?.trim())
+                .slice(0, 20)
+                .map(entry => {
+                  const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+                  const world = entry.world ? ` (${entry.world})` : '';
+                  return `**${title}${world}**\n${entry.content}`;
+                })
+                .join('\n\n');
+              
+              console.log(`[Story Weaver] Found ${entries.length} world info entries via parent getSortedEntries`);
+              return formattedEntries;
+            }
+          }
+          
+          // Try individual lore functions from parent
+          const allEntries = [];
+          const loreGetters = [
+            { name: 'getGlobalLore', fn: window.parent.getGlobalLore },
+            { name: 'getCharacterLore', fn: window.parent.getCharacterLore },
+            { name: 'getChatLore', fn: window.parent.getChatLore },
+            { name: 'getPersonaLore', fn: window.parent.getPersonaLore }
+          ];
+          
+          for (const { name, fn } of loreGetters) {
+            if (typeof fn === 'function') {
+              try {
+                console.log(`[Story Weaver] Calling parent ${name}...`);
+                const entries = await fn();
+                if (entries && Array.isArray(entries) && entries.length > 0) {
+                  allEntries.push(...entries);
+                  console.log(`[Story Weaver] Parent ${name} returned ${entries.length} entries`);
+                }
+              } catch (loreError) {
+                console.log(`[Story Weaver] Parent ${name} failed:`, loreError);
+              }
+            }
+          }
+          
+          if (allEntries.length > 0) {
+            const formattedEntries = allEntries
+              .filter(entry => !entry.disable && entry.content && entry.content.trim())
+              .slice(0, 20)
+              .map(entry => {
+                const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+                const world = entry.world ? ` (${entry.world})` : '';
+                return `**${title}${world}**\n${entry.content}`;
+              })
+              .join('\n\n');
+            
+            console.log(`[Story Weaver] Found ${allEntries.length} world info entries via parent lore functions`);
+            return formattedEntries;
+          }
+        } catch (directAccessError) {
+          console.log('[Story Weaver] Direct parent access failed:', directAccessError);
+        }
+        
+        // Method 3: Access World Info During Parent's Prompt Generation
+        console.log('[Story Weaver] Trying parent getWorldInfoPrompt...');
+        try {
+          if (window.parent.getWorldInfoPrompt && typeof window.parent.getWorldInfoPrompt === 'function') {
+            const parentChat = window.parent.chat || [];
+            const chatForWI = parentChat.map(x => x.mes).reverse();
+            console.log(`[Story Weaver] Using parent chat with ${chatForWI.length} messages`);
+            
+            const { worldInfoString, worldInfoBefore, worldInfoAfter } = 
+              await window.parent.getWorldInfoPrompt(chatForWI, 4096, true); // dry run
+            
+            if (worldInfoString && worldInfoString.trim()) {
+              console.log(`[Story Weaver] Found world info string: ${worldInfoString.length} characters`);
+              return worldInfoString;
+            }
+            
+            if (worldInfoBefore && worldInfoAfter) {
+              const combinedWorldInfo = worldInfoBefore + worldInfoAfter;
+              if (combinedWorldInfo.trim()) {
+                console.log(`[Story Weaver] Found combined world info: ${combinedWorldInfo.length} characters`);
+                return combinedWorldInfo;
+              }
+            }
+          }
+        } catch (promptError) {
+          console.log('[Story Weaver] Parent getWorldInfoPrompt failed:', promptError);
+        }
+      }
+      
+      // Method 4: PostMessage for Robust Communication
+      console.log('[Story Weaver] Trying PostMessage communication...');
+      if (window.parent && window.parent !== window) {
+        try {
+          const worldInfoPromise = new Promise((resolve) => {
+            const timeout = setTimeout(() => {
+              console.log('[Story Weaver] PostMessage timeout');
+              resolve(null);
+            }, 5000);
+            
+            const messageHandler = (event) => {
+              if (event.data.type === 'WORLD_INFO_RESPONSE') {
+                clearTimeout(timeout);
+                window.removeEventListener('message', messageHandler);
+                console.log(`[Story Weaver] Received world info via PostMessage: ${event.data.worldInfo?.length || 0} entries`);
+                resolve(event.data.worldInfo);
+              }
+            };
+            
+            window.addEventListener('message', messageHandler);
+            
+            // Send request to parent
+            window.parent.postMessage({
+              type: 'REQUEST_WORLD_INFO',
+              requestId: Date.now()
+            }, '*');
+            
+            console.log('[Story Weaver] Sent world info request via PostMessage');
+          });
+          
+          const worldInfoData = await worldInfoPromise;
+          if (worldInfoData && worldInfoData.length > 0) {
+            const formattedEntries = worldInfoData
+              .filter(entry => !entry.disable && entry.content?.trim())
+              .slice(0, 20)
+              .map(entry => {
+                const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+                const world = entry.world ? ` (${entry.world})` : '';
+                return `**${title}${world}**\n${entry.content}`;
+              })
+              .join('\n\n');
+            
+            console.log(`[Story Weaver] Found ${worldInfoData.length} world info entries via PostMessage`);
+            return formattedEntries;
+          }
+        } catch (messageError) {
+          console.log('[Story Weaver] PostMessage communication failed:', messageError);
+        }
+      }
+      
+      // Method 5: Fallback to current window (if extension runs in same window)
+      console.log('[Story Weaver] Fallback to current window methods...');
+      
+      // Try current window's functions
       if (typeof window.getSortedEntries === 'function') {
-        console.log('[Story Weaver] Using global getSortedEntries...');
         try {
           const entries = await window.getSortedEntries();
           if (entries && entries.length > 0) {
@@ -617,175 +816,23 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
               })
               .join('\n\n');
             
-            console.log(`[Story Weaver] Found ${entries.length} world info entries using getSortedEntries`);
+            console.log(`[Story Weaver] Found ${entries.length} world info entries using current window`);
             return formattedEntries;
           }
-        } catch (getSortedError) {
-          console.log('[Story Weaver] getSortedEntries failed:', getSortedError);
+        } catch (currentError) {
+          console.log('[Story Weaver] Current window getSortedEntries failed:', currentError);
         }
       }
-
-      // Method 2: Try to access world info through the same method used by main chat
-      // This mimics how SillyTavern generates prompts with world info
-      if (typeof window.getWorldInfoPrompt === 'function') {
-        console.log('[Story Weaver] Using getWorldInfoPrompt...');
-        try {
-          const chat = window.chat || [];
-          const maxContext = 8192; // Use reasonable context size
-          const isDryRun = true; // Don't trigger events, just get the data
-          
-          const worldInfoResult = await window.getWorldInfoPrompt(chat, maxContext, isDryRun);
-          if (worldInfoResult && worldInfoResult.worldInfoString) {
-            console.log(`[Story Weaver] Found world info via getWorldInfoPrompt: ${worldInfoResult.worldInfoString.length} characters`);
-            return worldInfoResult.worldInfoString;
-          }
-        } catch (getWorldInfoError) {
-          console.log('[Story Weaver] getWorldInfoPrompt failed:', getWorldInfoError);
-        }
-      }
-
-      // Method 3: Try to directly access the individual lore functions if they're available
-      console.log('[Story Weaver] Trying individual lore functions...');
-      const allEntries = [];
       
-      // These functions might be available in the global scope
-      const loreGetters = [
-        { name: 'getGlobalLore', fn: window.getGlobalLore },
-        { name: 'getCharacterLore', fn: window.getCharacterLore },
-        { name: 'getChatLore', fn: window.getChatLore },
-        { name: 'getPersonaLore', fn: window.getPersonaLore }
-      ];
+      // Debug information
+      console.log('[Story Weaver] Cross-window debugging info:');
+      console.log('- window.parent exists:', !!(window.parent && window.parent !== window));
+      console.log('- window.parent.selected_world_info:', window.parent?.selected_world_info);
+      console.log('- window.parent.world_names:', window.parent?.world_names);
+      console.log('- window.parent.getSortedEntries:', typeof window.parent?.getSortedEntries);
+      console.log('- window.parent.getContext:', typeof window.parent?.getContext);
       
-      for (const { name, fn } of loreGetters) {
-        if (typeof fn === 'function') {
-          try {
-            console.log(`[Story Weaver] Calling ${name}...`);
-            const entries = await fn();
-            if (entries && Array.isArray(entries) && entries.length > 0) {
-              allEntries.push(...entries);
-              console.log(`[Story Weaver] ${name} returned ${entries.length} entries`);
-            }
-          } catch (loreError) {
-            console.log(`[Story Weaver] ${name} failed:`, loreError);
-          }
-        }
-      }
-
-      if (allEntries.length > 0) {
-        const formattedEntries = allEntries
-          .filter(entry => !entry.disable && entry.content && entry.content.trim())
-          .slice(0, 20)
-          .map(entry => {
-            const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
-            const world = entry.world ? ` (${entry.world})` : '';
-            return `**${title}${world}**\n${entry.content}`;
-          })
-          .join('\n\n');
-        
-        console.log(`[Story Weaver] Found ${allEntries.length} total world info entries from individual functions`);
-        return formattedEntries;
-      }
-
-      // Method 4: Try to access via event system - trigger world info loading
-      if (window.eventSource && typeof window.eventSource.emit === 'function') {
-        console.log('[Story Weaver] Trying to trigger world info loading via events...');
-        try {
-          // Create a promise that resolves when world info is loaded
-          const worldInfoPromise = new Promise((resolve) => {
-            const timeout = setTimeout(() => resolve(null), 3000); // 3 second timeout
-            
-            // Listen for world info loaded event
-            if (window.eventSource && typeof window.eventSource.on === 'function') {
-              window.eventSource.on('WORLDINFO_ENTRIES_LOADED', ({ globalLore, characterLore, chatLore, personaLore }) => {
-                clearTimeout(timeout);
-                const allLore = [...(globalLore || []), ...(characterLore || []), ...(chatLore || []), ...(personaLore || [])];
-                console.log(`[Story Weaver] Event triggered, got ${allLore.length} entries`);
-                resolve(allLore);
-              });
-            }
-            
-            // Try to trigger world info loading
-            // This might trigger the loading process
-            if (typeof window.checkWorldInfo === 'function') {
-              window.checkWorldInfo(window.chat || [], 8192, true).then(() => {
-                console.log('[Story Weaver] checkWorldInfo completed');
-              }).catch(err => {
-                console.log('[Story Weaver] checkWorldInfo failed:', err);
-                clearTimeout(timeout);
-                resolve(null);
-              });
-            } else {
-              clearTimeout(timeout);
-              resolve(null);
-            }
-          });
-          
-          const eventEntries = await worldInfoPromise;
-          if (eventEntries && eventEntries.length > 0) {
-            const formattedEntries = eventEntries
-              .filter(entry => !entry.disable && entry.content && entry.content.trim())
-              .slice(0, 20)
-              .map(entry => {
-                const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
-                const world = entry.world ? ` (${entry.world})` : '';
-                return `**${title}${world}**\n${entry.content}`;
-              })
-              .join('\n\n');
-            
-            console.log(`[Story Weaver] Found ${eventEntries.length} world info entries via events`);
-            return formattedEntries;
-          }
-        } catch (eventError) {
-          console.log('[Story Weaver] Event-based world info loading failed:', eventError);
-        }
-      }
-
-      // Method 5: Last resort - manual scanning for any world info objects
-      console.log('[Story Weaver] Scanning for any available world info objects...');
-      
-      // Try to find any world info related variables in the global scope
-      const worldInfoVars = [
-        'world_info',
-        'selected_world_info',
-        'world_info_data',
-        'world_info_budget',
-        'world_info_depth',
-        'world_names'
-      ];
-      
-      for (const varName of worldInfoVars) {
-        const value = window[varName];
-        console.log(`[Story Weaver] ${varName}:`, typeof value, Array.isArray(value) ? value.length : (value && typeof value === 'object') ? Object.keys(value).length : value);
-      }
-
-      // Try to access the global world_info object directly
-      const worldInfo = window.world_info;
-      if (worldInfo && typeof worldInfo === 'object') {
-        console.log('[Story Weaver] Examining world_info object:', Object.keys(worldInfo));
-        
-        if (worldInfo.entries && typeof worldInfo.entries === 'object') {
-          const entries = Object.values(worldInfo.entries);
-          console.log(`[Story Weaver] Found ${entries.length} entries in world_info.entries`);
-          
-          if (entries.length > 0) {
-            const formattedEntries = entries
-              .filter(entry => entry && !entry.disable && entry.content && entry.content.trim())
-              .slice(0, 10)
-              .map(entry => {
-                const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
-                return `**${title}**\n${entry.content}`;
-              })
-              .join('\n\n');
-
-            if (formattedEntries) {
-              console.log(`[Story Weaver] Successfully formatted ${entries.length} world info entries`);
-              return formattedEntries;
-            }
-          }
-        }
-      }
-
-      console.log('[Story Weaver] No world info found through any method');
+      console.log('[Story Weaver] No world info found through any cross-window method');
       return '';
     } catch (error) {
       console.error('[Story Weaver] Error getting world info:', error);
@@ -2411,4 +2458,44 @@ ${worldInfoData}
   //   return '';
   // }
   // ============ 旧的方法结束 ============
+
+  /**
+   * 设置跨窗口通信监听器（用于父窗口）
+   */
+  function setupParentWindowMessageListener() {
+    // This function should be called in SillyTavern's main window
+    // to handle world info requests from the extension
+    if (typeof window.getSortedEntries === 'function') {
+      window.addEventListener('message', async (event) => {
+        if (event.data.type === 'REQUEST_WORLD_INFO') {
+          console.log('[Story Weaver Parent] Received world info request');
+          try {
+            const entries = await window.getSortedEntries();
+            console.log(`[Story Weaver Parent] Sending ${entries?.length || 0} world info entries`);
+            
+            event.source.postMessage({
+              type: 'WORLD_INFO_RESPONSE',
+              requestId: event.data.requestId,
+              worldInfo: entries || []
+            }, '*');
+          } catch (error) {
+            console.error('[Story Weaver Parent] Failed to get world info:', error);
+            event.source.postMessage({
+              type: 'WORLD_INFO_RESPONSE',
+              requestId: event.data.requestId,
+              worldInfo: [],
+              error: error.message
+            }, '*');
+          }
+        }
+      });
+      console.log('[Story Weaver Parent] Message listener setup complete');
+    }
+  }
+
+  // Try to setup parent window listener if we're in the main SillyTavern window
+  if (window.parent === window && typeof window.getSortedEntries === 'function') {
+    setupParentWindowMessageListener();
+  }
+
 })();
