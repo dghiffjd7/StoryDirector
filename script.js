@@ -1,5 +1,6 @@
 // Story Weaver Extension for SillyTavern
-// Simple implementation following ST extension standards
+// 完全使用box.js风格的请求方式 - TavernHelper.generateRaw + structured prompts
+// 集成SillyTavern World Info API和聊天历史访问
 
 (() => {
   'use strict';
@@ -730,43 +731,45 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     }
   }
 
+  // ============ 旧的构建简单用户输入函数 - 已注释掉，使用buildStructuredPrompt替代 ============
   /**
-   * 构建简单的用户输入 - 让SillyTavern的generate函数自动处理预设包含
+   * 构建简单的用户输入 - 让SillyTavern的generate函数自动处理预设包含 - 已被buildStructuredPrompt替代
    */
-  async function constructSimpleUserInput(panel) {
-    // 从UI收集用户需求
-    const requirements = {
-      story_type: panel.querySelector('#story-type')?.value || '',
-      story_theme: panel.querySelector('#story-theme')?.value || '',
-      story_style: panel.querySelector('#story-style')?.value || '',
-      chapter_count: panel.querySelector('#chapter-count')?.value || '5',
-      detail_level: panel.querySelector('#detail-level')?.value || '',
-      special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
-      include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
-      include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
-      include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
-    };
-
-    // 构建简单清晰的用户指令 - 让ST自动加载预设和世界书
-    const userInput = `请帮我生成一个故事大纲：
-
-**故事类型**: ${requirements.story_type}
-**故事主题/核心冲突**: ${requirements.story_theme}
-**叙事风格**: ${requirements.story_style}
-**章节数量**: ${requirements.chapter_count}章
-**详细程度**: ${requirements.detail_level}
-**特殊要求**: ${requirements.special_requirements}
-
-**输出选项**:
-- 包含整体摘要: ${requirements.include_summary}
-- 包含角色发展: ${requirements.include_characters}  
-- 包含主题分析: ${requirements.include_themes}
-
-请基于当前的角色设定、世界观背景和聊天历史，生成一个结构化的故事大纲。大纲应该分为${requirements.chapter_count}个章节，每个章节包含详细的情节描述。请使用Markdown格式输出。`;
-
-    console.log('[Story Weaver] Simple user input constructed:', userInput.length, 'characters');
-    return userInput;
-  }
+  // async function constructSimpleUserInput(panel) {
+  //   // 从UI收集用户需求
+  //   const requirements = {
+  //     story_type: panel.querySelector('#story-type')?.value || '',
+  //     story_theme: panel.querySelector('#story-theme')?.value || '',
+  //     story_style: panel.querySelector('#story-style')?.value || '',
+  //     chapter_count: panel.querySelector('#chapter-count')?.value || '5',
+  //     detail_level: panel.querySelector('#detail-level')?.value || '',
+  //     special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
+  //     include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
+  //     include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
+  //     include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
+  //   };
+  //
+  //   // 构建简单清晰的用户指令 - 让ST自动加载预设和世界书
+  //   const userInput = `请帮我生成一个故事大纲：
+  //
+  // **故事类型**: ${requirements.story_type}
+  // **故事主题/核心冲突**: ${requirements.story_theme}
+  // **叙事风格**: ${requirements.story_style}
+  // **章节数量**: ${requirements.chapter_count}章
+  // **详细程度**: ${requirements.detail_level}
+  // **特殊要求**: ${requirements.special_requirements}
+  //
+  // **输出选项**:
+  // - 包含整体摘要: ${requirements.include_summary}
+  // - 包含角色发展: ${requirements.include_characters}  
+  // - 包含主题分析: ${requirements.include_themes}
+  //
+  // 请基于当前的角色设定、世界观背景和聊天历史，生成一个结构化的故事大纲。大纲应该分为${requirements.chapter_count}个章节，每个章节包含详细的情节描述。请使用Markdown格式输出。`;
+  //
+  //   console.log('[Story Weaver] Simple user input constructed:', userInput.length, 'characters');
+  //   return userInput;
+  // }
+  // ============ 旧函数结束 ============
 
   function buildChatHistoryText(limit) {
     if (!limit || limit <= 0) return '';
@@ -864,40 +867,42 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     }
   }
 
+  // ============ 旧的生成方法 - 已注释掉，完全使用box.js方式 ============
   // 解析可用的内部生成函数：优先window，其次getContext()注入
-  function resolveGenFns() {
-    const ctx = getContextSafe();
-    return {
-      quiet:
-        typeof window.generateQuietPrompt === 'function'
-          ? window.generateQuietPrompt
-          : typeof ctx.generateQuietPrompt === 'function'
-          ? ctx.generateQuietPrompt
-          : null,
-      raw:
-        typeof window.generateRaw === 'function'
-          ? window.generateRaw
-          : typeof ctx.generateRaw === 'function'
-          ? ctx.generateRaw
-          : null,
-      webllm:
-        typeof window.generateWebLlmChatPrompt === 'function'
-          ? window.generateWebLlmChatPrompt
-          : typeof ctx.generateWebLlmChatPrompt === 'function'
-          ? ctx.generateWebLlmChatPrompt
-          : null,
-    };
-  }
+  // function resolveGenFns() {
+  //   const ctx = getContextSafe();
+  //   return {
+  //     quiet:
+  //       typeof window.generateQuietPrompt === 'function'
+  //         ? window.generateQuietPrompt
+  //         : typeof ctx.generateQuietPrompt === 'function'
+  //         ? ctx.generateQuietPrompt
+  //         : null,
+  //     raw:
+  //       typeof window.generateRaw === 'function'
+  //         ? window.generateRaw
+  //         : typeof ctx.generateRaw === 'function'
+  //         ? ctx.generateRaw
+  //         : null,
+  //     webllm:
+  //       typeof window.generateWebLlmChatPrompt === 'function'
+  //         ? window.generateWebLlmChatPrompt
+  //         : typeof ctx.generateWebLlmChatPrompt === 'function'
+  //         ? ctx.generateWebLlmChatPrompt
+  //         : null,
+  //   };
+  // }
 
-  async function waitForGenerationFns(timeoutMs = 6000, intervalMs = 100) {
-    const start = Date.now();
-    while (Date.now() - start < timeoutMs) {
-      const fns = resolveGenFns();
-      if (fns.quiet || fns.raw || fns.webllm) return fns;
-      await new Promise(r => setTimeout(r, intervalMs));
-    }
-    return resolveGenFns();
-  }
+  // async function waitForGenerationFns(timeoutMs = 6000, intervalMs = 100) {
+  //   const start = Date.now();
+  //   while (Date.now() - start < timeoutMs) {
+  //     const fns = resolveGenFns();
+  //     if (fns.quiet || fns.raw || fns.webllm) return fns;
+  //     await new Promise(r => setTimeout(r, intervalMs));
+  //   }
+  //   return resolveGenFns();
+  // }
+  // ============ 旧的生成方法结束 ============
 
   function resolveSystemPrompt(ctx) {
     return (
@@ -1154,52 +1159,54 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
     return '';
   }
 
-  // 保留原函数作为备用 - 用于向后兼容
-  async function constructFullPrompt(panel) {
-    const ctx = getContextSafe();
-    const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
-    const chatText = buildChatHistoryText(chatLimit);
-    const wi = buildWorldInfoSegmentsSmart(ctx, chatText);
-
-    // Get enhanced data using the new integration functions
-    const worldbookData = await getWorldInfoData(chatText);
-    const characterData = getCharacterData();
-    const chatHistoryData = getEnhancedChatHistory(chatLimit);
-
-    // Collect user requirements
-    const requirements = {
-      story_type: panel.querySelector('#story-type')?.value || '',
-      story_theme: panel.querySelector('#story-theme')?.value || '',
-      story_style: panel.querySelector('#story-style')?.value || '',
-      chapter_count: panel.querySelector('#chapter-count')?.value || '5',
-      detail_level: panel.querySelector('#detail-level')?.value || '',
-      special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
-      include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
-      include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
-      include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
-    };
-
-    let finalPrompt = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
-    finalPrompt = finalPrompt.replace(/{system_prompt}/g, resolveSystemPrompt(ctx) || '');
-    finalPrompt = finalPrompt.replace(/{char_persona}/g, resolveCharPersona(ctx) || '');
-    finalPrompt = finalPrompt.replace(/{char_scenario}/g, resolveCharScenario(ctx) || '');
-    finalPrompt = finalPrompt.replace(/{memory_summary}/g, resolveMemorySummary(ctx) || '');
-    finalPrompt = finalPrompt.replace(/{authors_note}/g, resolveAuthorsNote(ctx) || '');
-    finalPrompt = finalPrompt.replace(/{jailbreak}/g, resolveJailbreak(ctx) || '');
-    finalPrompt = finalPrompt.replace(/{chat_history}/g, chatHistoryData.recentHistory || '');
-    finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wi.before || '');
-    finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wi.after || '');
-    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData || 'No world info available');
-    finalPrompt = finalPrompt.replace(/{character}/g, characterData || 'No character data available');
-    
-    // Replace user requirement placeholders
-    Object.entries(requirements).forEach(([key, value]) => {
-      const regex = new RegExp(`{${key}}`, 'g');
-      finalPrompt = finalPrompt.replace(regex, value);
-    });
-
-    return finalPrompt;
-  }
+  // ============ 旧的constructFullPrompt函数 - 已注释掉，使用buildStructuredPrompt替代 ============
+  // 保留原函数作为备用 - 用于向后兼容 - 已被buildStructuredPrompt完全替代
+  // async function constructFullPrompt(panel) {
+  //   const ctx = getContextSafe();
+  //   const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
+  //   const chatText = buildChatHistoryText(chatLimit);
+  //   const wi = buildWorldInfoSegmentsSmart(ctx, chatText);
+  //
+  //   // Get enhanced data using the new integration functions
+  //   const worldbookData = await getWorldInfoData(chatText);
+  //   const characterData = getCharacterData();
+  //   const chatHistoryData = getEnhancedChatHistory(chatLimit);
+  //
+  //   // Collect user requirements
+  //   const requirements = {
+  //     story_type: panel.querySelector('#story-type')?.value || '',
+  //     story_theme: panel.querySelector('#story-theme')?.value || '',
+  //     story_style: panel.querySelector('#story-style')?.value || '',
+  //     chapter_count: panel.querySelector('#chapter-count')?.value || '5',
+  //     detail_level: panel.querySelector('#detail-level')?.value || '',
+  //     special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
+  //     include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
+  //     include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
+  //     include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
+  //   };
+  //
+  //   let finalPrompt = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
+  //   finalPrompt = finalPrompt.replace(/{system_prompt}/g, resolveSystemPrompt(ctx) || '');
+  //   finalPrompt = finalPrompt.replace(/{char_persona}/g, resolveCharPersona(ctx) || '');
+  //   finalPrompt = finalPrompt.replace(/{char_scenario}/g, resolveCharScenario(ctx) || '');
+  //   finalPrompt = finalPrompt.replace(/{memory_summary}/g, resolveMemorySummary(ctx) || '');
+  //   finalPrompt = finalPrompt.replace(/{authors_note}/g, resolveAuthorsNote(ctx) || '');
+  //   finalPrompt = finalPrompt.replace(/{jailbreak}/g, resolveJailbreak(ctx) || '');
+  //   finalPrompt = finalPrompt.replace(/{chat_history}/g, chatHistoryData.recentHistory || '');
+  //   finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wi.before || '');
+  //   finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wi.after || '');
+  //   finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData || 'No world info available');
+  //   finalPrompt = finalPrompt.replace(/{character}/g, characterData || 'No character data available');
+  //   
+  //   // Replace user requirement placeholders
+  //   Object.entries(requirements).forEach(([key, value]) => {
+  //     const regex = new RegExp(`{${key}}`, 'g');
+  //     finalPrompt = finalPrompt.replace(regex, value);
+  //   });
+  //
+  //   return finalPrompt;
+  // }
+  // ============ 旧函数结束 ============
 
   /**
    * Handle generate outline
@@ -1214,9 +1221,10 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
 
     if (!generateBtn || !outputDiv) return;
 
-    // 确保内核生成函数可用
-    const fnsReady = await waitForGenerationFns();
-    if (!fnsReady.quiet && !fnsReady.raw && !fnsReady.webllm) {
+    // 检查是否有可用的生成函数 - box.js风格
+    if (typeof window.TavernHelper === 'undefined' && 
+        typeof window.generateRaw === 'undefined' && 
+        typeof window.triggerSlash === 'undefined') {
       showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
       return;
     }
@@ -1239,10 +1247,10 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
     outputDiv.innerHTML = '<div class="generating-indicator">🔄 正在与AI沟通，请稍候...</div>';
 
     try {
-      console.log('[Story Weaver] Using box.js style structured generation...');
-      console.log(`[Story Weaver] 结构化提示词长度: ${JSON.stringify(structuredPrompt).length}`);
+      console.log('[Story Weaver] Generating outline with box.js style structured prompts...');
+      console.log(`[Story Weaver] Structured prompt size: ${JSON.stringify(structuredPrompt).length} chars`);
 
-      // 使用与box.js完全相同的TavernHelper.generateRaw方式
+      // 使用box.js完全相同的生成方式
       const resultText = await generateWithStructuredPrompt(structuredPrompt);
       
       if (!resultText || !resultText.trim()) {
@@ -1522,8 +1530,10 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
     // 下拉菜单中的立即生成与仅注入
     document.getElementById('story_weaver_generate_now')?.addEventListener('click', async () => {
       try {
-        const fnsReady = await waitForGenerationFns();
-        if (!fnsReady.quiet && !fnsReady.raw && !fnsReady.webllm) {
+        // 检查是否有可用的生成函数 - box.js风格
+        if (typeof window.TavernHelper === 'undefined' && 
+            typeof window.generateRaw === 'undefined' && 
+            typeof window.triggerSlash === 'undefined') {
           return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
@@ -1542,8 +1552,10 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
 
     document.getElementById('story_weaver_inject_now')?.addEventListener('click', async () => {
       try {
-        const fnsReady = await waitForGenerationFns();
-        if (!fnsReady.quiet && !fnsReady.raw && !fnsReady.webllm) {
+        // 检查是否有可用的生成函数 - box.js风格
+        if (typeof window.TavernHelper === 'undefined' && 
+            typeof window.generateRaw === 'undefined' && 
+            typeof window.triggerSlash === 'undefined') {
           return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
@@ -1751,28 +1763,31 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
     );
     console.log('Possible relevant globals:', possibleGlobals);
 
-    // 检查可用的函数
+    // 检查可用的函数 - 专注于box.js风格的生成方法
     const possibleFunctions = [
-      'generate', // phone.html中使用的核心生成函数
-      'Generate', // SillyTavern主生成函数
-      'generateRaw',
+      'TavernHelper', // box.js主要使用的Helper
+      'generateRaw', // box.js备用方法
+      'triggerSlash', // box.js最后备用方法
       'getContext',
       'getWorldInfoPrompt',
       'getGlobalLore',
       'getChatLore',
+      'getSortedEntries', // World Info主要方法
       'sendSystemMessage',
       'addOneMessage',
-      'callGenerate', // 可能的内部生成函数
-      'sendOpenAIRequest', // OpenAI请求函数
-      'generateQuietly', // 静默生成函数
-      'Generate_with_callback', // 带回调的生成函数
     ];
 
     const availableFunctions = {};
     possibleFunctions.forEach(fn => {
-      availableFunctions[fn] = typeof window[fn];
+      if (fn === 'TavernHelper') {
+        availableFunctions[fn] = typeof window[fn] !== 'undefined' ? 
+          (typeof window[fn].generateRaw === 'function' ? 'Available with generateRaw' : 'Available but no generateRaw') : 
+          'undefined';
+      } else {
+        availableFunctions[fn] = typeof window[fn];
+      }
     });
-    console.log('Available functions:', availableFunctions);
+    console.log('Available functions (box.js style):', availableFunctions);
 
     // 测试数据读取
     try {
@@ -1790,113 +1805,117 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
       console.error('Test data read failed:', error);
     }
 
-    // 检查ST的生成能力
-    console.log('Checking ST generation capability...');
-    console.log('window.generate (phone.html style):', typeof window.generate);
-    console.log('window.Generate:', typeof window.Generate);
+    // 检查box.js风格的生成能力
+    console.log('Checking box.js style generation capability...');
+    console.log('window.TavernHelper:', typeof window.TavernHelper);
+    console.log('window.TavernHelper.generateRaw:', typeof window.TavernHelper?.generateRaw);
+    console.log('window.generateRaw (fallback):', typeof window.generateRaw);
+    console.log('window.triggerSlash (last resort):', typeof window.triggerSlash);
     console.log('Chat array available:', Array.isArray(window.chat));
     console.log('Chat length:', window.chat ? window.chat.length : 'N/A');
   };
 
+  // ============ 旧的postMessage桥接和callMainApiWithPrompt - 已注释掉 ============
   // 父窗口（主页面）桥接：允许弹窗通过 postMessage 请求生成
-  try {
-    if (typeof window !== 'undefined' && !window.__storyWeaverBridgeInstalled) {
-      window.__storyWeaverBridgeInstalled = true;
-      window.addEventListener('message', async ev => {
-        try {
-          const data = ev?.data || {};
-          if (!data || (data.type !== 'SW_GENERATE' && data.type !== 'SW_INJECT')) return;
-          const reqId = data.reqId;
-          const prompt = data.prompt || '';
-          const fns = await waitForGenerationFns();
-          if (!fns.quiet && !fns.raw && !fns.webllm) {
-            ev.source?.postMessage(
-              { type: data.type + '_ERR', reqId, error: '生成函数不可用，请在聊天主界面再试' },
-              '*',
-            );
-            return;
-          }
-          let resText = '';
-          try {
-            if (fns.quiet) {
-              const r = await fns.quiet({ quietPrompt: prompt, skipWIAN: true });
-              resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
-            } else if (fns.raw) {
-              const r = await fns.raw({ prompt });
-              resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
-            } else if (fns.webllm) {
-              const r = await fns.webllm([{ role: 'user', content: prompt }], {});
-              resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
-            }
-          } catch (e) {
-            ev.source?.postMessage({ type: data.type + '_ERR', reqId, error: String(e?.message || e) }, '*');
-            return;
-          }
-          ev.source?.postMessage({ type: data.type + '_OK', reqId, text: resText }, '*');
-        } catch (_) {}
-      });
-    }
-  } catch (_) {}
+  // try {
+  //   if (typeof window !== 'undefined' && !window.__storyWeaverBridgeInstalled) {
+  //     window.__storyWeaverBridgeInstalled = true;
+  //     window.addEventListener('message', async ev => {
+  //       try {
+  //         const data = ev?.data || {};
+  //         if (!data || (data.type !== 'SW_GENERATE' && data.type !== 'SW_INJECT')) return;
+  //         const reqId = data.reqId;
+  //         const prompt = data.prompt || '';
+  //         const fns = await waitForGenerationFns();
+  //         if (!fns.quiet && !fns.raw && !fns.webllm) {
+  //           ev.source?.postMessage(
+  //             { type: data.type + '_ERR', reqId, error: '生成函数不可用，请在聊天主界面再试' },
+  //             '*',
+  //           );
+  //           return;
+  //         }
+  //         let resText = '';
+  //         try {
+  //           if (fns.quiet) {
+  //             const r = await fns.quiet({ quietPrompt: prompt, skipWIAN: true });
+  //             resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
+  //           } else if (fns.raw) {
+  //             const r = await fns.raw({ prompt });
+  //             resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
+  //           } else if (fns.webllm) {
+  //             const r = await fns.webllm([{ role: 'user', content: prompt }], {});
+  //             resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
+  //           }
+  //         } catch (e) {
+  //           ev.source?.postMessage({ type: data.type + '_ERR', reqId, error: String(e?.message || e) }, '*');
+  //           return;
+  //         }
+  //         ev.source?.postMessage({ type: data.type + '_OK', reqId, text: resText }, '*');
+  //       } catch (_) {}
+  //     });
+  //   }
+  // } catch (_) {}
 
-  // 统一调用主API的函数：使用box.js相同的方式
-  async function callMainApiWithPrompt(promptText) {
-    let retryCount = 0;
-    const maxRetries = 3;
-
-    while (retryCount < maxRetries) {
-      try {
-        let result;
-        
-        // 使用TavernHelper.generateRaw - 与box.js完全相同的方法
-        if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
-          console.log('[Story Weaver] Using TavernHelper.generateRaw...');
-          result = await window.TavernHelper.generateRaw({
-            ordered_prompts: [
-              { role: 'user', content: promptText }
-            ],
-            max_chat_history: 0, // 不使用聊天历史
-            should_stream: false, // 确保稳定性
-          });
-        }
-        // 备用方案：使用全局generateRaw
-        else if (typeof window.generateRaw !== 'undefined') {
-          console.log('[Story Weaver] Using global generateRaw...');
-          result = await window.generateRaw({
-            ordered_prompts: [
-              { role: 'user', content: promptText }
-            ],
-            max_chat_history: 0,
-            should_stream: false,
-          });
-        }
-        // 最后备用：使用triggerSlash调用/gen命令
-        else if (typeof window.triggerSlash !== 'undefined') {
-          console.log('[Story Weaver] Using triggerSlash /gen...');
-          result = await window.triggerSlash(`/gen ${promptText}`);
-        } else {
-          throw new Error('没有可用的generateRaw函数');
-        }
-
-        // 检查生成结果是否有效
-        if (result && result.trim().length > 10) {
-          return result.trim();
-        } else {
-          throw new Error('生成的内容过短或为空');
-        }
-      } catch (error) {
-        retryCount++;
-        console.error(`[Story Weaver] AI生成失败 (尝试 ${retryCount}/${maxRetries}):`, error);
-
-        if (retryCount >= maxRetries) {
-          // 所有重试都失败了，抛出错误
-          throw new Error(`AI生成失败，已重试${maxRetries}次: ${error.message}`);
-        }
-
-        // 等待一段时间再重试
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-      }
-    }
-    
-    return '';
-  }
+  // 统一调用主API的函数：使用box.js相同的方式 - 已被generateWithStructuredPrompt替代
+  // async function callMainApiWithPrompt(promptText) {
+  //   let retryCount = 0;
+  //   const maxRetries = 3;
+  //
+  //   while (retryCount < maxRetries) {
+  //     try {
+  //       let result;
+  //       
+  //       // 使用TavernHelper.generateRaw - 与box.js完全相同的方法
+  //       if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
+  //         console.log('[Story Weaver] Using TavernHelper.generateRaw...');
+  //         result = await window.TavernHelper.generateRaw({
+  //           ordered_prompts: [
+  //             { role: 'user', content: promptText }
+  //           ],
+  //           max_chat_history: 0, // 不使用聊天历史
+  //           should_stream: false, // 确保稳定性
+  //         });
+  //       }
+  //       // 备用方案：使用全局generateRaw
+  //       else if (typeof window.generateRaw !== 'undefined') {
+  //         console.log('[Story Weaver] Using global generateRaw...');
+  //         result = await window.generateRaw({
+  //           ordered_prompts: [
+  //             { role: 'user', content: promptText }
+  //           ],
+  //           max_chat_history: 0,
+  //           should_stream: false,
+  //         });
+  //       }
+  //       // 最后备用：使用triggerSlash调用/gen命令
+  //       else if (typeof window.triggerSlash !== 'undefined') {
+  //         console.log('[Story Weaver] Using triggerSlash /gen...');
+  //         result = await window.triggerSlash(`/gen ${promptText}`);
+  //       } else {
+  //         throw new Error('没有可用的generateRaw函数');
+  //       }
+  //
+  //       // 检查生成结果是否有效
+  //       if (result && result.trim().length > 10) {
+  //         return result.trim();
+  //       } else {
+  //         throw new Error('生成的内容过短或为空');
+  //       }
+  //     } catch (error) {
+  //       retryCount++;
+  //       console.error(`[Story Weaver] AI生成失败 (尝试 ${retryCount}/${maxRetries}):`, error);
+  //
+  //       if (retryCount >= maxRetries) {
+  //         // 所有重试都失败了，抛出错误
+  //         throw new Error(`AI生成失败，已重试${maxRetries}次: ${error.message}`);
+  //       }
+  //
+  //       // 等待一段时间再重试
+  //       await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+  //     }
+  //   }
+  //   
+  //   return '';
+  // }
+  // ============ 旧的方法结束 ============
 })();
