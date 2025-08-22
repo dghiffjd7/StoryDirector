@@ -1019,19 +1019,16 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     return { before: formatWorldInfo(before, formatTemplate), after: formatWorldInfo(after, formatTemplate) };
   }
 
-  // 构建box.js风格的结构化提示词
+  // 构建结构化提示词 - 让SillyTavern自动处理世界书集成
   async function buildStructuredPrompt(panel) {
     const ctx = getContextSafe();
     const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
-    const chatText = buildChatHistoryText(chatLimit);
-    const wi = buildWorldInfoSegmentsSmart(ctx, chatText);
 
-    // Get enhanced data using the new integration functions
-    const worldbookData = await getWorldInfoData(chatText);
+    // 获取基本上下文信息（SillyTavern会自动加载世界书）
     const characterData = getCharacterData();
     const chatHistoryData = getEnhancedChatHistory(chatLimit);
 
-    // Collect user requirements
+    // 收集用户需求
     const requirements = {
       story_type: panel.querySelector('#story-type')?.value || '',
       story_theme: panel.querySelector('#story-theme')?.value || '',
@@ -1054,30 +1051,23 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 - 角色发展弧线
 - 主题分析（如需要）
 
-你必须严格按照用户的要求来设计故事，确保内容符合指定的类型、风格和主题。`;
+你必须严格按照用户的要求来设计故事，确保内容符合指定的类型、风格和主题。请充分利用所有提供的世界观信息和角色设定。`;
 
-    // 构建角色和世界观提示词
-    const contextPrompt = `### 背景信息 ###
+    // 构建基础上下文提示词（不包含世界书，SillyTavern会自动处理）
+    const contextPrompt = `### 基础信息 ###
 
 **系统设定**: ${resolveSystemPrompt(ctx) || '无'}
-
-**世界观信息**:
-${worldbookData || '无世界观信息'}
-
-**角色信息**:
-${characterData || '无角色信息'}
-
-**角色性格**: ${resolveCharPersona(ctx) || '无'}
+**角色性格**: ${resolveCharPersona(ctx) || '无'}  
 **场景设定**: ${resolveCharScenario(ctx) || '无'}
-
-**聊天历史**: 
-${chatHistoryData.recentHistory || '无聊天历史'}
-
 **记忆摘要**: ${resolveMemorySummary(ctx) || '无'}
-**作者注释**: ${resolveAuthorsNote(ctx) || '无'}`;
+**作者注释**: ${resolveAuthorsNote(ctx) || '无'}
+
+${characterData ? `**当前角色信息**:\n${characterData}` : ''}
+
+${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.summary}):\n${chatHistoryData.recentHistory}` : ''}`;
 
     // 构建任务提示词
-    const taskPrompt = `请根据上述背景信息生成故事大纲。严格按照以下要求：
+    const taskPrompt = `请基于当前的世界观设定、角色信息和上下文，生成一个精彩的故事大纲：
 
 **故事类型**: ${requirements.story_type}
 **核心主题/冲突**: ${requirements.story_theme}
@@ -1091,7 +1081,7 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
 - 包含角色发展: ${requirements.include_characters}
 - 包含主题分析: ${requirements.include_themes}
 
-请用Markdown格式输出，使用简体中文。直接开始生成大纲，无需其他说明。`;
+请充分利用世界观中的所有相关信息，确保大纲与已有设定完全吻合。用Markdown格式输出，使用简体中文。直接开始生成大纲，无需其他说明。`;
 
     return [
       { role: 'system', content: systemPrompt },
@@ -1100,7 +1090,7 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
     ];
   }
 
-  // 使用结构化提示词生成内容 - 完全模仿box.js的方法
+  // 使用TavernHelper.generateRaw生成内容 - 让SillyTavern正确处理世界书
   async function generateWithStructuredPrompt(orderedPrompts) {
     let retryCount = 0;
     const maxRetries = 3;
@@ -1109,31 +1099,17 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
       try {
         let result;
         
-        // 使用TavernHelper.generateRaw - 与box.js完全相同的方法
+        // 只使用TavernHelper.generateRaw - 这样SillyTavern可以正确集成世界书
         if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
-          console.log('[Story Weaver] Using TavernHelper.generateRaw with structured prompts...');
+          console.log('[Story Weaver] Using TavernHelper.generateRaw with world info integration...');
           result = await window.TavernHelper.generateRaw({
             ordered_prompts: orderedPrompts,
-            max_chat_history: 0, // 不使用聊天历史
+            // 关键修改：不设置max_chat_history为0，让SillyTavern处理上下文和世界书
+            // max_chat_history: 0, // 这会阻止世界书集成
             should_stream: false, // 确保稳定性
           });
-        }
-        // 备用方案：使用全局generateRaw
-        else if (typeof window.generateRaw !== 'undefined') {
-          console.log('[Story Weaver] Using global generateRaw with structured prompts...');
-          result = await window.generateRaw({
-            ordered_prompts: orderedPrompts,
-            max_chat_history: 0,
-            should_stream: false,
-          });
-        }
-        // 最后备用：使用triggerSlash调用/gen命令
-        else if (typeof window.triggerSlash !== 'undefined') {
-          console.log('[Story Weaver] Using triggerSlash /gen...');
-          const userPrompt = orderedPrompts[orderedPrompts.length - 1].content;
-          result = await window.triggerSlash(`/gen ${userPrompt}`);
         } else {
-          throw new Error('没有可用的generateRaw函数');
+          throw new Error('TavernHelper.generateRaw不可用，无法正确集成世界书');
         }
 
         // 检查生成结果是否有效
@@ -1158,6 +1134,24 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
     
     return '';
   }
+
+  // ============ 已注释的备用生成方法 ============
+  // // 备用方案：使用全局generateRaw
+  // else if (typeof window.generateRaw !== 'undefined') {
+  //   console.log('[Story Weaver] Using global generateRaw with structured prompts...');
+  //   result = await window.generateRaw({
+  //     ordered_prompts: orderedPrompts,
+  //     max_chat_history: 0,
+  //     should_stream: false,
+  //   });
+  // }
+  // // 最后备用：使用triggerSlash调用/gen命令
+  // else if (typeof window.triggerSlash !== 'undefined') {
+  //   console.log('[Story Weaver] Using triggerSlash /gen...');
+  //   const userPrompt = orderedPrompts[orderedPrompts.length - 1].content;
+  //   result = await window.triggerSlash(`/gen ${userPrompt}`);
+  // }
+  // ============ 备用方法结束 ============
 
   // ============ 旧的constructFullPrompt函数 - 已注释掉，使用buildStructuredPrompt替代 ============
   // 保留原函数作为备用 - 用于向后兼容 - 已被buildStructuredPrompt完全替代
@@ -1221,11 +1215,9 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
 
     if (!generateBtn || !outputDiv) return;
 
-    // 检查是否有可用的生成函数 - box.js风格
-    if (typeof window.TavernHelper === 'undefined' && 
-        typeof window.generateRaw === 'undefined' && 
-        typeof window.triggerSlash === 'undefined') {
-      showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
+    // 检查TavernHelper是否可用（唯一支持世界书集成的方法）
+    if (typeof window.TavernHelper === 'undefined' || typeof window.TavernHelper.generateRaw !== 'function') {
+      showNotification('请在聊天主界面打开扩展再试（需要TavernHelper支持世界书集成）', 'warning');
       return;
     }
 
@@ -1530,11 +1522,9 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
     // 下拉菜单中的立即生成与仅注入
     document.getElementById('story_weaver_generate_now')?.addEventListener('click', async () => {
       try {
-        // 检查是否有可用的生成函数 - box.js风格
-        if (typeof window.TavernHelper === 'undefined' && 
-            typeof window.generateRaw === 'undefined' && 
-            typeof window.triggerSlash === 'undefined') {
-          return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
+        // 检查TavernHelper是否可用（唯一支持世界书集成的方法）
+        if (typeof window.TavernHelper === 'undefined' || typeof window.TavernHelper.generateRaw !== 'function') {
+          return showNotification('请在聊天主界面打开扩展再试（需要TavernHelper支持世界书集成）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
         const structuredPrompt = await buildStructuredPrompt(panel);
@@ -1552,11 +1542,9 @@ ${chatHistoryData.recentHistory || '无聊天历史'}
 
     document.getElementById('story_weaver_inject_now')?.addEventListener('click', async () => {
       try {
-        // 检查是否有可用的生成函数 - box.js风格
-        if (typeof window.TavernHelper === 'undefined' && 
-            typeof window.generateRaw === 'undefined' && 
-            typeof window.triggerSlash === 'undefined') {
-          return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
+        // 检查TavernHelper是否可用（唯一支持世界书集成的方法）
+        if (typeof window.TavernHelper === 'undefined' || typeof window.TavernHelper.generateRaw !== 'function') {
+          return showNotification('请在聊天主界面打开扩展再试（需要TavernHelper支持世界书集成）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
         const structuredPrompt = await buildStructuredPrompt(panel);
