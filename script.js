@@ -1024,6 +1024,76 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     const ctx = getContextSafe();
     const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
 
+    // 检查用户是否自定义了提示词模板
+    const customPrompt = panel.querySelector('#prompt-template-editor')?.value?.trim();
+    const isUsingCustomTemplate = customPrompt && customPrompt !== DEFAULT_PROMPT_TEMPLATE.trim();
+
+    console.log(`[Story Weaver] Using custom template: ${isUsingCustomTemplate}`);
+
+    if (isUsingCustomTemplate) {
+      // 用户自定义了模板，使用旧的替换方式
+      console.log('[Story Weaver] Using custom prompt template with placeholder replacement...');
+      return await buildCustomPrompt(panel);
+    } else {
+      // 使用我们的结构化提示词
+      console.log('[Story Weaver] Using structured prompts for better world info integration...');
+      return await buildDefaultStructuredPrompt(panel);
+    }
+  }
+
+  // 构建自定义提示词（用户修改了模板时使用）
+  async function buildCustomPrompt(panel) {
+    const ctx = getContextSafe();
+    const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
+    const chatText = buildChatHistoryText(chatLimit);
+    const wi = buildWorldInfoSegmentsSmart(ctx, chatText);
+
+    // Get enhanced data using the new integration functions
+    const worldbookData = await getWorldInfoData(chatText);
+    const characterData = getCharacterData();
+    const chatHistoryData = getEnhancedChatHistory(chatLimit);
+
+    // Collect user requirements
+    const requirements = {
+      story_type: panel.querySelector('#story-type')?.value || '',
+      story_theme: panel.querySelector('#story-theme')?.value || '',
+      story_style: panel.querySelector('#story-style')?.value || '',
+      chapter_count: panel.querySelector('#chapter-count')?.value || '5',
+      detail_level: panel.querySelector('#detail-level')?.value || '',
+      special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
+      include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
+      include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
+      include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
+    };
+
+    let finalPrompt = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
+    finalPrompt = finalPrompt.replace(/{system_prompt}/g, resolveSystemPrompt(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{char_persona}/g, resolveCharPersona(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{char_scenario}/g, resolveCharScenario(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{memory_summary}/g, resolveMemorySummary(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{authors_note}/g, resolveAuthorsNote(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{jailbreak}/g, resolveJailbreak(ctx) || '');
+    finalPrompt = finalPrompt.replace(/{chat_history}/g, chatHistoryData.recentHistory || '');
+    finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wi.before || '');
+    finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wi.after || '');
+    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData || 'No world info available');
+    finalPrompt = finalPrompt.replace(/{character}/g, characterData || 'No character data available');
+    
+    // Replace user requirement placeholders
+    Object.entries(requirements).forEach(([key, value]) => {
+      const regex = new RegExp(`{${key}}`, 'g');
+      finalPrompt = finalPrompt.replace(regex, value);
+    });
+
+    // 返回单条用户消息（自定义模板）
+    return [{ role: 'user', content: finalPrompt }];
+  }
+
+  // 构建默认结构化提示词
+  async function buildDefaultStructuredPrompt(panel) {
+    const ctx = getContextSafe();
+    const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
+
     // 获取基本上下文信息（SillyTavern会自动加载世界书）
     const characterData = getCharacterData();
     const chatHistoryData = getEnhancedChatHistory(chatLimit);
@@ -1102,12 +1172,18 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
         // 只使用TavernHelper.generateRaw - 这样SillyTavern可以正确集成世界书
         if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
           console.log('[Story Weaver] Using TavernHelper.generateRaw with world info integration...');
-          result = await window.TavernHelper.generateRaw({
+          console.log('[Story Weaver] Sending prompts to TavernHelper:', orderedPrompts.length, 'prompts');
+          
+          const generateOptions = {
             ordered_prompts: orderedPrompts,
             // 关键修改：不设置max_chat_history为0，让SillyTavern处理上下文和世界书
             // max_chat_history: 0, // 这会阻止世界书集成
             should_stream: false, // 确保稳定性
-          });
+          };
+          
+          console.log('[Story Weaver] Generate options:', generateOptions);
+          result = await window.TavernHelper.generateRaw(generateOptions);
+          console.log('[Story Weaver] TavernHelper returned result length:', result?.length || 0);
         } else {
           throw new Error('TavernHelper.generateRaw不可用，无法正确集成世界书');
         }
@@ -1239,8 +1315,14 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
     outputDiv.innerHTML = '<div class="generating-indicator">🔄 正在与AI沟通，请稍候...</div>';
 
     try {
-      console.log('[Story Weaver] Generating outline with box.js style structured prompts...');
-      console.log(`[Story Weaver] Structured prompt size: ${JSON.stringify(structuredPrompt).length} chars`);
+      console.log('[Story Weaver] Generating outline with structured prompts...');
+      console.log(`[Story Weaver] Prompt structure:`, structuredPrompt);
+      console.log(`[Story Weaver] Total prompts: ${structuredPrompt.length}`);
+      
+      // 显示每个提示词的前100字符用于调试
+      structuredPrompt.forEach((prompt, index) => {
+        console.log(`[Story Weaver] Prompt ${index + 1} (${prompt.role}): ${prompt.content.substring(0, 100)}...`);
+      });
 
       // 使用box.js完全相同的生成方式
       const resultText = await generateWithStructuredPrompt(structuredPrompt);
