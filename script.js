@@ -1014,6 +1014,147 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     return { before: formatWorldInfo(before, formatTemplate), after: formatWorldInfo(after, formatTemplate) };
   }
 
+  // 构建box.js风格的结构化提示词
+  async function buildStructuredPrompt(panel) {
+    const ctx = getContextSafe();
+    const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
+    const chatText = buildChatHistoryText(chatLimit);
+    const wi = buildWorldInfoSegmentsSmart(ctx, chatText);
+
+    // Get enhanced data using the new integration functions
+    const worldbookData = await getWorldInfoData(chatText);
+    const characterData = getCharacterData();
+    const chatHistoryData = getEnhancedChatHistory(chatLimit);
+
+    // Collect user requirements
+    const requirements = {
+      story_type: panel.querySelector('#story-type')?.value || '',
+      story_theme: panel.querySelector('#story-theme')?.value || '',
+      story_style: panel.querySelector('#story-style')?.value || '',
+      chapter_count: panel.querySelector('#chapter-count')?.value || '5',
+      detail_level: panel.querySelector('#detail-level')?.value || '',
+      special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
+      include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
+      include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
+      include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
+    };
+
+    // 构建系统提示词
+    const systemPrompt = `你是一个专业的故事大纲生成助手。你擅长根据给定的背景信息、角色设定和世界观创建引人入胜的故事结构。
+
+你的任务是根据用户提供的信息生成一个详细的故事大纲，包括：
+- 故事概要
+- 章节结构 
+- 情节发展
+- 角色发展弧线
+- 主题分析（如需要）
+
+你必须严格按照用户的要求来设计故事，确保内容符合指定的类型、风格和主题。`;
+
+    // 构建角色和世界观提示词
+    const contextPrompt = `### 背景信息 ###
+
+**系统设定**: ${resolveSystemPrompt(ctx) || '无'}
+
+**世界观信息**:
+${worldbookData || '无世界观信息'}
+
+**角色信息**:
+${characterData || '无角色信息'}
+
+**角色性格**: ${resolveCharPersona(ctx) || '无'}
+**场景设定**: ${resolveCharScenario(ctx) || '无'}
+
+**聊天历史**: 
+${chatHistoryData.recentHistory || '无聊天历史'}
+
+**记忆摘要**: ${resolveMemorySummary(ctx) || '无'}
+**作者注释**: ${resolveAuthorsNote(ctx) || '无'}`;
+
+    // 构建任务提示词
+    const taskPrompt = `请根据上述背景信息生成故事大纲。严格按照以下要求：
+
+**故事类型**: ${requirements.story_type}
+**核心主题/冲突**: ${requirements.story_theme}
+**叙事风格**: ${requirements.story_style}
+**章节数量**: ${requirements.chapter_count}章
+**详细程度**: ${requirements.detail_level}
+**特殊要求**: ${requirements.special_requirements}
+
+**输出要求**:
+- 包含整体摘要: ${requirements.include_summary}
+- 包含角色发展: ${requirements.include_characters}
+- 包含主题分析: ${requirements.include_themes}
+
+请用Markdown格式输出，使用简体中文。直接开始生成大纲，无需其他说明。`;
+
+    return [
+      { role: 'system', content: systemPrompt },
+      { role: 'system', content: contextPrompt },
+      { role: 'user', content: taskPrompt }
+    ];
+  }
+
+  // 使用结构化提示词生成内容 - 完全模仿box.js的方法
+  async function generateWithStructuredPrompt(orderedPrompts) {
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        let result;
+        
+        // 使用TavernHelper.generateRaw - 与box.js完全相同的方法
+        if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
+          console.log('[Story Weaver] Using TavernHelper.generateRaw with structured prompts...');
+          result = await window.TavernHelper.generateRaw({
+            ordered_prompts: orderedPrompts,
+            max_chat_history: 0, // 不使用聊天历史
+            should_stream: false, // 确保稳定性
+          });
+        }
+        // 备用方案：使用全局generateRaw
+        else if (typeof window.generateRaw !== 'undefined') {
+          console.log('[Story Weaver] Using global generateRaw with structured prompts...');
+          result = await window.generateRaw({
+            ordered_prompts: orderedPrompts,
+            max_chat_history: 0,
+            should_stream: false,
+          });
+        }
+        // 最后备用：使用triggerSlash调用/gen命令
+        else if (typeof window.triggerSlash !== 'undefined') {
+          console.log('[Story Weaver] Using triggerSlash /gen...');
+          const userPrompt = orderedPrompts[orderedPrompts.length - 1].content;
+          result = await window.triggerSlash(`/gen ${userPrompt}`);
+        } else {
+          throw new Error('没有可用的generateRaw函数');
+        }
+
+        // 检查生成结果是否有效
+        if (result && result.trim().length > 10) {
+          return result.trim();
+        } else {
+          throw new Error('生成的故事大纲过短或为空');
+        }
+      } catch (error) {
+        retryCount++;
+        console.error(`[Story Weaver] 故事大纲生成失败 (尝试 ${retryCount}/${maxRetries}):`, error);
+
+        if (retryCount >= maxRetries) {
+          // 所有重试都失败了，抛出错误
+          throw new Error(`AI生成故事大纲失败，已重试${maxRetries}次: ${error.message}`);
+        }
+
+        // 等待一段时间再重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
+    
+    return '';
+  }
+
+  // 保留原函数作为备用 - 用于向后兼容
   async function constructFullPrompt(panel) {
     const ctx = getContextSafe();
     const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
@@ -1088,8 +1229,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       return;
     }
 
-    // 采用方案A：我们构建包含全部原生段落的完整Prompt
-    const userInput = await constructFullPrompt(panel);
+    // 使用box.js风格的结构化提示词
+    const structuredPrompt = await buildStructuredPrompt(panel);
 
     // Update UI
     generateBtn.disabled = true;
@@ -1098,37 +1239,14 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     outputDiv.innerHTML = '<div class="generating-indicator">🔄 正在与AI沟通，请稍候...</div>';
 
     try {
-      // 使用SillyTavern的标准Generate函数
-      let resultText = '';
-      let apiSuccess = false;
+      console.log('[Story Weaver] Using box.js style structured generation...');
+      console.log(`[Story Weaver] 结构化提示词长度: ${JSON.stringify(structuredPrompt).length}`);
 
-      // 使用phone.html完全相同的generate方式 - QQ_Gen函数的实现
-      console.log('[Story Weaver] Using phone.html style generate function...');
-      console.log(`[Story Weaver] 调用window.generate，输入长度: ${userInput.length}`);
-      console.log(`[Story Weaver] 输入预览: ${userInput.substring(0, 300)}...`);
-
-      try {
-        // 尝试多种SillyTavern生成方式
-        console.log('[Story Weaver] 尝试SillyTavern原生生成API...');
-
-        // >>> 替换为直接调用主API（不入楼层），与内置Memory扩展相同思路
-        const apiResult = await callMainApiWithPrompt(userInput);
-        if (!apiResult || !apiResult.trim()) {
-          throw new Error('主API未返回有效内容');
-        }
-        resultText = apiResult.trim();
-        apiSuccess = true;
-        // <<<
-      } catch (error) {
-        console.warn('[Story Weaver] SillyTavern生成失败:', error.message);
-      }
-
-      if (!apiSuccess || !resultText) {
-        throw new Error('所有API端点都无法生成内容。请确保SillyTavern已正确配置AI后端。');
-      }
-
-      if (!resultText) {
-        throw new Error('生成失败，未获取到有效内容');
+      // 使用与box.js完全相同的TavernHelper.generateRaw方式
+      const resultText = await generateWithStructuredPrompt(structuredPrompt);
+      
+      if (!resultText || !resultText.trim()) {
+        throw new Error('AI未返回有效内容');
       }
 
       // 显示结果 - 可编辑的文本域
@@ -1409,8 +1527,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
-        const prompt = await constructFullPrompt(panel);
-        const result = await callMainApiWithPrompt(prompt);
+        const structuredPrompt = await buildStructuredPrompt(panel);
+        const result = await generateWithStructuredPrompt(structuredPrompt);
         if (!result?.trim()) return showNotification('生成失败', 'error');
         showNotification('已生成(不入楼层)', 'success');
         const outputDiv = panel.querySelector('#output-content');
@@ -1429,8 +1547,8 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
-        const prompt = await constructFullPrompt(panel);
-        const result = await callMainApiWithPrompt(prompt);
+        const structuredPrompt = await buildStructuredPrompt(panel);
+        const result = await generateWithStructuredPrompt(structuredPrompt);
         if (!result?.trim()) return showNotification('生成失败', 'error');
         if (typeof window.setExtensionPrompt === 'function') {
           window.setExtensionPrompt(
@@ -1720,58 +1838,65 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     }
   } catch (_) {}
 
-  // 统一调用主API的函数：不入聊天楼层，直接返回文本
+  // 统一调用主API的函数：使用box.js相同的方式
   async function callMainApiWithPrompt(promptText) {
-    try {
-      const fns = resolveGenFns();
-      // 仅使用与内置 Memory 扩展一致的内部生成函数
-      if (fns.quiet) {
-        try {
-          if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
-        } catch (_) {}
-        try {
-          const res = await fns.quiet({ quietPrompt: promptText, skipWIAN: true });
-          const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
-          if (text) return text;
-        } finally {
-          try {
-            if (typeof window.inApiCall !== 'undefined') window.inApiCall = false;
-          } catch (_) {}
+    let retryCount = 0;
+    const maxRetries = 3;
+
+    while (retryCount < maxRetries) {
+      try {
+        let result;
+        
+        // 使用TavernHelper.generateRaw - 与box.js完全相同的方法
+        if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
+          console.log('[Story Weaver] Using TavernHelper.generateRaw...');
+          result = await window.TavernHelper.generateRaw({
+            ordered_prompts: [
+              { role: 'user', content: promptText }
+            ],
+            max_chat_history: 0, // 不使用聊天历史
+            should_stream: false, // 确保稳定性
+          });
         }
-      }
-      if (fns.raw) {
-        try {
-          if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
-        } catch (_) {}
-        try {
-          const res = await fns.raw({ prompt: promptText });
-          const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
-          if (text) return text;
-        } finally {
-          try {
-            if (typeof window.inApiCall !== 'undefined') window.inApiCall = false;
-          } catch (_) {}
+        // 备用方案：使用全局generateRaw
+        else if (typeof window.generateRaw !== 'undefined') {
+          console.log('[Story Weaver] Using global generateRaw...');
+          result = await window.generateRaw({
+            ordered_prompts: [
+              { role: 'user', content: promptText }
+            ],
+            max_chat_history: 0,
+            should_stream: false,
+          });
         }
-      }
-      if (fns.webllm) {
-        try {
-          if (typeof window.inApiCall !== 'undefined') window.inApiCall = true;
-        } catch (_) {}
-        try {
-          const res = await fns.webllm([{ role: 'user', content: promptText }], {});
-          const text = typeof res === 'string' ? res : res?.text || res?.output_text || '';
-          if (text) return text;
-        } finally {
-          try {
-            if (typeof window.inApiCall !== 'undefined') window.inApiCall = false;
-          } catch (_) {}
+        // 最后备用：使用triggerSlash调用/gen命令
+        else if (typeof window.triggerSlash !== 'undefined') {
+          console.log('[Story Weaver] Using triggerSlash /gen...');
+          result = await window.triggerSlash(`/gen ${promptText}`);
+        } else {
+          throw new Error('没有可用的generateRaw函数');
         }
+
+        // 检查生成结果是否有效
+        if (result && result.trim().length > 10) {
+          return result.trim();
+        } else {
+          throw new Error('生成的内容过短或为空');
+        }
+      } catch (error) {
+        retryCount++;
+        console.error(`[Story Weaver] AI生成失败 (尝试 ${retryCount}/${maxRetries}):`, error);
+
+        if (retryCount >= maxRetries) {
+          // 所有重试都失败了，抛出错误
+          throw new Error(`AI生成失败，已重试${maxRetries}次: ${error.message}`);
+        }
+
+        // 等待一段时间再重试
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
-      console.warn('[Story Weaver] Internal generation functions not available in this view.');
-      return '';
-    } catch (e) {
-      console.error('[Story Weaver] callMainApiWithPrompt error:', e);
-      return '';
     }
+    
+    return '';
   }
 })();
