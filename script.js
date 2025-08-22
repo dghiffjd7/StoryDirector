@@ -421,19 +421,29 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     // Refresh data button
     const refreshBtn = panel.querySelector('#refresh-data-btn');
     if (refreshBtn) {
-      refreshBtn.onclick = () => {
-        const result = refreshData();
-        const statusDiv = panel.querySelector('#context-status');
-        if (statusDiv) {
-          updateStatus(
-            statusDiv,
-            `✅ 数据已刷新 - 世界书: ${result.worldbook.entries.length}条, 角色: ${
-              result.character.character ? '已加载' : '未找到'
-            }`,
-            'success',
-          );
+      refreshBtn.onclick = async () => {
+        try {
+          refreshBtn.disabled = true;
+          refreshBtn.innerHTML = '<span class="btn-icon">🔄</span> 刷新中...';
+          
+          const result = await refreshData();
+          const statusDiv = panel.querySelector('#context-status');
+          if (statusDiv) {
+            updateStatus(
+              statusDiv,
+              `✅ 数据已刷新 - 世界书: ${result.worldbook.entries.length}条, 角色: ${
+                result.character.character ? '已加载' : '未找到'
+              }, 聊天: ${result.chatHistory.summary}`,
+              'success',
+            );
+          }
+          showNotification('数据刷新完成', 'success');
+        } catch (error) {
+          showNotification('数据刷新失败: ' + error.message, 'error');
+        } finally {
+          refreshBtn.disabled = false;
+          refreshBtn.innerHTML = '<span class="btn-icon">🔄</span> 手动刷新数据';
         }
-        showNotification('数据刷新完成', 'success');
       };
     }
   }
@@ -545,7 +555,64 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   async function getWorldInfoData(chatHistory = '') {
     try {
-      // 直接访问世界书数据对象
+      // Use SillyTavern's proper World Info API
+      if (typeof window.getSortedEntries === 'function') {
+        console.log('[Story Weaver] Using getSortedEntries API...');
+        const entries = await window.getSortedEntries();
+        if (entries && entries.length > 0) {
+          const formattedEntries = entries
+            .filter(entry => !entry.disable && entry.content?.trim())
+            .slice(0, 20) // Increase limit for better context
+            .map(entry => {
+              const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+              return `**${title}**\n${entry.content}`;
+            })
+            .join('\n\n');
+          
+          console.log(`[Story Weaver] Found ${entries.length} world info entries using getSortedEntries`);
+          return formattedEntries;
+        }
+      }
+
+      // Fallback: Try accessing global, character, chat, and persona lore separately
+      const allEntries = [];
+      
+      if (typeof window.getGlobalLore === 'function') {
+        const globalLore = await window.getGlobalLore();
+        if (globalLore) allEntries.push(...globalLore);
+      }
+      
+      if (typeof window.getCharacterLore === 'function') {
+        const characterLore = await window.getCharacterLore();
+        if (characterLore) allEntries.push(...characterLore);
+      }
+      
+      if (typeof window.getChatLore === 'function') {
+        const chatLore = await window.getChatLore();
+        if (chatLore) allEntries.push(...chatLore);
+      }
+      
+      if (typeof window.getPersonaLore === 'function') {
+        const personaLore = await window.getPersonaLore();
+        if (personaLore) allEntries.push(...personaLore);
+      }
+
+      if (allEntries.length > 0) {
+        const formattedEntries = allEntries
+          .filter(entry => !entry.disable && entry.content?.trim())
+          .slice(0, 20)
+          .map(entry => {
+            const title = entry.comment || (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 'Entry';
+            const world = entry.world ? ` (${entry.world})` : '';
+            return `**${title}${world}**\n${entry.content}`;
+          })
+          .join('\n\n');
+        
+        console.log(`[Story Weaver] Found ${allEntries.length} world info entries using individual lore functions`);
+        return formattedEntries;
+      }
+
+      // Last resort: Direct access to world_info object
       const worldInfo = window.world_info;
       if (worldInfo && worldInfo.entries) {
         const entries = Object.values(worldInfo.entries);
@@ -561,11 +628,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         }
       }
 
-      console.log('[Story Weaver] No world info found in world_info object');
-      return 'N/A';
+      console.log('[Story Weaver] No world info found');
+      return '';
     } catch (error) {
       console.error('[Story Weaver] Error getting world info:', error);
-      return 'N/A';
+      return '';
     }
   }
 
@@ -574,10 +641,44 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
    */
   function getCharacterData() {
     try {
-      // 从chat对象获取角色信息
+      // Get current character from SillyTavern context
+      const ctx = getCurrentContext();
+      const characterId = ctx.characterId || window.this_chid;
+      const characters = ctx.characters || window.characters || [];
+      
+      if (characterId !== undefined && characters[characterId]) {
+        const character = characters[characterId];
+        
+        let characterInfo = `**角色名称**: ${character.name || 'Unknown'}\n\n`;
+        
+        if (character.description) {
+          characterInfo += `**角色描述**:\n${character.description}\n\n`;
+        }
+        
+        if (character.personality) {
+          characterInfo += `**角色性格**:\n${character.personality}\n\n`;
+        }
+        
+        if (character.scenario) {
+          characterInfo += `**场景设定**:\n${character.scenario}\n\n`;
+        }
+        
+        if (character.first_mes) {
+          characterInfo += `**初始消息**:\n${character.first_mes}\n\n`;
+        }
+        
+        // Add example dialogue if available
+        if (character.mes_example) {
+          characterInfo += `**对话示例**:\n${character.mes_example}\n\n`;
+        }
+        
+        console.log('[Story Weaver] Character data loaded:', character.name);
+        return characterInfo.trim();
+      }
+
+      // Fallback: Extract from chat messages
       const chat = window.chat;
       if (chat && Array.isArray(chat) && chat.length > 0) {
-        // 寻找最近的系统消息或角色消息来提取角色信息
         const characterMessages = chat.filter(msg => msg.is_system || (!msg.is_user && msg.name));
 
         if (characterMessages.length > 0) {
@@ -593,11 +694,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         }
       }
 
-      console.log('[Story Weaver] No character data found in chat');
-      return 'N/A';
+      console.log('[Story Weaver] No character data found');
+      return '';
     } catch (error) {
       console.error('[Story Weaver] Error reading character:', error);
-      return 'N/A';
+      return '';
     }
   }
 
@@ -671,18 +772,86 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     if (!limit || limit <= 0) return '';
 
     try {
-      const chat = window.chat || [];
+      const ctx = getCurrentContext();
+      const chat = ctx.chat || window.chat || [];
 
       if (!Array.isArray(chat)) return '';
 
+      // Get the most recent messages up to the limit
       const messages = chat.slice(Math.max(0, chat.length - limit));
+      
       return messages
-        .map(m => m.mes || '')
+        .map(msg => {
+          // Format each message with speaker name and content
+          const speaker = msg.is_user ? (ctx.name1 || window.name1 || 'User') : (msg.name || ctx.name2 || window.name2 || 'Assistant');
+          const content = msg.mes || '';
+          
+          if (!content.trim()) return '';
+          
+          return `**${speaker}**: ${content}`;
+        })
         .filter(Boolean)
-        .join('\n');
+        .join('\n\n');
     } catch (error) {
       console.error('[Story Weaver] Error building chat history:', error);
       return '';
+    }
+  }
+
+  /**
+   * 获取增强的聊天历史信息
+   */
+  function getEnhancedChatHistory(limit = 50) {
+    try {
+      const ctx = getCurrentContext();
+      const chat = ctx.chat || window.chat || [];
+      
+      if (!Array.isArray(chat) || chat.length === 0) {
+        return {
+          recentHistory: '',
+          totalMessages: 0,
+          userMessages: 0,
+          assistantMessages: 0,
+          summary: '没有可用的聊天历史'
+        };
+      }
+
+      const messages = chat.slice(Math.max(0, chat.length - limit));
+      const userMessages = chat.filter(msg => msg.is_user).length;
+      const assistantMessages = chat.filter(msg => !msg.is_user && !msg.is_system).length;
+      
+      const recentHistory = messages
+        .map(msg => {
+          const speaker = msg.is_user ? (ctx.name1 || window.name1 || 'User') : (msg.name || ctx.name2 || window.name2 || 'Assistant');
+          const content = msg.mes || '';
+          
+          if (!content.trim()) return '';
+          
+          // Add timestamp if available
+          const timestamp = msg.send_date ? new Date(msg.send_date).toLocaleTimeString() : '';
+          const timeStr = timestamp ? ` [${timestamp}]` : '';
+          
+          return `**${speaker}**${timeStr}: ${content}`;
+        })
+        .filter(Boolean)
+        .join('\n\n');
+
+      return {
+        recentHistory,
+        totalMessages: chat.length,
+        userMessages,
+        assistantMessages,
+        summary: `总共 ${chat.length} 条消息 (用户: ${userMessages}, 角色: ${assistantMessages})`
+      };
+    } catch (error) {
+      console.error('[Story Weaver] Error getting enhanced chat history:', error);
+      return {
+        recentHistory: '',
+        totalMessages: 0,
+        userMessages: 0,
+        assistantMessages: 0,
+        summary: '读取聊天历史时出错'
+      };
     }
   }
 
@@ -720,7 +889,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     };
   }
 
-  async function waitForGenerationFns(timeoutMs = 2500, intervalMs = 100) {
+  async function waitForGenerationFns(timeoutMs = 6000, intervalMs = 100) {
     const start = Date.now();
     while (Date.now() - start < timeoutMs) {
       const fns = resolveGenFns();
@@ -845,15 +1014,29 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     return { before: formatWorldInfo(before, formatTemplate), after: formatWorldInfo(after, formatTemplate) };
   }
 
-  function constructFullPrompt(panel) {
+  async function constructFullPrompt(panel) {
     const ctx = getContextSafe();
     const chatLimit = parseInt(panel.querySelector('#context-length')?.value || '0');
     const chatText = buildChatHistoryText(chatLimit);
     const wi = buildWorldInfoSegmentsSmart(ctx, chatText);
 
-    // worldbook/character 兼容：若已由WI / persona覆盖，可留空
-    const worldbookData = '';
-    const characterData = '';
+    // Get enhanced data using the new integration functions
+    const worldbookData = await getWorldInfoData(chatText);
+    const characterData = getCharacterData();
+    const chatHistoryData = getEnhancedChatHistory(chatLimit);
+
+    // Collect user requirements
+    const requirements = {
+      story_type: panel.querySelector('#story-type')?.value || '',
+      story_theme: panel.querySelector('#story-theme')?.value || '',
+      story_style: panel.querySelector('#story-style')?.value || '',
+      chapter_count: panel.querySelector('#chapter-count')?.value || '5',
+      detail_level: panel.querySelector('#detail-level')?.value || '',
+      special_requirements: panel.querySelector('#special-requirements')?.value || 'None',
+      include_summary: panel.querySelector('#include-summary')?.checked ? 'Yes' : 'No',
+      include_characters: panel.querySelector('#include-characters')?.checked ? 'Yes' : 'No',
+      include_themes: panel.querySelector('#include-themes')?.checked ? 'Yes' : 'No',
+    };
 
     let finalPrompt = panel.querySelector('#prompt-template-editor')?.value || DEFAULT_PROMPT_TEMPLATE;
     finalPrompt = finalPrompt.replace(/{system_prompt}/g, resolveSystemPrompt(ctx) || '');
@@ -862,11 +1045,18 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     finalPrompt = finalPrompt.replace(/{memory_summary}/g, resolveMemorySummary(ctx) || '');
     finalPrompt = finalPrompt.replace(/{authors_note}/g, resolveAuthorsNote(ctx) || '');
     finalPrompt = finalPrompt.replace(/{jailbreak}/g, resolveJailbreak(ctx) || '');
-    finalPrompt = finalPrompt.replace(/{chat_history}/g, chatText || '');
+    finalPrompt = finalPrompt.replace(/{chat_history}/g, chatHistoryData.recentHistory || '');
     finalPrompt = finalPrompt.replace(/{worldInfoBefore}/g, wi.before || '');
     finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wi.after || '');
-    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData);
-    finalPrompt = finalPrompt.replace(/{character}/g, characterData);
+    finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData || 'No world info available');
+    finalPrompt = finalPrompt.replace(/{character}/g, characterData || 'No character data available');
+    
+    // Replace user requirement placeholders
+    Object.entries(requirements).forEach(([key, value]) => {
+      const regex = new RegExp(`{${key}}`, 'g');
+      finalPrompt = finalPrompt.replace(regex, value);
+    });
+
     return finalPrompt;
   }
 
@@ -899,7 +1089,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     }
 
     // 采用方案A：我们构建包含全部原生段落的完整Prompt
-    const userInput = constructFullPrompt(panel);
+    const userInput = await constructFullPrompt(panel);
 
     // Update UI
     generateBtn.disabled = true;
@@ -1219,7 +1409,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
-        const prompt = constructFullPrompt(panel);
+        const prompt = await constructFullPrompt(panel);
         const result = await callMainApiWithPrompt(prompt);
         if (!result?.trim()) return showNotification('生成失败', 'error');
         showNotification('已生成(不入楼层)', 'success');
@@ -1239,7 +1429,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           return showNotification('请在聊天主界面打开扩展再试（生成函数不可用）', 'warning');
         }
         const panel = document.getElementById('story-weaver-panel') || createStoryWeaverPanel();
-        const prompt = constructFullPrompt(panel);
+        const prompt = await constructFullPrompt(panel);
         const result = await callMainApiWithPrompt(prompt);
         if (!result?.trim()) return showNotification('生成失败', 'error');
         if (typeof window.setExtensionPrompt === 'function') {
@@ -1264,24 +1454,81 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   /**
    * 刷新数据状态
    */
-  function refreshData() {
+  async function refreshData() {
     console.log('[Story Weaver] Refreshing data status...');
 
-    const worldbookData = getWorldInfoData();
+    const worldbookData = await getWorldInfoData();
     const characterData = getCharacterData();
+    const chatHistory = getEnhancedChatHistory(50);
 
-    const worldbookLoaded = worldbookData !== 'N/A';
-    const characterLoaded = characterData !== 'N/A';
+    const worldbookLoaded = worldbookData && worldbookData.trim() !== '';
+    const characterLoaded = characterData && characterData.trim() !== '';
 
     console.log('[Story Weaver] Data status:', {
       worldbookLoaded,
       characterLoaded,
+      chatHistoryLoaded: chatHistory.totalMessages > 0,
+      totalMessages: chatHistory.totalMessages,
     });
 
     return {
       worldbook: { entries: worldbookLoaded ? ['Available'] : [] },
       character: { character: characterLoaded ? 'Available' : null },
+      chatHistory: chatHistory,
     };
+  }
+
+  /**
+   * Listen for SillyTavern World Info events
+   */
+  function setupWorldInfoEventListeners() {
+    try {
+      // Listen for World Info entries loaded event
+      if (typeof window.eventSource !== 'undefined' && typeof window.event_types !== 'undefined') {
+        window.eventSource.on(window.event_types.WORLDINFO_ENTRIES_LOADED, ({ globalLore, characterLore, chatLore, personaLore }) => {
+          console.log('[Story Weaver] World Info entries loaded:', {
+            global: globalLore?.length || 0,
+            character: characterLore?.length || 0,
+            chat: chatLore?.length || 0,
+            persona: personaLore?.length || 0
+          });
+          
+          // Update UI status if panel is open
+          const panel = document.getElementById('story-weaver-panel');
+          if (panel && panel.style.display !== 'none') {
+            const statusDiv = panel.querySelector('#context-status');
+            if (statusDiv) {
+              const totalEntries = (globalLore?.length || 0) + (characterLore?.length || 0) + (chatLore?.length || 0) + (personaLore?.length || 0);
+              updateStatus(statusDiv, `✅ 世界书数据已更新 - 总计 ${totalEntries} 条条目`, 'success');
+            }
+          }
+        });
+      }
+
+      // Listen for character changes
+      if (typeof window.eventSource !== 'undefined' && typeof window.event_types !== 'undefined') {
+        window.eventSource.on(window.event_types.CHARACTER_EDITED, () => {
+          console.log('[Story Weaver] Character data updated');
+        });
+        
+        window.eventSource.on(window.event_types.CHAT_CHANGED, () => {
+          console.log('[Story Weaver] Chat changed, updating data');
+          // Auto-refresh data when chat changes
+          const panel = document.getElementById('story-weaver-panel');
+          if (panel && panel.style.display !== 'none') {
+            setTimeout(async () => {
+              const result = await refreshData();
+              const statusDiv = panel.querySelector('#context-status');
+              if (statusDiv) {
+                updateStatus(statusDiv, `🔄 聊天数据已更新 - ${result.chatHistory.summary}`, 'info');
+              }
+            }, 500);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[Story Weaver] Error setting up World Info event listeners:', error);
+    }
   }
 
   /**
@@ -1292,6 +1539,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
     loadSettings();
     setupExtensionUI();
+    setupWorldInfoEventListeners();
 
     // 添加全局函数
     window.storyWeaverRefreshData = refreshData;
@@ -1431,6 +1679,46 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     console.log('Chat array available:', Array.isArray(window.chat));
     console.log('Chat length:', window.chat ? window.chat.length : 'N/A');
   };
+
+  // 父窗口（主页面）桥接：允许弹窗通过 postMessage 请求生成
+  try {
+    if (typeof window !== 'undefined' && !window.__storyWeaverBridgeInstalled) {
+      window.__storyWeaverBridgeInstalled = true;
+      window.addEventListener('message', async ev => {
+        try {
+          const data = ev?.data || {};
+          if (!data || (data.type !== 'SW_GENERATE' && data.type !== 'SW_INJECT')) return;
+          const reqId = data.reqId;
+          const prompt = data.prompt || '';
+          const fns = await waitForGenerationFns();
+          if (!fns.quiet && !fns.raw && !fns.webllm) {
+            ev.source?.postMessage(
+              { type: data.type + '_ERR', reqId, error: '生成函数不可用，请在聊天主界面再试' },
+              '*',
+            );
+            return;
+          }
+          let resText = '';
+          try {
+            if (fns.quiet) {
+              const r = await fns.quiet({ quietPrompt: prompt, skipWIAN: true });
+              resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
+            } else if (fns.raw) {
+              const r = await fns.raw({ prompt });
+              resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
+            } else if (fns.webllm) {
+              const r = await fns.webllm([{ role: 'user', content: prompt }], {});
+              resText = typeof r === 'string' ? r : r?.text || r?.output_text || '';
+            }
+          } catch (e) {
+            ev.source?.postMessage({ type: data.type + '_ERR', reqId, error: String(e?.message || e) }, '*');
+            return;
+          }
+          ev.source?.postMessage({ type: data.type + '_OK', reqId, text: resText }, '*');
+        } catch (_) {}
+      });
+    }
+  } catch (_) {}
 
   // 统一调用主API的函数：不入聊天楼层，直接返回文本
   async function callMainApiWithPrompt(promptText) {
