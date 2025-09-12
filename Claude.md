@@ -2,3 +2,6 @@
 - We aim for single correct way to achieve our goal, forbid to use backup plans and functions.
 - The original Sillty Tavern code is inside D:\SillyTavern\SillyTavern this route.
 - More information about Silly Tavern can be found here: https://deepwiki.com/SillyTavern/SillyTavern
+- Remember rules when we develope this extension:
+- 1. When designing, can reference famous desgin pages and applications, especially openai or claude/Gemini web frontpages, make the page beautiful and user friendly at the same time. 
+- 2. Make the function names clear and easy to understand.      

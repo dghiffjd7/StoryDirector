@@ -9948,6 +9948,11 @@ function renderOutlineParagraphs() {
   // 设置编辑功能
   setupParagraphEditing();
 
+  // 初始化增强聚焦系统
+  if (!enhancedFocusSystem) {
+    enhancedFocusSystem = new EnhancedFocusSystem();
+  }
+
   // 设置批量管理功能
   setupBatchManagement();
 
@@ -10152,6 +10157,389 @@ function setupParagraphEditing() {
       }
     });
 }
+
+/**
+ * Enhanced Focus System - 增强型聚焦系统
+ */
+class EnhancedFocusSystem {
+  constructor() {
+    this.currentFocusedParagraph = null;
+    this.currentDBlocks = [];
+    this.longPressTimer = null;
+    this.longPressDelay = 800; // 800ms for long press
+    this.focusOverlay = null;
+    this.dblocksContainer = null;
+    this.init();
+  }
+
+  init() {
+    this.focusOverlay = document.getElementById('focus-overlay');
+    this.dblocksContainer = document.getElementById('dblocks-container');
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    // Enhanced paragraph interactions
+    $(document)
+      .off('mousedown.focus touchstart.focus')
+      .on('mousedown.focus touchstart.focus', '.outline-paragraph', e => {
+        this.handleParagraphPress(e);
+      })
+      .off('mouseup.focus touchend.focus mouseleave.focus')
+      .on('mouseup.focus touchend.focus mouseleave.focus', '.outline-paragraph', e => {
+        this.handleParagraphRelease(e);
+      })
+      .off('click.focus')
+      .on('click.focus', '.paragraph-action[data-action="generate-details"]', e => {
+        e.stopPropagation();
+        const paragraphId = $(e.target).closest('.outline-paragraph').data('paragraph-id');
+        this.focusAndGenerateDetails(paragraphId);
+      });
+
+    // Focus overlay click to unfocus
+    $(this.focusOverlay).on('click', () => {
+      this.unfocusParagraph();
+    });
+
+    // Escape key to unfocus
+    $(document).on('keydown.focus', e => {
+      if (e.key === 'Escape' && this.currentFocusedParagraph) {
+        this.unfocusParagraph();
+      }
+    });
+  }
+
+  handleParagraphPress(e) {
+    // Don't start long press if clicking on buttons or content editing area
+    if ($(e.target).closest('.paragraph-actions, .paragraph-content[contenteditable="true"]').length) {
+      return;
+    }
+
+    const $paragraph = $(e.target).closest('.outline-paragraph');
+    if (!$paragraph.length) return;
+
+    const paragraphId = $paragraph.data('paragraph-id');
+
+    // Clear any existing timer
+    this.clearLongPressTimer();
+
+    // Start long press timer
+    this.longPressTimer = setTimeout(() => {
+      this.focusParagraph(paragraphId);
+      $paragraph.removeClass('long-pressing'); // Remove press indication
+    }, this.longPressDelay);
+
+    // Add visual feedback for long press
+    $paragraph.addClass('long-pressing');
+  }
+
+  handleParagraphRelease(e) {
+    const $paragraph = $(e.target).closest('.outline-paragraph');
+    $paragraph.removeClass('long-pressing');
+    this.clearLongPressTimer();
+  }
+
+  clearLongPressTimer() {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  }
+
+  async focusParagraph(paragraphId) {
+    console.log('[Enhanced Focus] Focusing paragraph:', paragraphId);
+
+    if (this.currentFocusedParagraph === paragraphId) {
+      return; // Already focused
+    }
+
+    // Unfocus current if any
+    if (this.currentFocusedParagraph) {
+      this.unfocusParagraph();
+    }
+
+    const $paragraph = $(`.outline-paragraph[data-paragraph-id="${paragraphId}"]`);
+    if (!$paragraph.length) return;
+
+    this.currentFocusedParagraph = paragraphId;
+
+    // Store original position and styling
+    const originalRect = $paragraph[0].getBoundingClientRect();
+    $paragraph.data('original-position', {
+      top: originalRect.top,
+      left: originalRect.left,
+      position: $paragraph.css('position'),
+      transform: $paragraph.css('transform'),
+    });
+
+    // Apply focus styling and positioning
+    $paragraph.addClass('focused');
+
+    // Calculate centered position
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    const paragraphWidth = $paragraph.outerWidth();
+    const paragraphHeight = $paragraph.outerHeight();
+
+    $paragraph.css({
+      top: centerY - paragraphHeight / 2,
+      left: centerX - paragraphWidth / 2,
+      position: 'fixed',
+      zIndex: 1001,
+    });
+
+    // Show focus overlay
+    this.focusOverlay.classList.add('active');
+
+    // Load and display associated DBlocks
+    await this.loadAndDisplayDBlocks(paragraphId);
+  }
+
+  unfocusParagraph() {
+    if (!this.currentFocusedParagraph) return;
+
+    console.log('[Enhanced Focus] Unfocusing paragraph:', this.currentFocusedParagraph);
+
+    const $paragraph = $(`.outline-paragraph[data-paragraph-id="${this.currentFocusedParagraph}"]`);
+
+    if ($paragraph.length) {
+      // Restore original position
+      const originalPos = $paragraph.data('original-position');
+      if (originalPos) {
+        $paragraph.css({
+          position: originalPos.position || 'relative',
+          top: 'auto',
+          left: 'auto',
+          transform: originalPos.transform || 'none',
+          zIndex: 'auto',
+        });
+      }
+
+      $paragraph.removeClass('focused');
+    }
+
+    // Hide focus overlay
+    this.focusOverlay.classList.remove('active');
+
+    // Clear DBlocks
+    this.clearDBlocks();
+
+    this.currentFocusedParagraph = null;
+  }
+
+  async focusAndGenerateDetails(paragraphId) {
+    // Focus the paragraph first
+    this.focusParagraph(paragraphId);
+
+    // Then start generating details
+    await this.generateDetailsForFocusedParagraph(paragraphId);
+  }
+
+  async generateDetailsForFocusedParagraph(paragraphId) {
+    const paragraph = outlineParagraphs.find(p => p.id === paragraphId);
+    if (!paragraph) return;
+
+    const $paragraph = $(`.outline-paragraph[data-paragraph-id="${paragraphId}"]`);
+    $paragraph.addClass('generating-details');
+
+    try {
+      console.log('[Enhanced Focus] Generating details for paragraph:', paragraphId);
+
+      // Use existing detail generation logic
+      await generateDetailsForParagraph(paragraphId);
+
+      // After generation, reload DBlocks
+      await this.loadAndDisplayDBlocks(paragraphId);
+    } catch (error) {
+      console.error('[Enhanced Focus] Error generating details:', error);
+      showNotification('生成细纲时出错', 'error');
+    } finally {
+      $paragraph.removeClass('generating-details');
+    }
+  }
+
+  async loadAndDisplayDBlocks(paragraphId) {
+    // Clear existing DBlocks
+    this.clearDBlocks();
+
+    // Get current outline and detail outlines
+    const currentOutline = versionManager.getCurrentOutline();
+    if (!currentOutline) return;
+
+    const detailOutlines = versionManager.getDetailOutlines(currentOutline.id);
+    if (detailOutlines.length === 0) return;
+
+    // Filter details related to this paragraph (by chapter index or content matching)
+    const paragraph = outlineParagraphs.find(p => p.id === paragraphId);
+    if (!paragraph) return;
+
+    // For now, show all detail outlines. In a more advanced version,
+    // you could match them by chapter index or content analysis
+    const relatedDetails = detailOutlines.slice(0, 5); // Limit to 5 satellites
+
+    // Create DBlocks for each detail outline
+    relatedDetails.forEach((detail, index) => {
+      this.createDBlock(detail, index + 1);
+    });
+  }
+
+  createDBlock(detailOutline, orbitIndex) {
+    const dblock = document.createElement('div');
+    dblock.className = `dblock orbit-${orbitIndex}`;
+    dblock.dataset.detailId = detailOutline.id;
+
+    // Get focused paragraph position for orbit center
+    const $focusedParagraph = $(`.outline-paragraph[data-paragraph-id="${this.currentFocusedParagraph}"]`);
+    const rect = $focusedParagraph[0].getBoundingClientRect();
+    const centerX = rect.left + rect.width / 2;
+    const centerY = rect.top + rect.height / 2;
+
+    // Position the orbit center
+    dblock.style.left = centerX + 'px';
+    dblock.style.top = centerY + 'px';
+
+    // Create content
+    const title = detailOutline.title || '详细大纲';
+    const content = detailOutline.content || '';
+    const truncatedContent = content.length > 100 ? content.substring(0, 100) + '...' : content;
+
+    dblock.innerHTML = `
+      <div class="dblock-header">
+        <div class="dblock-title">${title}</div>
+        <div class="dblock-actions">
+          <button class="dblock-action" data-action="copy" title="复制">📋</button>
+          <button class="dblock-action" data-action="edit" title="编辑">✏️</button>
+          <button class="dblock-action" data-action="delete" title="删除">🗑️</button>
+        </div>
+      </div>
+      <div class="dblock-content" contenteditable="false">${truncatedContent}</div>
+    `;
+
+    // Add event listeners
+    this.setupDBlockEvents(dblock);
+
+    // Add to container
+    this.dblocksContainer.appendChild(dblock);
+    this.currentDBlocks.push(dblock);
+  }
+
+  setupDBlockEvents(dblock) {
+    const $dblock = $(dblock);
+
+    // Click to focus DBlock
+    $dblock.on('click', e => {
+      if ($(e.target).closest('.dblock-action').length) return;
+      this.focusDBlock(dblock);
+    });
+
+    // DBlock actions
+    $dblock.on('click', '.dblock-action', e => {
+      e.stopPropagation();
+      const action = $(e.target).data('action');
+      const detailId = dblock.dataset.detailId;
+      this.handleDBlockAction(action, detailId, dblock);
+    });
+
+    // Double-click to edit content
+    $dblock.on('dblclick', '.dblock-content', e => {
+      e.preventDefault();
+      this.enableDBlockEditing(dblock);
+    });
+  }
+
+  focusDBlock(dblock) {
+    // Unfocus other DBlocks
+    this.currentDBlocks.forEach(block => {
+      block.classList.remove('focused');
+    });
+
+    // Focus this DBlock
+    dblock.classList.add('focused');
+
+    // Center it on screen
+    const rect = dblock.getBoundingClientRect();
+    const centerX = window.innerWidth / 2 - rect.width / 2;
+    const centerY = window.innerHeight / 2 - rect.height / 2;
+
+    dblock.style.left = centerX + 'px';
+    dblock.style.top = centerY + 'px';
+  }
+
+  enableDBlockEditing(dblock) {
+    const $content = $(dblock).find('.dblock-content');
+    const detailId = dblock.dataset.detailId;
+    const detail = versionManager.getOutline(detailId);
+
+    if (!detail) return;
+
+    $content.attr('contenteditable', 'true');
+    $content.focus();
+    $content.text(detail.content); // Show full content for editing
+
+    // Save on blur
+    $content.on('blur.dblock-edit', function () {
+      const newContent = $(this).text().trim();
+      detail.content = newContent;
+      versionManager.saveToLocalStorage();
+
+      // Update display
+      const truncated = newContent.length > 100 ? newContent.substring(0, 100) + '...' : newContent;
+      $(this).html(truncated);
+      $(this).attr('contenteditable', 'false');
+      $(this).off('blur.dblock-edit');
+
+      showNotification('细纲已更新', 'success');
+    });
+
+    // Save on Enter
+    $content.on('keydown.dblock-edit', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        $(this).blur();
+        e.preventDefault();
+      }
+      if (e.key === 'Escape') {
+        $(this).attr('contenteditable', 'false');
+        $(this).off('blur.dblock-edit keydown.dblock-edit');
+      }
+    });
+  }
+
+  handleDBlockAction(action, detailId, dblock) {
+    const detail = versionManager.getOutline(detailId);
+    if (!detail) return;
+
+    switch (action) {
+      case 'copy':
+        navigator.clipboard.writeText(detail.content).then(() => {
+          showNotification('细纲已复制到剪贴板', 'success');
+        });
+        break;
+
+      case 'edit':
+        this.enableDBlockEditing(dblock);
+        break;
+
+      case 'delete':
+        if (confirm('确定删除此细纲？')) {
+          versionManager.deleteVersion(detailId);
+          dblock.remove();
+          this.currentDBlocks = this.currentDBlocks.filter(block => block !== dblock);
+          showNotification('细纲已删除', 'success');
+        }
+        break;
+    }
+  }
+
+  clearDBlocks() {
+    this.currentDBlocks.forEach(dblock => {
+      dblock.remove();
+    });
+    this.currentDBlocks = [];
+  }
+}
+
+// Initialize the enhanced focus system
+let enhancedFocusSystem;
 
 /**
  * 复制段落
