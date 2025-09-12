@@ -1,12 +1,12 @@
 {
-  "display_name": "Story Weaver",
+  "display_name": "Story Weaver - 故事大纲生成器",
   "version": "1.0.0",
   "author": "Story Weaver Team",
-  "js": "index.js",
+  "description": "AI-powered story outline generator with advanced focus system and satellite detail blocks",
+  "js": "extension.js",
   "css": "style.css",
-  "loading_order": 10,
+  "loading_order": 50,
   "requires": [],
-  "dependencies": [],
-  "homePage": "https://github.com/your-username/story-weaver-plugin",
-  "auto_update": false
+  "optional": [],
+  "homePage": "https://github.com/your-username/story-weaver-extension"
 }

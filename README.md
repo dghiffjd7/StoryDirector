@@ -1,11 +1,12 @@
 # Story Weaver - 故事大纲生成器
 
-![Story Weaver Logo](https://img.shields.io/badge/Story%20Weaver-故事大纲生成器-blue?style=for-the-badge)
-![Version](https://img.shields.io/badge/Version-1.0.0-green?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=flat-square)
-![SillyTavern](https://img.shields.io/badge/SillyTavern-Compatible-purple?style=flat-square)
+![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![SillyTavern](https://img.shields.io/badge/SillyTavern-Extension-purple.svg)
 
-一个为 SillyTavern 设计的智能故事大纲生成插件，能够读取世界书设定，结合用户创作需求，自动生成结构化的故事大纲，为角色扮演和小说创作提供强有力的辅助工具。
+一个为 SillyTavern 设计的AI驱动故事大纲生成器扩展，具有先进的聚焦系统和卫星详细块功能。
+
+An AI-powered story outline generator extension for SillyTavern with advanced focus system and satellite detail blocks.
 
 ## ✨ 核心特性
 
@@ -37,26 +38,50 @@
 - **浏览器**：Chrome 90+, Firefox 88+, Safari 14+
 - **后端支持**：KoboldCPP, Oobabooga, OpenAI API 等
 
-## 🚀 快速安装
+## 📦 安装方法 Installation
 
-### 通过GitHub链接安装（推荐）
+### 方法一：手动安装 Manual Installation
 
-1. **打开SillyTavern**
-   启动您的SillyTavern应用
+1. **下载扩展文件**
+   - 下载本扩展的所有文件到本地
+   - 或使用 Git 克隆：`git clone <repository-url>`
 
-2. **进入扩展面板**
-   点击顶部菜单栏的 "扩展" 按钮
-
-3. **安装扩展**
-   - 在扩展面板中，找到 "安装扩展" 选项
-   - 输入以下GitHub仓库URL：
+2. **复制到扩展目录**
+   将 `story-weaver` 文件夹复制到 SillyTavern 的第三方扩展目录：
    ```
-   https://github.com/your-username/story-weaver-plugin
+   SillyTavern/public/scripts/extensions/third-party/story-weaver/
    ```
 
-4. **启用并使用**
-   - 安装完成后，在扩展设置中找到 "📖 Story Weaver"
-   - 点击 "📖 打开Story Weaver面板" 按钮开始使用
+3. **确保文件结构正确**
+   ```
+   SillyTavern/public/scripts/extensions/third-party/story-weaver/
+   ├── manifest.json
+   ├── extension.js
+   ├── style.css
+   └── README.md
+   ```
+
+4. **重启 SillyTavern**
+   重启 SillyTavern 服务器以加载新扩展。
+
+5. **启用扩展**
+   在 SillyTavern 的扩展管理界面中找到并启用 "Story Weaver - 故事大纲生成器" 扩展。
+
+### 方法二：Git 子模块 Git Submodule (推荐)
+
+如果你想要更容易地更新扩展：
+
+```bash
+cd SillyTavern/public/scripts/extensions/third-party/
+git submodule add <repository-url> story-weaver
+```
+
+### 验证安装 Verify Installation
+
+安装成功后，你应该能看到：
+- 扩展管理页面中显示 "Story Weaver - 故事大纲生成器"
+- 聊天界面右侧出现扩展面板
+- 可以使用 `/story-weaver` 或 `/sw` 斜杠命令
 
 ## 📖 使用指南
 
