@@ -38,9 +38,19 @@ const DETAIL_LEVELS = {
  * Create and initialize the floating spirit ball
  */
 function createFloatingSpiritBall() {
+  console.log('[SW] Creating floating spirit ball...');
+  
+  // Check if document.body exists
+  if (!document.body) {
+    console.warn('[SW] document.body not ready, retrying in 100ms...');
+    setTimeout(createFloatingSpiritBall, 100);
+    return;
+  }
+  
   // Remove existing spirit ball if present
   const existing = document.getElementById('story-weaver-spirit');
   if (existing) {
+    console.log('[SW] Removing existing spirit ball');
     existing.remove();
   }
 
@@ -61,11 +71,21 @@ function createFloatingSpiritBall() {
 
   // Add spirit ball styles
   const styles = document.createElement('style');
+  styles.id = 'story-weaver-spirit-styles';
   styles.textContent = getSpiritBallCSS();
+  
+  // Remove existing styles first
+  const existingStyles = document.getElementById('story-weaver-spirit-styles');
+  if (existingStyles) {
+    existingStyles.remove();
+  }
+  
   document.head.appendChild(styles);
+  console.log('[SW] Spirit ball styles added');
 
   // Add to document body
   document.body.appendChild(spiritBall);
+  console.log('[SW] Spirit ball added to DOM');
 
   // Make draggable and clickable
   makeSpiritBallInteractive(spiritBall);
@@ -78,7 +98,7 @@ function createFloatingSpiritBall() {
     spiritBall.classList.add('sw-spirit-visible');
   }, 500);
 
-  console.log('Story Weaver Spirit Ball created and ready!');
+  console.log('[SW] Spirit Ball created and ready!');
   showWelcomeNotification();
 }
 
@@ -462,7 +482,7 @@ function positionSpiritBall(spiritBall) {
       spiritBall.style.bottom = 'auto';
       return;
     } catch (e) {
-      console.warn('Failed to load saved spirit position');
+      console.warn('[SW] Failed to load saved spirit position');
     }
   }
   
@@ -579,7 +599,7 @@ function init() {
   // Create floating spirit ball
   createFloatingSpiritBall();
   
-  console.log('Story Weaver Enhanced v2.0 initialized with floating spirit ball');
+  console.log('[SW] Story Weaver Enhanced v2.0 initialized with floating spirit ball');
 }
 
 /**
@@ -632,14 +652,17 @@ function toggleSpiritBall() {
       spiritBall.style.display = 'block';
       setTimeout(() => spiritBall.classList.add('sw-spirit-visible'), 50);
       showNotification('精灵球已显示', 'success');
+      console.log('[SW] Spirit ball shown');
     } else {
       spiritBall.classList.remove('sw-spirit-visible');
       setTimeout(() => spiritBall.style.display = 'none', 300);
       showNotification('精灵球已隐藏', 'info');
+      console.log('[SW] Spirit ball hidden');
     }
   } else {
     createFloatingSpiritBall();
     showNotification('精灵球已创建', 'success');
+    console.log('[SW] Spirit ball created via toggle command');
   }
 }
 
@@ -693,6 +716,7 @@ function openStoryWeaverInterface() {
   });
   
   showNotification('Story Weaver Enhanced 已打开', 'success');
+  console.log('[SW] Interface opened successfully');
 }
 
 /**
@@ -818,7 +842,7 @@ function getWorldbookEntries() {
   try {
     return TavernHelper.getWorldbookEntries() || [];
   } catch (error) {
-    console.warn('Failed to get worldbook entries:', error);
+    console.warn('[SW] Failed to get worldbook entries:', error);
     return [];
   }
 }
@@ -830,7 +854,7 @@ function getCharacterData() {
   try {
     return TavernHelper.getCharacterData() || null;
   } catch (error) {
-    console.warn('Failed to get character data:', error);
+    console.warn('[SW] Failed to get character data:', error);
     return null;
   }
 }
@@ -842,7 +866,7 @@ function getChatHistory(length = 10) {
   try {
     return TavernHelper.getChatHistory(length) || [];
   } catch (error) {
-    console.warn('Failed to get chat history:', error);
+    console.warn('[SW] Failed to get chat history:', error);
     return [];
   }
 }
@@ -854,7 +878,7 @@ function resolveSystemPrompt() {
   try {
     return TavernHelper.getSystemPrompt() || '';
   } catch (error) {
-    console.warn('Failed to get system prompt:', error);
+    console.warn('[SW] Failed to get system prompt:', error);
     return '';
   }
 }
@@ -866,7 +890,7 @@ function resolveMemorySummary() {
   try {
     return TavernHelper.getMemorySummary() || '';
   } catch (error) {
-    console.warn('Failed to get memory summary:', error);
+    console.warn('[SW] Failed to get memory summary:', error);
     return '';
   }
 }
@@ -878,7 +902,7 @@ function resolveAuthorsNote() {
   try {
     return TavernHelper.getAuthorsNote() || '';
   } catch (error) {
-    console.warn('Failed to get authors note:', error);
+    console.warn('[SW] Failed to get authors note:', error);
     return '';
   }
 }
@@ -890,7 +914,7 @@ function resolveJailbreak() {
   try {
     return TavernHelper.getJailbreak() || '';
   } catch (error) {
-    console.warn('Failed to get jailbreak:', error);
+    console.warn('[SW] Failed to get jailbreak:', error);
     return '';
   }
 }
@@ -902,11 +926,13 @@ function resolveJailbreak() {
  */
 async function generateStoryOutline(settings) {
   try {
+    console.log('[SW] Starting story generation...');
     showNotification('开始生成故事大纲...', 'info');
     
     const template = settings.customPromptTemplate || getDefaultPromptTemplate();
     const prompt = processPromptTemplate(template, settings);
     
+    console.log('[SW] Calling TavernHelper.generateRaw...');
     const response = await TavernHelper.generateRaw(prompt, {
       temperature: 0.8,
       max_tokens: 4000,
@@ -914,6 +940,7 @@ async function generateStoryOutline(settings) {
     });
     
     if (response && response.trim()) {
+      console.log('[SW] Generation successful, result length:', response.length);
       // Send result to chat if interface not open
       TavernHelper.sendMessage(`## 📖 Story Outline Generated\n\n${response}`);
       showNotification('故事大纲生成完成！', 'success');
@@ -922,7 +949,7 @@ async function generateStoryOutline(settings) {
       throw new Error('生成结果为空');
     }
   } catch (error) {
-    console.error('Story generation failed:', error);
+    console.error('[SW] Story generation failed:', error);
     showNotification(`生成失败: ${error.message}`, 'error');
     throw error;
   }
@@ -1069,7 +1096,7 @@ function loadSettings() {
     try {
       return JSON.parse(saved);
     } catch (error) {
-      console.error('Failed to load settings:', error);
+      console.error('[SW] Failed to load settings:', error);
       return getDefaultSettings();
     }
   }
@@ -1282,25 +1309,130 @@ function showNotification(message, type = 'info') {
 
 // ========================= AUTO-INITIALIZATION =========================
 
-// Auto-initialize when script is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  // Delay initialization to ensure TavernHelper is ready
-  setTimeout(init, 1000);
-});
-
-// Also initialize immediately if document is already loaded
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', init);
-} else {
-  setTimeout(init, 100);
+/**
+ * Initialize the extension
+ */
+function initializeStoryWeaver() {
+  console.log('[SW] Starting Story Weaver initialization...');
+  
+  try {
+    // Check if TavernHelper is available
+    if (typeof TavernHelper === 'undefined') {
+      console.warn('[SW] TavernHelper not found, retrying in 1 second...');
+      setTimeout(initializeStoryWeaver, 1000);
+      return;
+    }
+    
+    console.log('[SW] TavernHelper found, initializing...');
+    
+    // Initialize the extension
+    init();
+    
+    console.log('[SW] Story Weaver initialized successfully!');
+    
+  } catch (error) {
+    console.error('[SW] Initialization failed:', error);
+    setTimeout(initializeStoryWeaver, 2000); // Retry after 2 seconds
+  }
 }
+
+/**
+ * Force create spirit ball (for debugging)
+ */
+function forceCreateSpiritBall() {
+  console.log('[SW] Force creating spirit ball...');
+  
+  // Remove existing first
+  const existing = document.getElementById('story-weaver-spirit');
+  if (existing) {
+    console.log('[SW] Removing existing spirit ball');
+    existing.remove();
+  }
+  
+  // Create new one
+  createFloatingSpiritBall();
+  console.log('[SW] Spirit ball creation attempted');
+  
+  // Check if it was created successfully
+  setTimeout(() => {
+    const created = document.getElementById('story-weaver-spirit');
+    if (created) {
+      console.log('[SW] ✅ Spirit ball successfully created and visible');
+    } else {
+      console.error('[SW] ❌ Spirit ball creation failed');
+    }
+  }, 1000);
+}
+
+/**
+ * Debug function to check environment
+ */
+function debugEnvironment() {
+  console.log('[SW] === Environment Debug Info ===');
+  console.log('[SW] Document ready state:', document.readyState);
+  console.log('[SW] Document body exists:', !!document.body);
+  console.log('[SW] TavernHelper available:', typeof TavernHelper !== 'undefined');
+  console.log('[SW] Spirit ball exists:', !!document.getElementById('story-weaver-spirit'));
+  console.log('[SW] Window width:', window.innerWidth);
+  console.log('[SW] Window height:', window.innerHeight);
+  console.log('[SW] User agent:', navigator.userAgent);
+  
+  if (typeof TavernHelper !== 'undefined') {
+    try {
+      console.log('[SW] TavernHelper methods:', Object.keys(TavernHelper));
+    } catch (e) {
+      console.log('[SW] Could not enumerate TavernHelper methods');
+    }
+  }
+  
+  const existing = document.getElementById('story-weaver-spirit');
+  if (existing) {
+    console.log('[SW] Spirit ball computed style display:', window.getComputedStyle(existing).display);
+    console.log('[SW] Spirit ball computed style visibility:', window.getComputedStyle(existing).visibility);
+    console.log('[SW] Spirit ball computed style opacity:', window.getComputedStyle(existing).opacity);
+    console.log('[SW] Spirit ball bounding rect:', existing.getBoundingClientRect());
+  }
+  
+  console.log('[SW] === End Debug Info ===');
+}
+
+// Multiple initialization attempts for different scenarios
+console.log('[SW] Script loaded, document state:', document.readyState);
+
+// Method 1: Immediate initialization if DOM is ready
+if (document.readyState === 'loading') {
+  console.log('[SW] DOM still loading, waiting for DOMContentLoaded...');
+  document.addEventListener('DOMContentLoaded', initializeStoryWeaver);
+} else {
+  console.log('[SW] DOM already loaded, initializing immediately...');
+  initializeStoryWeaver();
+}
+
+// Method 2: Backup timer initialization
+setTimeout(() => {
+  console.log('[SW] Backup initialization attempt...');
+  if (!document.getElementById('story-weaver-spirit')) {
+    console.log('[SW] Spirit ball not found, attempting backup creation...');
+    initializeStoryWeaver();
+  }
+}, 2000);
+
+// Method 3: Window load backup
+window.addEventListener('load', () => {
+  console.log('[SW] Window loaded, checking spirit ball...');
+  if (!document.getElementById('story-weaver-spirit')) {
+    console.log('[SW] Spirit ball missing after window load, creating...');
+    setTimeout(initializeStoryWeaver, 500);
+  }
+});
 
 // Save spirit position on page unload
 window.addEventListener('beforeunload', saveSpiritPosition);
 
-// Export main functions for external access
+// Export main functions for external access and debugging
 window.StoryWeaver = {
   init,
+  initializeStoryWeaver,
   openStoryWeaverInterface,
   generateStoryOutline,
   loadSettings,
@@ -1310,7 +1442,11 @@ window.StoryWeaver = {
   deletePreset,
   listPresets,
   createFloatingSpiritBall,
-  toggleSpiritBall
+  forceCreateSpiritBall,
+  toggleSpiritBall,
+  debugEnvironment
 };
 
-console.log('Story Weaver Enhanced with Floating Spirit Ball loaded successfully!');
+console.log('[SW] Story Weaver Enhanced with Floating Spirit Ball script loaded!');
+console.log('[SW] Use StoryWeaver.forceCreateSpiritBall() if spirit ball is not visible');
+console.log('[SW] Available debug functions:', Object.keys(window.StoryWeaver));
