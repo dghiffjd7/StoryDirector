@@ -15,9 +15,23 @@
           <span class="title-icon">📖</span>
           Story Weaver - 故事大纲生成器
         </h2>
-        <button id="close-panel" class="close-btn" title="关闭面板">
-          <span>✕</span>
-        </button>
+        <div class="header-controls">
+          <button id="import-preset" class="header-btn" title="导入预设">
+            <span>📥</span>
+          </button>
+          <button id="export-preset" class="header-btn" title="导出预设">
+            <span>📤</span>
+          </button>
+          <button id="minimize-panel" class="header-btn" title="最小化">
+            <span>➖</span>
+          </button>
+          <button id="show-help" class="header-btn" title="使用说明">
+            <span>❓</span>
+          </button>
+          <button id="close-panel" class="close-btn" title="关闭面板">
+            <span>✕</span>
+          </button>
+        </div>
       </div>
 
       <!-- 面板内容区域 -->
@@ -116,22 +130,24 @@
           </div>
         </section>
 
-        <!-- Prompt模板编辑器区 -->
+        <!-- 提示词预设说明区 -->
         <section class="content-section">
-          <details id="prompt-editor-container">
+          <details id="preset-info-container">
             <summary class="section-title prompt-summary">
-              <span class="section-icon">🧠</span>
-              编辑底层提示词模板 (Prompt)
+              <span class="section-icon">💾</span>
+              预设管理说明
               <span class="summary-arrow">▶</span>
             </summary>
             <div class="section-content">
-              <div class="form-group">
-                <label for="prompt-template-editor" class="form-label">
-                  您可以在此自定义用于生成大纲的完整提示词。插件会将 `{worldbook}`, `{character}`, `{requirements}`
-                  等占位符替换为实际内容。
-                </label>
-                <textarea id="prompt-template-editor" class="form-textarea prompt-editor" rows="15"></textarea>
-                <div class="form-help">提示：修改后将立即生效。如需恢复默认设置，可刷新插件或重新加载。</div>
+              <div class="form-help">
+                <p><strong>如何使用预设功能：</strong></p>
+                <ol>
+                  <li><strong>保存当前配置：</strong>在提示词管理器中点击💾保存按钮，输入预设名称即可保存当前的所有配置（包括提示词内容、启用状态、各种设置等）</li>
+                  <li><strong>切换预设：</strong>使用提示词管理器中的下拉选单可以快速切换到之前保存的预设</li>
+                  <li><strong>管理预设：</strong>点击⚙️按钮可以重命名、删除、导出预设，或查看预设详情</li>
+                  <li><strong>自动恢复：</strong>下次打开 SillyTavern 时，会自动加载上次使用的预设配置</li>
+                </ol>
+                <p><strong>预设包含的内容：</strong>所有提示词内容、启用/禁用状态、注入顺序、故事类型、详细程度、章节数量、各种开关选项等完整配置。</p>
               </div>
             </div>
           </details>
@@ -171,6 +187,9 @@
             <span class="section-icon">📄</span>
             生成结果
             <div class="title-actions">
+              <button id="generate-details" class="action-btn" title="生成选中章节的细纲">
+                <span class="btn-icon">📝</span>
+              </button>
               <button id="copy-result" class="action-btn" title="复制到剪贴板">
                 <span class="btn-icon">📋</span>
               </button>
@@ -184,10 +203,15 @@
           </h3>
           <div class="section-content">
             <div id="output-content" class="output-content">
-              <div class="output-placeholder">
+              <div id="output-placeholder" class="output-placeholder">
                 <span class="placeholder-icon">📝</span>
                 <p>故事大纲将在这里显示...</p>
                 <p class="placeholder-help">填写上方信息后点击"生成故事大纲"开始创作</p>
+              </div>
+              
+              <!-- 段落展示容器 -->
+              <div id="outline-paragraphs" class="outline-paragraphs hidden">
+                <!-- 段落项目将在这里动态生成 -->
               </div>
             </div>
             <div id="output-stats" class="output-stats hidden">

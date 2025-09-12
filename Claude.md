@@ -1,0 +1,4 @@
+- I will test the extension manually, do not create test files or test functions.
+- We aim for single correct way to achieve our goal, forbid to use backup plans and functions.
+- The original Sillty Tavern code is inside D:\SillyTavern\SillyTavern this route.
+- More information about Silly Tavern can be found here: https://deepwiki.com/SillyTavern/SillyTavern

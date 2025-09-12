@@ -434,7 +434,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         try {
           refreshBtn.disabled = true;
           refreshBtn.innerHTML = '<span class="btn-icon">🔄</span> 刷新中...';
-          
+
           const result = await refreshData();
           const statusDiv = panel.querySelector('#context-status');
           if (statusDiv) {
@@ -463,7 +463,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         try {
           previewBtn.disabled = true;
           previewBtn.innerHTML = '<span class="btn-icon">⏳</span> 加载中...';
-          
+
           await showWorldInfoPreview();
         } catch (error) {
           showNotification('预览世界书失败: ' + error.message, 'error');
@@ -481,7 +481,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         try {
           previewPromptBtn.disabled = true;
           previewPromptBtn.innerHTML = '<span class="btn-icon">⏳</span> 构建中...';
-          
+
           await showPromptPreview(panel);
         } catch (error) {
           showNotification('预览提示词失败: ' + error.message, 'error');
@@ -601,7 +601,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   async function getWorldInfoData(chatHistory = '') {
     try {
       console.log('[Story Weaver] Starting cross-window world info access...');
-      
+
       // Method 1: Access Parent Window's Context API
       if (window.parent && window.parent !== window) {
         console.log('[Story Weaver] Trying parent window context API...');
@@ -609,11 +609,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           const parentContext = window.parent.getContext && window.parent.getContext();
           if (parentContext && parentContext.loadWorldInfo) {
             console.log('[Story Weaver] Using parent context loadWorldInfo...');
-            
+
             // Try to get selected world info names
             const selectedWorlds = window.parent.selected_world_info || [];
             console.log('[Story Weaver] Selected worlds from parent:', selectedWorlds);
-            
+
             const allWorldData = [];
             for (const worldName of selectedWorlds) {
               try {
@@ -627,7 +627,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                 console.log(`[Story Weaver] Failed to load world ${worldName}:`, worldError);
               }
             }
-            
+
             if (allWorldData.length > 0) {
               const formattedEntries = allWorldData
                 .filter(entry => !entry.disable && entry.content?.trim())
@@ -638,7 +638,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                   return `**${title}${world}**\n${entry.content}`;
                 })
                 .join('\n\n');
-              
+
               console.log(`[Story Weaver] Found ${allWorldData.length} world info entries via parent context`);
               return formattedEntries;
             }
@@ -646,18 +646,18 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         } catch (contextError) {
           console.log('[Story Weaver] Parent context access failed:', contextError);
         }
-        
+
         // Method 2: Access World Info Variables Directly from Parent
         console.log('[Story Weaver] Trying direct parent window access...');
         try {
           // Import world info functions from parent
           const { getSortedEntries, selected_world_info, world_names } = window.parent;
-          
+
           console.log('[Story Weaver] Parent window properties:');
           console.log('- getSortedEntries:', typeof getSortedEntries);
           console.log('- selected_world_info:', selected_world_info);
           console.log('- world_names:', world_names);
-          
+
           if (typeof getSortedEntries === 'function') {
             console.log('[Story Weaver] Using parent getSortedEntries...');
             const entries = await getSortedEntries();
@@ -671,21 +671,21 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                   return `**${title}${world}**\n${entry.content}`;
                 })
                 .join('\n\n');
-              
+
               console.log(`[Story Weaver] Found ${entries.length} world info entries via parent getSortedEntries`);
               return formattedEntries;
             }
           }
-          
+
           // Try individual lore functions from parent
           const allEntries = [];
           const loreGetters = [
             { name: 'getGlobalLore', fn: window.parent.getGlobalLore },
             { name: 'getCharacterLore', fn: window.parent.getCharacterLore },
             { name: 'getChatLore', fn: window.parent.getChatLore },
-            { name: 'getPersonaLore', fn: window.parent.getPersonaLore }
+            { name: 'getPersonaLore', fn: window.parent.getPersonaLore },
           ];
-          
+
           for (const { name, fn } of loreGetters) {
             if (typeof fn === 'function') {
               try {
@@ -700,7 +700,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
               }
             }
           }
-          
+
           if (allEntries.length > 0) {
             const formattedEntries = allEntries
               .filter(entry => !entry.disable && entry.content && entry.content.trim())
@@ -711,14 +711,14 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                 return `**${title}${world}**\n${entry.content}`;
               })
               .join('\n\n');
-            
+
             console.log(`[Story Weaver] Found ${allEntries.length} world info entries via parent lore functions`);
             return formattedEntries;
           }
         } catch (directAccessError) {
           console.log('[Story Weaver] Direct parent access failed:', directAccessError);
         }
-        
+
         // Method 3: Access World Info During Parent's Prompt Generation
         console.log('[Story Weaver] Trying parent getWorldInfoPrompt...');
         try {
@@ -726,15 +726,18 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
             const parentChat = window.parent.chat || [];
             const chatForWI = parentChat.map(x => x.mes).reverse();
             console.log(`[Story Weaver] Using parent chat with ${chatForWI.length} messages`);
-            
-            const { worldInfoString, worldInfoBefore, worldInfoAfter } = 
-              await window.parent.getWorldInfoPrompt(chatForWI, 4096, true); // dry run
-            
+
+            const { worldInfoString, worldInfoBefore, worldInfoAfter } = await window.parent.getWorldInfoPrompt(
+              chatForWI,
+              4096,
+              true,
+            ); // dry run
+
             if (worldInfoString && worldInfoString.trim()) {
               console.log(`[Story Weaver] Found world info string: ${worldInfoString.length} characters`);
               return worldInfoString;
             }
-            
+
             if (worldInfoBefore && worldInfoAfter) {
               const combinedWorldInfo = worldInfoBefore + worldInfoAfter;
               if (combinedWorldInfo.trim()) {
@@ -747,37 +750,42 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           console.log('[Story Weaver] Parent getWorldInfoPrompt failed:', promptError);
         }
       }
-      
+
       // Method 4: PostMessage for Robust Communication
       console.log('[Story Weaver] Trying PostMessage communication...');
       if (window.parent && window.parent !== window) {
         try {
-          const worldInfoPromise = new Promise((resolve) => {
+          const worldInfoPromise = new Promise(resolve => {
             const timeout = setTimeout(() => {
               console.log('[Story Weaver] PostMessage timeout');
               resolve(null);
             }, 5000);
-            
-            const messageHandler = (event) => {
+
+            const messageHandler = event => {
               if (event.data.type === 'WORLD_INFO_RESPONSE') {
                 clearTimeout(timeout);
                 window.removeEventListener('message', messageHandler);
-                console.log(`[Story Weaver] Received world info via PostMessage: ${event.data.worldInfo?.length || 0} entries`);
+                console.log(
+                  `[Story Weaver] Received world info via PostMessage: ${event.data.worldInfo?.length || 0} entries`,
+                );
                 resolve(event.data.worldInfo);
               }
             };
-            
+
             window.addEventListener('message', messageHandler);
-            
+
             // Send request to parent
-            window.parent.postMessage({
-              type: 'REQUEST_WORLD_INFO',
-              requestId: Date.now()
-            }, '*');
-            
+            window.parent.postMessage(
+              {
+                type: 'REQUEST_WORLD_INFO',
+                requestId: Date.now(),
+              },
+              '*',
+            );
+
             console.log('[Story Weaver] Sent world info request via PostMessage');
           });
-          
+
           const worldInfoData = await worldInfoPromise;
           if (worldInfoData && worldInfoData.length > 0) {
             const formattedEntries = worldInfoData
@@ -789,7 +797,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                 return `**${title}${world}**\n${entry.content}`;
               })
               .join('\n\n');
-            
+
             console.log(`[Story Weaver] Found ${worldInfoData.length} world info entries via PostMessage`);
             return formattedEntries;
           }
@@ -797,10 +805,10 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           console.log('[Story Weaver] PostMessage communication failed:', messageError);
         }
       }
-      
+
       // Method 5: Fallback to current window (if extension runs in same window)
       console.log('[Story Weaver] Fallback to current window methods...');
-      
+
       // Try current window's functions
       if (typeof window.getSortedEntries === 'function') {
         try {
@@ -815,7 +823,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
                 return `**${title}${world}**\n${entry.content}`;
               })
               .join('\n\n');
-            
+
             console.log(`[Story Weaver] Found ${entries.length} world info entries using current window`);
             return formattedEntries;
           }
@@ -823,7 +831,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
           console.log('[Story Weaver] Current window getSortedEntries failed:', currentError);
         }
       }
-      
+
       // Debug information
       console.log('[Story Weaver] Cross-window debugging info:');
       console.log('- window.parent exists:', !!(window.parent && window.parent !== window));
@@ -831,7 +839,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       console.log('- window.parent.world_names:', window.parent?.world_names);
       console.log('- window.parent.getSortedEntries:', typeof window.parent?.getSortedEntries);
       console.log('- window.parent.getContext:', typeof window.parent?.getContext);
-      
+
       console.log('[Story Weaver] No world info found through any cross-window method');
       return '';
     } catch (error) {
@@ -849,33 +857,33 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
       const ctx = getCurrentContext();
       const characterId = ctx.characterId || window.this_chid;
       const characters = ctx.characters || window.characters || [];
-      
+
       if (characterId !== undefined && characters[characterId]) {
         const character = characters[characterId];
-        
+
         let characterInfo = `**角色名称**: ${character.name || 'Unknown'}\n\n`;
-        
+
         if (character.description) {
           characterInfo += `**角色描述**:\n${character.description}\n\n`;
         }
-        
+
         if (character.personality) {
           characterInfo += `**角色性格**:\n${character.personality}\n\n`;
         }
-        
+
         if (character.scenario) {
           characterInfo += `**场景设定**:\n${character.scenario}\n\n`;
         }
-        
+
         if (character.first_mes) {
           characterInfo += `**初始消息**:\n${character.first_mes}\n\n`;
         }
-        
+
         // Add example dialogue if available
         if (character.mes_example) {
           characterInfo += `**对话示例**:\n${character.mes_example}\n\n`;
         }
-        
+
         console.log('[Story Weaver] Character data loaded:', character.name);
         return characterInfo.trim();
       }
@@ -964,7 +972,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
   //
   // **输出选项**:
   // - 包含整体摘要: ${requirements.include_summary}
-  // - 包含角色发展: ${requirements.include_characters}  
+  // - 包含角色发展: ${requirements.include_characters}
   // - 包含主题分析: ${requirements.include_themes}
   //
   // 请基于当前的角色设定、世界观背景和聊天历史，生成一个结构化的故事大纲。大纲应该分为${requirements.chapter_count}个章节，每个章节包含详细的情节描述。请使用Markdown格式输出。`;
@@ -985,15 +993,17 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
       // Get the most recent messages up to the limit
       const messages = chat.slice(Math.max(0, chat.length - limit));
-      
+
       return messages
         .map(msg => {
           // Format each message with speaker name and content
-          const speaker = msg.is_user ? (ctx.name1 || window.name1 || 'User') : (msg.name || ctx.name2 || window.name2 || 'Assistant');
+          const speaker = msg.is_user
+            ? ctx.name1 || window.name1 || 'User'
+            : msg.name || ctx.name2 || window.name2 || 'Assistant';
           const content = msg.mes || '';
-          
+
           if (!content.trim()) return '';
-          
+
           return `**${speaker}**: ${content}`;
         })
         .filter(Boolean)
@@ -1011,32 +1021,34 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     try {
       const ctx = getCurrentContext();
       const chat = ctx.chat || window.chat || [];
-      
+
       if (!Array.isArray(chat) || chat.length === 0) {
         return {
           recentHistory: '',
           totalMessages: 0,
           userMessages: 0,
           assistantMessages: 0,
-          summary: '没有可用的聊天历史'
+          summary: '没有可用的聊天历史',
         };
       }
 
       const messages = chat.slice(Math.max(0, chat.length - limit));
       const userMessages = chat.filter(msg => msg.is_user).length;
       const assistantMessages = chat.filter(msg => !msg.is_user && !msg.is_system).length;
-      
+
       const recentHistory = messages
         .map(msg => {
-          const speaker = msg.is_user ? (ctx.name1 || window.name1 || 'User') : (msg.name || ctx.name2 || window.name2 || 'Assistant');
+          const speaker = msg.is_user
+            ? ctx.name1 || window.name1 || 'User'
+            : msg.name || ctx.name2 || window.name2 || 'Assistant';
           const content = msg.mes || '';
-          
+
           if (!content.trim()) return '';
-          
+
           // Add timestamp if available
           const timestamp = msg.send_date ? new Date(msg.send_date).toLocaleTimeString() : '';
           const timeStr = timestamp ? ` [${timestamp}]` : '';
-          
+
           return `**${speaker}**${timeStr}: ${content}`;
         })
         .filter(Boolean)
@@ -1047,7 +1059,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         totalMessages: chat.length,
         userMessages,
         assistantMessages,
-        summary: `总共 ${chat.length} 条消息 (用户: ${userMessages}, 角色: ${assistantMessages})`
+        summary: `总共 ${chat.length} 条消息 (用户: ${userMessages}, 角色: ${assistantMessages})`,
       };
     } catch (error) {
       console.error('[Story Weaver] Error getting enhanced chat history:', error);
@@ -1056,7 +1068,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
         totalMessages: 0,
         userMessages: 0,
         assistantMessages: 0,
-        summary: '读取聊天历史时出错'
+        summary: '读取聊天历史时出错',
       };
     }
   }
@@ -1281,7 +1293,7 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
     finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wi.after || '');
     finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData || 'No world info available');
     finalPrompt = finalPrompt.replace(/{character}/g, characterData || 'No character data available');
-    
+
     // Replace user requirement placeholders
     Object.entries(requirements).forEach(([key, value]) => {
       const regex = new RegExp(`{${key}}`, 'g');
@@ -1337,7 +1349,11 @@ Generate a story outline divided into {chapter_count} chapters. The outline shou
 
 ${characterData ? `**当前角色信息**:\n${characterData}` : ''}
 
-${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.summary}):\n${chatHistoryData.recentHistory}` : ''}`;
+${
+  chatHistoryData.recentHistory
+    ? `**最近对话历史** (${chatHistoryData.summary}):\n${chatHistoryData.recentHistory}`
+    : ''
+}`;
 
     // 构建任务提示词
     const taskPrompt = `请基于当前的世界观设定、角色信息和上下文，生成一个精彩的故事大纲：
@@ -1359,7 +1375,7 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
     return [
       { role: 'system', content: systemPrompt },
       { role: 'system', content: contextPrompt },
-      { role: 'user', content: taskPrompt }
+      { role: 'user', content: taskPrompt },
     ];
   }
 
@@ -1371,19 +1387,19 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
     while (retryCount < maxRetries) {
       try {
         let result;
-        
+
         // 只使用TavernHelper.generateRaw - 这样SillyTavern可以正确集成世界书
         if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
           console.log('[Story Weaver] Using TavernHelper.generateRaw with world info integration...');
           console.log('[Story Weaver] Sending prompts to TavernHelper:', orderedPrompts.length, 'prompts');
-          
+
           const generateOptions = {
             ordered_prompts: orderedPrompts,
             // 关键修改：不设置max_chat_history为0，让SillyTavern处理上下文和世界书
             // max_chat_history: 0, // 这会阻止世界书集成
             should_stream: false, // 确保稳定性
           };
-          
+
           console.log('[Story Weaver] Generate options:', generateOptions);
           result = await window.TavernHelper.generateRaw(generateOptions);
           console.log('[Story Weaver] TavernHelper returned result length:', result?.length || 0);
@@ -1410,7 +1426,7 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
         await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
       }
     }
-    
+
     return '';
   }
 
@@ -1470,7 +1486,7 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
   //   finalPrompt = finalPrompt.replace(/{worldInfoAfter}/g, wi.after || '');
   //   finalPrompt = finalPrompt.replace(/{worldbook}/g, worldbookData || 'No world info available');
   //   finalPrompt = finalPrompt.replace(/{character}/g, characterData || 'No character data available');
-  //   
+  //
   //   // Replace user requirement placeholders
   //   Object.entries(requirements).forEach(([key, value]) => {
   //     const regex = new RegExp(`{${key}}`, 'g');
@@ -1521,7 +1537,7 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
       console.log('[Story Weaver] Generating outline with structured prompts...');
       console.log(`[Story Weaver] Prompt structure:`, structuredPrompt);
       console.log(`[Story Weaver] Total prompts: ${structuredPrompt.length}`);
-      
+
       // 显示每个提示词的前100字符用于调试
       structuredPrompt.forEach((prompt, index) => {
         console.log(`[Story Weaver] Prompt ${index + 1} (${prompt.role}): ${prompt.content.substring(0, 100)}...`);
@@ -1529,7 +1545,7 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
 
       // 使用box.js完全相同的生成方式
       const resultText = await generateWithStructuredPrompt(structuredPrompt);
-      
+
       if (!resultText || !resultText.trim()) {
         throw new Error('AI未返回有效内容');
       }
@@ -1703,7 +1719,7 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
       characterLore: null,
       chatLore: null,
       personaLore: null,
-      customData: null
+      customData: null,
     };
 
     try {
@@ -1719,17 +1735,17 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
         previewData.globalLore = await window.getGlobalLore();
         console.log('[Story Weaver] getGlobalLore result:', previewData.globalLore?.length || 0, 'entries');
       }
-      
+
       if (typeof window.getCharacterLore === 'function') {
         previewData.characterLore = await window.getCharacterLore();
         console.log('[Story Weaver] getCharacterLore result:', previewData.characterLore?.length || 0, 'entries');
       }
-      
+
       if (typeof window.getChatLore === 'function') {
         previewData.chatLore = await window.getChatLore();
         console.log('[Story Weaver] getChatLore result:', previewData.chatLore?.length || 0, 'entries');
       }
-      
+
       if (typeof window.getPersonaLore === 'function') {
         previewData.personaLore = await window.getPersonaLore();
         console.log('[Story Weaver] getPersonaLore result:', previewData.personaLore?.length || 0, 'entries');
@@ -1738,14 +1754,13 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
       // 方法3: 我们的自定义函数
       previewData.customData = await getWorldInfoData('');
       console.log('[Story Weaver] Custom getWorldInfoData result:', previewData.customData?.length || 0, 'characters');
-
     } catch (error) {
       console.error('[Story Weaver] Error getting world info preview:', error);
     }
 
     // 构建预览内容
     let previewHtml = '';
-    
+
     // 显示getSortedEntries结果
     if (previewData.sortedEntries && previewData.sortedEntries.length > 0) {
       previewHtml += `<h3>📚 getSortedEntries() - ${previewData.sortedEntries.length}条条目</h3>`;
@@ -1753,7 +1768,10 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
         previewHtml += `<div style="border: 1px solid #ddd; margin: 5px 0; padding: 10px;">
           <strong>${entry.comment || entry.key || `条目${index + 1}`}</strong> 
           <span style="color: #666;">(world: ${entry.world || 'unknown'})</span>
-          <div style="margin-top: 5px; font-size: 12px; color: #333;">${(entry.content || '').substring(0, 200)}...</div>
+          <div style="margin-top: 5px; font-size: 12px; color: #333;">${(entry.content || '').substring(
+            0,
+            200,
+          )}...</div>
         </div>`;
       });
       if (previewData.sortedEntries.length > 5) {
@@ -1766,7 +1784,7 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
       { name: 'Global Lore', data: previewData.globalLore },
       { name: 'Character Lore', data: previewData.characterLore },
       { name: 'Chat Lore', data: previewData.chatLore },
-      { name: 'Persona Lore', data: previewData.personaLore }
+      { name: 'Persona Lore', data: previewData.personaLore },
     ];
 
     categories.forEach(category => {
@@ -1775,7 +1793,10 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
         category.data.slice(0, 3).forEach((entry, index) => {
           previewHtml += `<div style="border: 1px solid #ddd; margin: 5px 0; padding: 10px;">
             <strong>${entry.comment || entry.key || `条目${index + 1}`}</strong>
-            <div style="margin-top: 5px; font-size: 12px; color: #333;">${(entry.content || '').substring(0, 150)}...</div>
+            <div style="margin-top: 5px; font-size: 12px; color: #333;">${(entry.content || '').substring(
+              0,
+              150,
+            )}...</div>
           </div>`;
         });
       }
@@ -1784,7 +1805,10 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
     // 显示自定义函数结果
     if (previewData.customData && previewData.customData.trim()) {
       previewHtml += `<h3>🔧 自定义getWorldInfoData()结果</h3>`;
-      previewHtml += `<div style="border: 1px solid #ddd; margin: 5px 0; padding: 10px; font-size: 12px; color: #333; white-space: pre-wrap;">${previewData.customData.substring(0, 500)}...</div>`;
+      previewHtml += `<div style="border: 1px solid #ddd; margin: 5px 0; padding: 10px; font-size: 12px; color: #333; white-space: pre-wrap;">${previewData.customData.substring(
+        0,
+        500,
+      )}...</div>`;
     }
 
     if (!previewHtml) {
@@ -1832,10 +1856,10 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
     document.body.appendChild(modal);
 
     // 绑定关闭事件
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', e => {
       if (e.target === modal) modal.remove();
     });
-    
+
     modalContent.querySelector('#close-preview-modal').addEventListener('click', () => {
       modal.remove();
     });
@@ -1856,15 +1880,15 @@ ${chatHistoryData.recentHistory ? `**最近对话历史** (${chatHistoryData.sum
     try {
       // 构建完整的结构化提示词
       const structuredPrompt = await buildStructuredPrompt(panel);
-      
+
       // 获取世界书数据用于对比
       const worldInfoData = await getWorldInfoData('');
-      
+
       // 构建预览内容
       let previewHtml = '';
-      
+
       previewHtml += `<h3>📋 构建的结构化提示词 (${structuredPrompt.length}条)</h3>`;
-      
+
       structuredPrompt.forEach((prompt, index) => {
         previewHtml += `
           <div style="border: 1px solid #ddd; margin: 10px 0; border-radius: 4px;">
@@ -1937,14 +1961,13 @@ ${worldInfoData}
       document.body.appendChild(modal);
 
       // 绑定关闭事件
-      modal.addEventListener('click', (e) => {
+      modal.addEventListener('click', e => {
         if (e.target === modal) modal.remove();
       });
-      
+
       modalContent.querySelector('#close-prompt-modal').addEventListener('click', () => {
         modal.remove();
       });
-
     } catch (error) {
       console.error('[Story Weaver] Error building prompt preview:', error);
       showNotification('构建提示词预览失败: ' + error.message, 'error');
@@ -2155,24 +2178,31 @@ ${worldInfoData}
     try {
       // Listen for World Info entries loaded event
       if (typeof window.eventSource !== 'undefined' && typeof window.event_types !== 'undefined') {
-        window.eventSource.on(window.event_types.WORLDINFO_ENTRIES_LOADED, ({ globalLore, characterLore, chatLore, personaLore }) => {
-          console.log('[Story Weaver] World Info entries loaded:', {
-            global: globalLore?.length || 0,
-            character: characterLore?.length || 0,
-            chat: chatLore?.length || 0,
-            persona: personaLore?.length || 0
-          });
-          
-          // Update UI status if panel is open
-          const panel = document.getElementById('story-weaver-panel');
-          if (panel && panel.style.display !== 'none') {
-            const statusDiv = panel.querySelector('#context-status');
-            if (statusDiv) {
-              const totalEntries = (globalLore?.length || 0) + (characterLore?.length || 0) + (chatLore?.length || 0) + (personaLore?.length || 0);
-              updateStatus(statusDiv, `✅ 世界书数据已更新 - 总计 ${totalEntries} 条条目`, 'success');
+        window.eventSource.on(
+          window.event_types.WORLDINFO_ENTRIES_LOADED,
+          ({ globalLore, characterLore, chatLore, personaLore }) => {
+            console.log('[Story Weaver] World Info entries loaded:', {
+              global: globalLore?.length || 0,
+              character: characterLore?.length || 0,
+              chat: chatLore?.length || 0,
+              persona: personaLore?.length || 0,
+            });
+
+            // Update UI status if panel is open
+            const panel = document.getElementById('story-weaver-panel');
+            if (panel && panel.style.display !== 'none') {
+              const statusDiv = panel.querySelector('#context-status');
+              if (statusDiv) {
+                const totalEntries =
+                  (globalLore?.length || 0) +
+                  (characterLore?.length || 0) +
+                  (chatLore?.length || 0) +
+                  (personaLore?.length || 0);
+                updateStatus(statusDiv, `✅ 世界书数据已更新 - 总计 ${totalEntries} 条条目`, 'success');
+              }
             }
-          }
-        });
+          },
+        );
       }
 
       // Listen for character changes
@@ -2180,7 +2210,7 @@ ${worldInfoData}
         window.eventSource.on(window.event_types.CHARACTER_EDITED, () => {
           console.log('[Story Weaver] Character data updated');
         });
-        
+
         window.eventSource.on(window.event_types.CHAT_CHANGED, () => {
           console.log('[Story Weaver] Chat changed, updating data');
           // Auto-refresh data when chat changes
@@ -2320,9 +2350,12 @@ ${worldInfoData}
     const availableFunctions = {};
     possibleFunctions.forEach(fn => {
       if (fn === 'TavernHelper') {
-        availableFunctions[fn] = typeof window[fn] !== 'undefined' ? 
-          (typeof window[fn].generateRaw === 'function' ? 'Available with generateRaw' : 'Available but no generateRaw') : 
-          'undefined';
+        availableFunctions[fn] =
+          typeof window[fn] !== 'undefined'
+            ? typeof window[fn].generateRaw === 'function'
+              ? 'Available with generateRaw'
+              : 'Available but no generateRaw'
+            : 'undefined';
       } else {
         availableFunctions[fn] = typeof window[fn];
       }
@@ -2404,7 +2437,7 @@ ${worldInfoData}
   //   while (retryCount < maxRetries) {
   //     try {
   //       let result;
-  //       
+  //
   //       // 使用TavernHelper.generateRaw - 与box.js完全相同的方法
   //       if (typeof window.TavernHelper !== 'undefined' && window.TavernHelper.generateRaw) {
   //         console.log('[Story Weaver] Using TavernHelper.generateRaw...');
@@ -2454,7 +2487,7 @@ ${worldInfoData}
   //       await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
   //     }
   //   }
-  //   
+  //
   //   return '';
   // }
   // ============ 旧的方法结束 ============
@@ -2466,26 +2499,32 @@ ${worldInfoData}
     // This function should be called in SillyTavern's main window
     // to handle world info requests from the extension
     if (typeof window.getSortedEntries === 'function') {
-      window.addEventListener('message', async (event) => {
+      window.addEventListener('message', async event => {
         if (event.data.type === 'REQUEST_WORLD_INFO') {
           console.log('[Story Weaver Parent] Received world info request');
           try {
             const entries = await window.getSortedEntries();
             console.log(`[Story Weaver Parent] Sending ${entries?.length || 0} world info entries`);
-            
-            event.source.postMessage({
-              type: 'WORLD_INFO_RESPONSE',
-              requestId: event.data.requestId,
-              worldInfo: entries || []
-            }, '*');
+
+            event.source.postMessage(
+              {
+                type: 'WORLD_INFO_RESPONSE',
+                requestId: event.data.requestId,
+                worldInfo: entries || [],
+              },
+              '*',
+            );
           } catch (error) {
             console.error('[Story Weaver Parent] Failed to get world info:', error);
-            event.source.postMessage({
-              type: 'WORLD_INFO_RESPONSE',
-              requestId: event.data.requestId,
-              worldInfo: [],
-              error: error.message
-            }, '*');
+            event.source.postMessage(
+              {
+                type: 'WORLD_INFO_RESPONSE',
+                requestId: event.data.requestId,
+                worldInfo: [],
+                error: error.message,
+              },
+              '*',
+            );
           }
         }
       });
@@ -2497,5 +2536,4 @@ ${worldInfoData}
   if (window.parent === window && typeof window.getSortedEntries === 'function') {
     setupParentWindowMessageListener();
   }
-
 })();

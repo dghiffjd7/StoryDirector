@@ -1,8 +1,14 @@
 {
   "permissions": {
-    "defaultMode": "acceptEdits",
     "allow": [
-      "WebFetch(domain:deepwiki.com)"
+      "WebFetch(domain:deepwiki.com)",
+      "Bash(node:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
+    ],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": [
+      "/mnt/d/SillyTavern/SillyTavern"
     ]
   }
 }

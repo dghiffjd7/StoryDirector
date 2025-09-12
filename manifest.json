@@ -1,12 +1,12 @@
 {
   "display_name": "Story Weaver",
-  "loading_order": 1000,
-  "requires": [],
-  "optional": [],
-  "js": "script.js",
-  "css": "style.css",
-  "author": "Story Weaver Team",
   "version": "1.0.0",
+  "author": "Story Weaver Team",
+  "js": "index.js",
+  "css": "style.css",
+  "loading_order": 10,
+  "requires": [],
+  "dependencies": [],
   "homePage": "https://github.com/your-username/story-weaver-plugin",
-  "auto_update": true
+  "auto_update": false
 }
