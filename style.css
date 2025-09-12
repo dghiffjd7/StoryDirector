@@ -6,6 +6,111 @@
  * Extension Version: 1.0.0
  */
 
+/* ===== Extension Menu Styles ===== */
+
+/* Extension settings in the extensions menu */
+.extension_settings[data-extension-name="story-weaver"] {
+  background: var(--SmartThemeBodyColor, #222222);
+  border: 1px solid var(--SmartThemeBorderColor, #444444);
+  border-radius: 8px;
+  margin: 10px 0;
+  overflow: hidden;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .inline-drawer-header {
+  background: var(--SmartThemeQuoteColor, #333333);
+  padding: 12px 15px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--SmartThemeBorderColor, #444444);
+}
+
+.extension_settings[data-extension-name="story-weaver"] .inline-drawer-header b {
+  color: var(--SmartThemeTextColor, #ffffff);
+  font-size: 1rem;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .inline-drawer-content {
+  padding: 15px;
+  background: var(--SmartThemeBodyColor, #222222);
+}
+
+.extension_settings[data-extension-name="story-weaver"] .extension_description {
+  color: var(--SmartThemeTextColor, #cccccc);
+  font-size: 0.9rem;
+  margin-bottom: 15px;
+  line-height: 1.4;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .extension_controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .checkbox_label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--SmartThemeTextColor, #ffffff);
+  cursor: pointer;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .extension_setting {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .extension_setting label {
+  color: var(--SmartThemeTextColor, #ffffff);
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .extension_setting input,
+.extension_settings[data-extension-name="story-weaver"] .extension_setting select {
+  background: var(--SmartThemeQuoteColor, #333333);
+  border: 1px solid var(--SmartThemeBorderColor, #444444);
+  color: var(--SmartThemeTextColor, #ffffff);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .extension_setting input:focus,
+.extension_settings[data-extension-name="story-weaver"] .extension_setting select:focus {
+  outline: none;
+  border-color: var(--SmartThemeTextColor, #ffffff);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.2);
+}
+
+.extension_settings[data-extension-name="story-weaver"] .menu_button {
+  background: var(--SmartThemeQuoteColor, #333333);
+  border: 1px solid var(--SmartThemeBorderColor, #444444);
+  color: var(--SmartThemeTextColor, #ffffff);
+  padding: 10px 15px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.extension_settings[data-extension-name="story-weaver"] .menu_button:hover {
+  background: var(--SmartThemeBorderColor, #555555);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.extension_settings[data-extension-name="story-weaver"] hr {
+  border: none;
+  border-top: 1px solid var(--SmartThemeBorderColor, #444444);
+  margin: 15px 0;
+}
+
 /* ===== Extension Panel Integration Styles ===== */
 
 /* Extension Panel Container */

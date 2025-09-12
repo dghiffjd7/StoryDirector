@@ -37,11 +37,11 @@ jQuery(document).ready(function() {
   function createMainUI() {
     const html = `
       <div id="story-weaver-extension" class="story-weaver-extension" style="display:none;">
-        <div class="story-weaver-header">
-          <h3>📖 Story Weaver - 故事大纲生成器</h3>
+        <div class="extension-header">
+          <h3 class="extension-title">📖 Story Weaver - 故事大纲生成器</h3>
           <button class="sw-close-btn">&times;</button>
         </div>
-        <div class="story-weaver-content">
+        <div class="extension-content">
           <div class="sw-section">
             <h4>📚 数据源设置</h4>
             <button id="sw-read-worldbook" class="sw-btn">读取当前启用的世界书</button>
@@ -266,6 +266,97 @@ jQuery(document).ready(function() {
     });
   }
 
+  // Register extension in the extensions menu
+  function registerExtension() {
+    const extensionHtml = `
+      <div class="extension_settings" data-extension-name="${extensionName}">
+        <div class="inline-drawer">
+          <div class="inline-drawer-toggle inline-drawer-header">
+            <b>📖 Story Weaver - 故事大纲生成器</b>
+            <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+          </div>
+          <div class="inline-drawer-content">
+            <div class="extension_description">
+              AI-powered story outline generator with advanced focus system and satellite detail blocks.
+            </div>
+            <div class="extension_controls">
+              <label class="checkbox_label">
+                <input type="checkbox" id="sw-enable-auto-read" ${extension_settings[extensionName]?.enableAutoRead ? 'checked' : ''}>
+                <span>启用自动读取世界书 Enable Auto Read Worldbook</span>
+              </label>
+              <label class="checkbox_label">
+                <input type="checkbox" id="sw-include-dialogue" ${extension_settings[extensionName]?.includeDialogueHistory ? 'checked' : ''}>
+                <span>包含对话历史 Include Dialogue History</span>
+              </label>
+              <div class="extension_setting">
+                <label>历史消息数量 Max History Messages:</label>
+                <input type="number" id="sw-max-history" min="1" max="100" 
+                       value="${extension_settings[extensionName]?.maxHistoryMessages || 10}">
+              </div>
+              <div class="extension_setting">
+                <label>默认故事类型 Default Story Type:</label>
+                <select id="sw-default-story-type">
+                  <option value="fantasy" ${extension_settings[extensionName]?.defaultStoryType === 'fantasy' ? 'selected' : ''}>奇幻 Fantasy</option>
+                  <option value="romance" ${extension_settings[extensionName]?.defaultStoryType === 'romance' ? 'selected' : ''}>爱情 Romance</option>
+                  <option value="mystery" ${extension_settings[extensionName]?.defaultStoryType === 'mystery' ? 'selected' : ''}>悬疑 Mystery</option>
+                  <option value="scifi" ${extension_settings[extensionName]?.defaultStoryType === 'scifi' ? 'selected' : ''}>科幻 Sci-Fi</option>
+                </select>
+              </div>
+              <hr>
+              <button id="sw-open-panel" class="menu_button">🎭 打开故事生成器 Open Story Generator</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    // Add to extensions menu
+    $('#extensions_settings').append(extensionHtml);
+    
+    // Bind extension settings events
+    bindExtensionSettings();
+  }
+
+  // Bind extension settings events
+  function bindExtensionSettings() {
+    // Auto read checkbox
+    $(document).on('change', '#sw-enable-auto-read', function() {
+      extension_settings[extensionName].enableAutoRead = $(this).is(':checked');
+      if (typeof saveSettingsDebounced === 'function') {
+        saveSettingsDebounced();
+      }
+    });
+    
+    // Include dialogue checkbox
+    $(document).on('change', '#sw-include-dialogue', function() {
+      extension_settings[extensionName].includeDialogueHistory = $(this).is(':checked');
+      if (typeof saveSettingsDebounced === 'function') {
+        saveSettingsDebounced();
+      }
+    });
+    
+    // Max history input
+    $(document).on('change', '#sw-max-history', function() {
+      extension_settings[extensionName].maxHistoryMessages = parseInt($(this).val()) || 10;
+      if (typeof saveSettingsDebounced === 'function') {
+        saveSettingsDebounced();
+      }
+    });
+    
+    // Default story type select
+    $(document).on('change', '#sw-default-story-type', function() {
+      extension_settings[extensionName].defaultStoryType = $(this).val();
+      if (typeof saveSettingsDebounced === 'function') {
+        saveSettingsDebounced();
+      }
+    });
+    
+    // Open panel button
+    $(document).on('click', '#sw-open-panel', function() {
+      $('#story-weaver-extension').show();
+    });
+  }
+
   // Initialize extension
   function initExtension() {
     if (isExtensionLoaded) return;
@@ -274,6 +365,7 @@ jQuery(document).ready(function() {
     
     createMainUI();
     createToolbarButton();
+    registerExtension();
     bindEvents();
     
     isExtensionLoaded = true;
