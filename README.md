@@ -51,7 +51,7 @@
    - 在扩展面板中，找到 "安装扩展" 选项
    - 输入以下GitHub仓库URL：
    ```
-   https://github.com/your-username/story-weaver-plugin
+   https://github.com/dghiffjd7/StoryDirector
    ```
 
 4. **启用并使用**

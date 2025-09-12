@@ -4,7 +4,8 @@
       "WebFetch(domain:deepwiki.com)",
       "Bash(node:*)",
       "Bash(find:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "WebFetch(domain:n0vi028.github.io)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [

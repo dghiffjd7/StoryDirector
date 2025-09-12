@@ -2211,20 +2211,21 @@ ${worldInfoData}
           console.log('[Story Weaver] Character data updated');
         });
 
-        window.eventSource.on(window.event_types.CHAT_CHANGED, () => {
-          console.log('[Story Weaver] Chat changed, updating data');
-          // Auto-refresh data when chat changes
-          const panel = document.getElementById('story-weaver-panel');
-          if (panel && panel.style.display !== 'none') {
-            setTimeout(async () => {
-              const result = await refreshData();
-              const statusDiv = panel.querySelector('#context-status');
-              if (statusDiv) {
-                updateStatus(statusDiv, `🔄 聊天数据已更新 - ${result.chatHistory.summary}`, 'info');
-              }
-            }, 500);
-          }
-        });
+        // Temporarily disabled to fix ST freezing issue - remove automatic refresh on chat change
+        // window.eventSource.on(window.event_types.CHAT_CHANGED, () => {
+        //   console.log('[Story Weaver] Chat changed, updating data');
+        //   // Auto-refresh data when chat changes
+        //   const panel = document.getElementById('story-weaver-panel');
+        //   if (panel && panel.style.display !== 'none') {
+        //     setTimeout(async () => {
+        //       const result = await refreshData();
+        //       const statusDiv = panel.querySelector('#context-status');
+        //       if (statusDiv) {
+        //         updateStatus(statusDiv, `🔄 聊天数据已更新 - ${result.chatHistory.summary}`, 'info');
+        //       }
+        //     }, 500);
+        //   }
+        // });
       }
     } catch (error) {
       console.error('[Story Weaver] Error setting up World Info event listeners:', error);
