@@ -35,71 +35,81 @@ const DETAIL_LEVELS = {
 // ========================= FLOATING SPIRIT BALL =========================
 
 /**
- * Create and initialize the floating spirit ball
+ * Create and initialize the floating spirit ball on the main ST page
  */
 function createFloatingSpiritBall() {
   console.log('[SW] Creating floating spirit ball...');
   
-  // Check if document.body exists
-  if (!document.body) {
-    console.warn('[SW] document.body not ready, retrying in 100ms...');
+  // Try to inject into the main SillyTavern page
+  const mainDocument = window.parent ? window.parent.document : document;
+  const mainWindow = window.parent ? window.parent : window;
+  
+  console.log('[SW] Target document:', mainDocument === document ? 'same window' : 'parent window');
+  
+  // Check if target document body exists
+  if (!mainDocument.body) {
+    console.warn('[SW] Target document.body not ready, retrying in 100ms...');
     setTimeout(createFloatingSpiritBall, 100);
     return;
   }
   
   // Remove existing spirit ball if present
-  const existing = document.getElementById('story-weaver-spirit');
+  const existing = mainDocument.getElementById('story-weaver-spirit');
   if (existing) {
     console.log('[SW] Removing existing spirit ball');
     existing.remove();
   }
 
   // Create spirit ball container
-  const spiritBall = document.createElement('div');
+  const spiritBall = mainDocument.createElement('div');
   spiritBall.id = 'story-weaver-spirit';
   spiritBall.className = 'sw-spirit-ball';
   
   // Spirit ball HTML with animations
-  spiritBall.innerHTML = `
+  spiritBall.innerHTML = \`
     <div class="sw-spirit-inner">
       <div class="sw-spirit-icon">📖</div>
       <div class="sw-spirit-glow"></div>
       <div class="sw-spirit-pulse"></div>
     </div>
     <div class="sw-spirit-tooltip">Story Weaver<br>故事大纲生成器</div>
-  `;
+  \`;
 
-  // Add spirit ball styles
-  const styles = document.createElement('style');
+  // Add spirit ball styles to main document
+  const styles = mainDocument.createElement('style');
   styles.id = 'story-weaver-spirit-styles';
   styles.textContent = getSpiritBallCSS();
   
   // Remove existing styles first
-  const existingStyles = document.getElementById('story-weaver-spirit-styles');
+  const existingStyles = mainDocument.getElementById('story-weaver-spirit-styles');
   if (existingStyles) {
     existingStyles.remove();
   }
   
-  document.head.appendChild(styles);
-  console.log('[SW] Spirit ball styles added');
+  mainDocument.head.appendChild(styles);
+  console.log('[SW] Spirit ball styles added to main document');
 
-  // Add to document body
-  document.body.appendChild(spiritBall);
-  console.log('[SW] Spirit ball added to DOM');
+  // Add to main document body
+  mainDocument.body.appendChild(spiritBall);
+  console.log('[SW] Spirit ball added to main DOM');
 
-  // Make draggable and clickable
-  makeSpiritBallInteractive(spiritBall);
+  // Make draggable and clickable (using main window context)
+  makeSpiritBallInteractive(spiritBall, mainDocument, mainWindow);
 
   // Auto-position in bottom-right corner
-  positionSpiritBall(spiritBall);
+  positionSpiritBall(spiritBall, mainWindow);
 
   // Add entrance animation
   setTimeout(() => {
     spiritBall.classList.add('sw-spirit-visible');
   }, 500);
 
-  console.log('[SW] Spirit Ball created and ready!');
-  showWelcomeNotification();
+  console.log('[SW] Spirit Ball created and ready on main page!');
+  showWelcomeNotification(mainDocument);
+  
+  // Store reference to main document for other functions
+  window.mainSillyTavernDocument = mainDocument;
+  window.mainSillyTavernWindow = mainWindow;
 }
 
 /**
@@ -296,7 +306,7 @@ function getSpiritBallCSS() {
 /**
  * Make spirit ball interactive (draggable and clickable)
  */
-function makeSpiritBallInteractive(spiritBall) {
+function makeSpiritBallInteractive(spiritBall, targetDocument = document, targetWindow = window) {
   let isDragging = false;
   let dragStart = { x: 0, y: 0 };
   let elementStart = { x: 0, y: 0 };
@@ -304,13 +314,13 @@ function makeSpiritBallInteractive(spiritBall) {
 
   // Mouse events
   spiritBall.addEventListener('mousedown', handleDragStart);
-  document.addEventListener('mousemove', handleDragMove);
-  document.addEventListener('mouseup', handleDragEnd);
+  targetDocument.addEventListener('mousemove', handleDragMove);
+  targetDocument.addEventListener('mouseup', handleDragEnd);
 
   // Touch events for mobile
   spiritBall.addEventListener('touchstart', handleTouchStart, { passive: false });
-  document.addEventListener('touchmove', handleTouchMove, { passive: false });
-  document.addEventListener('touchend', handleTouchEnd);
+  targetDocument.addEventListener('touchmove', handleTouchMove, { passive: false });
+  targetDocument.addEventListener('touchend', handleTouchEnd);
 
   function handleDragStart(e) {
     isDragging = true;
@@ -345,8 +355,8 @@ function makeSpiritBallInteractive(spiritBall) {
     const newY = elementStart.y + deltaY;
 
     // Keep within viewport bounds
-    const maxX = window.innerWidth - spiritBall.offsetWidth;
-    const maxY = window.innerHeight - spiritBall.offsetHeight;
+    const maxX = targetWindow.innerWidth - spiritBall.offsetWidth;
+    const maxY = targetWindow.innerHeight - spiritBall.offsetHeight;
     
     const boundedX = Math.max(0, Math.min(maxX, newX));
     const boundedY = Math.max(0, Math.min(maxY, newY));
@@ -420,13 +430,13 @@ function handleSpiritClick(e) {
 /**
  * Snap spirit ball to nearest edge
  */
-function snapToEdge(spiritBall) {
+function snapToEdge(spiritBall, targetWindow = window) {
   const rect = spiritBall.getBoundingClientRect();
   const centerX = rect.left + rect.width / 2;
   const centerY = rect.top + rect.height / 2;
   
-  const windowWidth = window.innerWidth;
-  const windowHeight = window.innerHeight;
+  const windowWidth = targetWindow.innerWidth;
+  const windowHeight = targetWindow.innerHeight;
   
   let targetX, targetY;
   
@@ -470,7 +480,7 @@ function snapToEdge(spiritBall) {
 /**
  * Position spirit ball initially
  */
-function positionSpiritBall(spiritBall) {
+function positionSpiritBall(spiritBall, targetWindow = window) {
   // Try to load saved position
   const savedPos = localStorage.getItem('sw-spirit-position');
   if (savedPos) {
@@ -494,7 +504,8 @@ function positionSpiritBall(spiritBall) {
  * Save spirit ball position
  */
 function saveSpiritPosition() {
-  const spiritBall = document.getElementById('story-weaver-spirit');
+  const mainDocument = window.mainSillyTavernDocument || document;
+  const spiritBall = mainDocument.getElementById('story-weaver-spirit');
   if (!spiritBall) return;
   
   const rect = spiritBall.getBoundingClientRect();
@@ -509,11 +520,11 @@ function saveSpiritPosition() {
 /**
  * Show welcome notification when spirit ball is created
  */
-function showWelcomeNotification() {
+function showWelcomeNotification(targetDocument = document) {
   // Create welcome notification
-  const notification = document.createElement('div');
+  const notification = targetDocument.createElement('div');
   notification.className = 'sw-welcome-notification';
-  notification.innerHTML = `
+  notification.innerHTML = \`
     <div class="sw-welcome-content">
       <div class="sw-welcome-icon">📖</div>
       <div class="sw-welcome-text">
@@ -521,11 +532,11 @@ function showWelcomeNotification() {
         <small>Click the spirit ball to open</small>
       </div>
     </div>
-  `;
+  \`;
   
   // Add welcome notification styles
-  const welcomeStyles = document.createElement('style');
-  welcomeStyles.textContent = `
+  const welcomeStyles = targetDocument.createElement('style');
+  welcomeStyles.textContent = \`
     .sw-welcome-notification {
       position: fixed;
       top: 20px;
@@ -565,9 +576,9 @@ function showWelcomeNotification() {
       opacity: 0.9;
     }
   `;
-  document.head.appendChild(welcomeStyles);
+  targetDocument.head.appendChild(welcomeStyles);
   
-  document.body.appendChild(notification);
+  targetDocument.body.appendChild(notification);
   
   // Show notification with animation
   setTimeout(() => {
@@ -646,7 +657,8 @@ function registerSlashCommands() {
  * Toggle spirit ball visibility
  */
 function toggleSpiritBall() {
-  const spiritBall = document.getElementById('story-weaver-spirit');
+  const mainDocument = window.mainSillyTavernDocument || document;
+  const spiritBall = mainDocument.getElementById('story-weaver-spirit');
   if (spiritBall) {
     if (spiritBall.style.display === 'none') {
       spiritBall.style.display = 'block';
@@ -1342,8 +1354,9 @@ function initializeStoryWeaver() {
 function forceCreateSpiritBall() {
   console.log('[SW] Force creating spirit ball...');
   
-  // Remove existing first
-  const existing = document.getElementById('story-weaver-spirit');
+  // Try both contexts
+  const mainDocument = window.parent ? window.parent.document : document;
+  const existing = mainDocument.getElementById('story-weaver-spirit');
   if (existing) {
     console.log('[SW] Removing existing spirit ball');
     existing.remove();
@@ -1355,7 +1368,7 @@ function forceCreateSpiritBall() {
   
   // Check if it was created successfully
   setTimeout(() => {
-    const created = document.getElementById('story-weaver-spirit');
+    const created = mainDocument.getElementById('story-weaver-spirit');
     if (created) {
       console.log('[SW] ✅ Spirit ball successfully created and visible');
     } else {
@@ -1369,12 +1382,20 @@ function forceCreateSpiritBall() {
  */
 function debugEnvironment() {
   console.log('[SW] === Environment Debug Info ===');
-  console.log('[SW] Document ready state:', document.readyState);
-  console.log('[SW] Document body exists:', !!document.body);
+  console.log('[SW] Current context document ready state:', document.readyState);
+  console.log('[SW] Current context body exists:', !!document.body);
+  console.log('[SW] Has parent window:', !!window.parent && window.parent !== window);
+  
+  const mainDocument = window.parent ? window.parent.document : document;
+  const mainWindow = window.parent ? window.parent : window;
+  
+  console.log('[SW] Main document ready state:', mainDocument.readyState);
+  console.log('[SW] Main document body exists:', !!mainDocument.body);
   console.log('[SW] TavernHelper available:', typeof TavernHelper !== 'undefined');
-  console.log('[SW] Spirit ball exists:', !!document.getElementById('story-weaver-spirit'));
-  console.log('[SW] Window width:', window.innerWidth);
-  console.log('[SW] Window height:', window.innerHeight);
+  console.log('[SW] Spirit ball exists in current:', !!document.getElementById('story-weaver-spirit'));
+  console.log('[SW] Spirit ball exists in main:', !!mainDocument.getElementById('story-weaver-spirit'));
+  console.log('[SW] Main window width:', mainWindow.innerWidth);
+  console.log('[SW] Main window height:', mainWindow.innerHeight);
   console.log('[SW] User agent:', navigator.userAgent);
   
   if (typeof TavernHelper !== 'undefined') {
@@ -1385,11 +1406,11 @@ function debugEnvironment() {
     }
   }
   
-  const existing = document.getElementById('story-weaver-spirit');
+  const existing = mainDocument.getElementById('story-weaver-spirit');
   if (existing) {
-    console.log('[SW] Spirit ball computed style display:', window.getComputedStyle(existing).display);
-    console.log('[SW] Spirit ball computed style visibility:', window.getComputedStyle(existing).visibility);
-    console.log('[SW] Spirit ball computed style opacity:', window.getComputedStyle(existing).opacity);
+    console.log('[SW] Spirit ball computed style display:', mainWindow.getComputedStyle(existing).display);
+    console.log('[SW] Spirit ball computed style visibility:', mainWindow.getComputedStyle(existing).visibility);
+    console.log('[SW] Spirit ball computed style opacity:', mainWindow.getComputedStyle(existing).opacity);
     console.log('[SW] Spirit ball bounding rect:', existing.getBoundingClientRect());
   }
   
@@ -1446,6 +1467,17 @@ window.StoryWeaver = {
   toggleSpiritBall,
   debugEnvironment
 };
+
+// Also expose to main window if we're in an iframe/child window
+try {
+  const mainWindow = window.parent && window.parent !== window ? window.parent : window;
+  if (mainWindow && mainWindow !== window) {
+    console.log('[SW] Exposing StoryWeaver to main window');
+    mainWindow.StoryWeaver = window.StoryWeaver;
+  }
+} catch (e) {
+  console.log('[SW] Could not expose to main window (security restriction)');
+}
 
 console.log('[SW] Story Weaver Enhanced with Floating Spirit Ball script loaded!');
 console.log('[SW] Use StoryWeaver.forceCreateSpiritBall() if spirit ball is not visible');
