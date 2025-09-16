@@ -6,6 +6,151 @@
 
 console.log('[SW] 📖 Loading Story Weaver Enhanced v2.0...');
 
+// ========================= ERROR HANDLING SYSTEM =========================
+
+/**
+ * 统一的错误处理系统
+ */
+const StoryWeaverErrorHandler = {
+  /**
+   * 处理错误并返回用户友好的信息
+   * @param {Error} error - 原始错误对象
+   * @param {string} context - 错误发生的上下文
+   * @param {Object} options - 处理选项
+   * @returns {Object} 包含userMessage和technicalDetails的对象
+   */
+  handleError(error, context, options = {}) {
+    const { allowRetry = false, retryAction = null } = options;
+
+    console.error(`[SW] Error in ${context}:`, error);
+
+    let userMessage = '发生未知错误';
+    let technicalDetails = error.message || '无技术详情';
+
+    // 根据错误类型提供不同的用户友好信息
+    if (error.name === 'NetworkError' || error.message.includes('fetch')) {
+      userMessage = '网络连接失败，请检查网络设置';
+    } else if (error.message.includes('generate')) {
+      userMessage = '故事生成失败，请确保SillyTavern已连接AI服务';
+    } else if (error.message.includes('permission')) {
+      userMessage = '权限不足，请检查浏览器设置';
+    } else if (error.message.includes('JSON')) {
+      userMessage = '数据格式错误，请检查输入';
+    } else if (error.message.includes('timeout')) {
+      userMessage = '操作超时，请稍后重试';
+    }
+
+    const errorInfo = {
+      userMessage,
+      technicalDetails,
+      context,
+      timestamp: new Date().toISOString(),
+      allowRetry,
+      retryAction
+    };
+
+    return errorInfo;
+  },
+
+  /**
+   * 显示错误通知
+   * @param {string} message - 要显示的消息
+   * @param {string} type - 通知类型 (error, warning, success, info)
+   * @param {number} duration - 显示时长（毫秒）
+   */
+  showNotification(message, type = 'error', duration = 5000) {
+    // 优先使用TavernHelper的通知系统
+    if (typeof TavernHelper !== 'undefined' && TavernHelper.showNotification) {
+      TavernHelper.showNotification(message, {
+        type: type,
+        timeout: duration
+      });
+      return;
+    }
+
+    // 降级到内置通知系统
+    this._showBuiltinNotification(message, type, duration);
+  },
+
+  /**
+   * 内置通知系统
+   * @private
+   */
+  _showBuiltinNotification(message, type, duration) {
+    const notification = document.createElement('div');
+    notification.className = `sw-error-notification sw-notification-${type}`;
+    notification.style.cssText =
+      'position: fixed; top: 20px; right: 20px; z-index: 10001; ' +
+      'padding: 12px 16px; border-radius: 6px; color: white; ' +
+      'font-family: -apple-system, BlinkMacSystemFont, sans-serif; ' +
+      'font-size: 14px; max-width: 350px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); ' +
+      'animation: slideInRight 0.3s ease-out;';
+
+    // 根据类型设置背景色
+    const colors = {
+      error: '#dc3545',
+      warning: '#ffc107',
+      success: '#28a745',
+      info: '#17a2b8'
+    };
+    notification.style.backgroundColor = colors[type] || colors.error;
+
+    notification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <span>${this._getNotificationIcon(type)}</span>
+        <span>${message}</span>
+        <button onclick="this.parentElement.parentElement.remove()" style="
+          background: none; border: none; color: white; cursor: pointer;
+          font-size: 16px; padding: 0; margin-left: 8px;">×</button>
+      </div>
+    `;
+
+    document.body.appendChild(notification);
+
+    // 自动移除
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.style.animation = 'slideOutRight 0.3s ease-in';
+        setTimeout(() => notification.remove(), 300);
+      }
+    }, duration);
+
+    // 添加动画样式
+    if (!document.getElementById('sw-notification-styles')) {
+      const style = document.createElement('style');
+      style.id = 'sw-notification-styles';
+      style.textContent = `
+        @keyframes slideInRight {
+          from { transform: translateX(100%); opacity: 0; }
+          to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOutRight {
+          from { transform: translateX(0); opacity: 1; }
+          to { transform: translateX(100%); opacity: 0; }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  },
+
+  /**
+   * 获取通知图标
+   * @private
+   */
+  _getNotificationIcon(type) {
+    const icons = {
+      error: '❌',
+      warning: '⚠️',
+      success: '✅',
+      info: 'ℹ️'
+    };
+    return icons[type] || icons.info;
+  }
+};
+
+// 为向后兼容，创建全局别名
+const ErrorHandler = StoryWeaverErrorHandler;
+
 // ========================= CONSTANTS =========================
 
 const STORY_TYPES = {
@@ -1859,4 +2004,980 @@ console.log('[SW] Available functions:', Object.keys(window.StoryWeaver));
 function buildCompleteInterface(settings) {
   return buildSimpleInterface(settings);
 }
+
+// ========================= ENHANCED PROMPT SYSTEM =========================
+
+/**
+ * 构建增强的故事生成提示词
+ * 整合上下文信息、角色数据和用户设置
+ * @param {Object} settings - 用户设置
+ * @returns {Promise<string>} 完整的提示词
+ */
+async function buildEnhancedPrompt(settings) {
+  try {
+    console.log('[SW] Building enhanced prompt with settings:', settings);
+
+    let enhancedPrompt = '';
+
+    // 基础提示词模板
+    enhancedPrompt += '请为我生成一个详细的故事大纲，要求如下：\n\n';
+
+    // 添加故事类型和风格
+    if (settings.storyType && STORY_TYPES[settings.storyType]) {
+      enhancedPrompt += `**故事类型**: ${STORY_TYPES[settings.storyType]}\n`;
+    }
+
+    if (settings.storyStyle && STORY_STYLES[settings.storyStyle]) {
+      enhancedPrompt += `**叙述风格**: ${STORY_STYLES[settings.storyStyle]}\n`;
+    }
+
+    // 添加故事主题
+    if (settings.storyTheme && settings.storyTheme.trim()) {
+      enhancedPrompt += `**故事主题**: ${settings.storyTheme}\n`;
+    }
+
+    // 添加特殊要求
+    if (settings.specialRequirements && settings.specialRequirements.trim()) {
+      enhancedPrompt += `**特殊要求**: ${settings.specialRequirements}\n`;
+    }
+
+    // 尝试获取上下文信息
+    try {
+      const contextInfo = await gatherContextInformation(settings.contextLength || 10);
+      if (contextInfo) {
+        enhancedPrompt += '\n## 📚 背景信息参考\n\n';
+        enhancedPrompt += contextInfo;
+      }
+    } catch (contextError) {
+      console.warn('[SW] Failed to gather context information:', contextError);
+      // 不阻塞主流程，继续生成基础提示词
+    }
+
+    // 添加生成要求
+    enhancedPrompt += '\n## 📋 生成要求\n\n';
+    enhancedPrompt += `1. 包含${settings.chapterCount || 5}个章节\n`;
+    enhancedPrompt += '2. 每章有明确的情节发展和冲突点\n';
+    enhancedPrompt += '3. 结构完整，逻辑清晰，前后呼应\n';
+
+    if (settings.detailLevel && DETAIL_LEVELS[settings.detailLevel]) {
+      enhancedPrompt += `4. 详细程度: ${DETAIL_LEVELS[settings.detailLevel]}\n`;
+    }
+
+    // 添加可选内容要求
+    const optionalRequirements = [];
+    if (settings.includeSummary) {
+      optionalRequirements.push('故事摘要');
+    }
+    if (settings.includeCharacters) {
+      optionalRequirements.push('主要角色分析');
+    }
+    if (settings.includeThemes) {
+      optionalRequirements.push('主题探讨');
+    }
+
+    if (optionalRequirements.length > 0) {
+      enhancedPrompt += `5. 额外包含: ${optionalRequirements.join('、')}\n`;
+    }
+
+    // 添加格式要求
+    enhancedPrompt += '\n## 📝 输出格式\n\n';
+    enhancedPrompt += '请按以下格式输出：\n';
+
+    if (settings.includeSummary) {
+      enhancedPrompt += '**故事摘要**\n[简要概述整个故事]\n\n';
+    }
+
+    enhancedPrompt += '**故事大纲**\n';
+    for (let i = 1; i <= (settings.chapterCount || 5); i++) {
+      enhancedPrompt += `第${i}章: [章节标题]\n[章节内容概要]\n\n`;
+    }
+
+    if (settings.includeCharacters) {
+      enhancedPrompt += '**角色分析**\n[主要角色的性格特点和发展弧线]\n\n';
+    }
+
+    if (settings.includeThemes) {
+      enhancedPrompt += '**主题探讨**\n[故事要探讨的核心主题]\n\n';
+    }
+
+    enhancedPrompt += '\n请确保生成的大纲具有引人入胜的情节和合理的发展逻辑。';
+
+    console.log('[SW] Enhanced prompt built successfully, length:', enhancedPrompt.length);
+    return enhancedPrompt;
+
+  } catch (error) {
+    console.error('[SW] Error building enhanced prompt:', error);
+    // 降级到简单提示词
+    return buildFallbackPrompt(settings);
+  }
+}
+
+/**
+ * 收集上下文信息（世界书、角色、对话历史等）
+ * @param {number} contextLength - 上下文长度限制
+ * @returns {Promise<string>} 格式化的上下文信息
+ */
+async function gatherContextInformation(contextLength = 10) {
+  let contextInfo = '';
+
+  try {
+    // 获取世界书信息
+    const worldInfo = await getWorldBookEntries();
+    if (worldInfo && worldInfo.length > 0) {
+      contextInfo += '### 🌍 世界设定\n\n';
+      worldInfo.forEach(entry => {
+        contextInfo += `**${entry.key}**: ${entry.content.substring(0, 200)}\n`;
+      });
+      contextInfo += '\n';
+    }
+
+    // 获取角色信息
+    const characterInfo = await getCurrentCharacterInfo();
+    if (characterInfo) {
+      contextInfo += '### 👤 角色信息\n\n';
+      contextInfo += `**角色名称**: ${characterInfo.name}\n`;
+      if (characterInfo.personality) {
+        contextInfo += `**性格特点**: ${characterInfo.personality.substring(0, 150)}\n`;
+      }
+      if (characterInfo.description) {
+        contextInfo += `**角色描述**: ${characterInfo.description.substring(0, 150)}\n`;
+      }
+      contextInfo += '\n';
+    }
+
+    // 获取对话历史（如果启用）
+    if (contextLength > 0) {
+      const chatHistory = await getRecentChatHistory(contextLength);
+      if (chatHistory && chatHistory.length > 0) {
+        contextInfo += '### 💬 最近对话\n\n';
+        chatHistory.forEach(msg => {
+          const speaker = msg.is_user ? '用户' : (characterInfo?.name || '角色');
+          contextInfo += `**${speaker}**: ${msg.mes.substring(0, 100)}\n`;
+        });
+        contextInfo += '\n';
+      }
+    }
+
+  } catch (error) {
+    console.warn('[SW] Error gathering context information:', error);
+  }
+
+  return contextInfo;
+}
+
+/**
+ * 获取世界书条目
+ * @returns {Promise<Array>} 世界书条目数组
+ */
+async function getWorldBookEntries() {
+  try {
+    // 尝试多种方式获取世界书信息
+    if (typeof getSortedEntries === 'function') {
+      // SillyTavern扩展环境
+      return getSortedEntries();
+    } else if (window.world_info && window.world_info.entries) {
+      // 全局世界书访问
+      return Object.values(window.world_info.entries);
+    } else if (typeof TavernHelper !== 'undefined' && TavernHelper.getWorldInfo) {
+      // TavernHelper环境
+      return TavernHelper.getWorldInfo();
+    }
+  } catch (error) {
+    console.warn('[SW] Failed to get world book entries:', error);
+  }
+
+  return [];
+}
+
+/**
+ * 获取当前角色信息
+ * @returns {Promise<Object>} 角色信息对象
+ */
+async function getCurrentCharacterInfo() {
+  try {
+    if (typeof getCharacterData === 'function') {
+      return getCharacterData();
+    } else if (window.characters && window.this_chid !== undefined) {
+      return window.characters[window.this_chid];
+    } else if (typeof TavernHelper !== 'undefined' && TavernHelper.getCurrentCharacter) {
+      return TavernHelper.getCurrentCharacter();
+    }
+  } catch (error) {
+    console.warn('[SW] Failed to get character info:', error);
+  }
+
+  return null;
+}
+
+/**
+ * 获取最近的对话历史
+ * @param {number} limit - 限制数量
+ * @returns {Promise<Array>} 对话历史数组
+ */
+async function getRecentChatHistory(limit = 10) {
+  try {
+    if (typeof getChatHistory === 'function') {
+      return getChatHistory(limit);
+    } else if (window.chat && Array.isArray(window.chat)) {
+      return window.chat.slice(-limit);
+    } else if (typeof TavernHelper !== 'undefined' && TavernHelper.getChatHistory) {
+      return TavernHelper.getChatHistory(limit);
+    }
+  } catch (error) {
+    console.warn('[SW] Failed to get chat history:', error);
+  }
+
+  return [];
+}
+
+/**
+ * 降级的简单提示词构建函数
+ * @param {Object} settings - 用户设置
+ * @returns {string} 基础提示词
+ */
+function buildFallbackPrompt(settings) {
+  let prompt = '请为我生成一个';
+
+  if (settings.storyType && STORY_TYPES[settings.storyType]) {
+    prompt += STORY_TYPES[settings.storyType];
+  } else {
+    prompt += '故事';
+  }
+
+  prompt += '大纲。\n\n';
+
+  if (settings.storyTheme) {
+    prompt += `故事主题: ${settings.storyTheme}\n\n`;
+  }
+
+  prompt += '要求:\n';
+  prompt += `1. 包含${settings.chapterCount || 5}个章节\n`;
+  prompt += '2. 每章有明确的情节发展和冲突\n';
+  prompt += '3. 结构完整，逻辑清晰\n';
+
+  if (settings.storyStyle && STORY_STYLES[settings.storyStyle]) {
+    prompt += `4. 符合${STORY_STYLES[settings.storyStyle]}的叙述风格\n`;
+  }
+
+  if (settings.detailLevel && DETAIL_LEVELS[settings.detailLevel]) {
+    prompt += `5. 详细程度: ${DETAIL_LEVELS[settings.detailLevel]}\n`;
+  }
+
+  if (settings.specialRequirements) {
+    prompt += `6. 特殊要求: ${settings.specialRequirements}\n`;
+  }
+
+  const optionalContent = [];
+  if (settings.includeSummary) optionalContent.push('故事摘要');
+  if (settings.includeCharacters) optionalContent.push('角色分析');
+  if (settings.includeThemes) optionalContent.push('主题探讨');
+
+  if (optionalContent.length > 0) {
+    prompt += `7. 请包含: ${optionalContent.join('、')}\n`;
+  }
+
+  prompt += '\n请生成结构完整、逻辑清晰的故事大纲。';
+
+  return prompt;
+}
+
+// ========================= GLOBAL UI FUNCTIONS =========================
+
+/**
+ * 处理生成故事大纲的主要函数
+ */
+async function handleStoryGeneration() {
+  try {
+    console.log('[SW] Starting story generation...');
+
+    const settings = getFormSettings();
+    if (!validateSettings(settings)) {
+      StoryWeaverErrorHandler.showNotification('请检查设置参数', 'warning');
+      return;
+    }
+
+    // 更新UI状态
+    updateGenerationUI(true);
+
+    // 构建提示词
+    const prompt = await buildEnhancedPrompt(settings);
+
+    // 调用生成函数
+    let result = '';
+    if (typeof generate !== 'undefined') {
+      result = await generate(prompt);
+    } else if (typeof generateRaw !== 'undefined') {
+      result = await generateRaw(prompt);
+    } else {
+      throw new Error('SillyTavern生成功能不可用');
+    }
+
+    if (result && result.trim()) {
+      displayGenerationResult(result);
+      saveGenerationToHistory(result, settings);
+      StoryWeaverErrorHandler.showNotification('故事大纲生成成功！', 'success');
+    } else {
+      throw new Error('生成结果为空');
+    }
+
+  } catch (error) {
+    const errorInfo = StoryWeaverErrorHandler.handleError(error, 'story generation', {
+      allowRetry: true,
+      retryAction: () => handleStoryGeneration()
+    });
+
+    StoryWeaverErrorHandler.showNotification(errorInfo.userMessage, 'error');
+    console.error('[SW] Generation failed:', error);
+
+  } finally {
+    updateGenerationUI(false);
+  }
+}
+
+/**
+ * 从表单获取当前设置
+ * @returns {Object} 设置对象
+ */
+function getFormSettings() {
+  return {
+    storyTheme: document.getElementById('sw-theme')?.value || '',
+    storyType: document.getElementById('sw-type')?.value || 'fantasy',
+    storyStyle: document.getElementById('sw-style')?.value || 'narrative',
+    chapterCount: parseInt(document.getElementById('sw-chapters')?.value) || 5,
+    detailLevel: document.getElementById('sw-detail')?.value || 'medium',
+    specialRequirements: document.getElementById('sw-requirements')?.value || '',
+    contextLength: parseInt(document.getElementById('sw-context-length')?.value) || 10,
+    includeSummary: document.getElementById('sw-summary')?.checked || false,
+    includeCharacters: document.getElementById('sw-characters')?.checked || false,
+    includeThemes: document.getElementById('sw-themes')?.checked || false
+  };
+}
+
+/**
+ * 验证设置参数
+ * @param {Object} settings - 设置对象
+ * @returns {boolean} 是否有效
+ */
+function validateSettings(settings) {
+  if (!settings.storyTheme.trim()) {
+    StoryWeaverErrorHandler.showNotification('请输入故事主题', 'warning');
+    return false;
+  }
+
+  if (settings.chapterCount < 1 || settings.chapterCount > 20) {
+    StoryWeaverErrorHandler.showNotification('章节数量应在1-20之间', 'warning');
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * 更新生成按钮的UI状态
+ * @param {boolean} isGenerating - 是否正在生成
+ */
+function updateGenerationUI(isGenerating) {
+  const button = document.getElementById('sw-generate-btn');
+  if (button) {
+    button.disabled = isGenerating;
+    button.textContent = isGenerating ? '⏳ 生成中...' : '🎯 生成故事大纲';
+  }
+}
+
+/**
+ * 显示生成结果
+ * @param {string} result - 生成的结果
+ */
+function displayGenerationResult(result) {
+  const outputSection = document.getElementById('sw-output-section');
+  const outputContent = document.getElementById('sw-output-content');
+  const outputControls = document.getElementById('sw-output-controls');
+
+  if (outputContent) {
+    outputContent.textContent = result;
+  }
+
+  if (outputSection) {
+    outputSection.style.display = 'block';
+  }
+
+  if (outputControls) {
+    outputControls.style.display = 'block';
+  }
+
+  // 存储结果供其他功能使用
+  window.storyWeaverLastResult = result;
+}
+
+/**
+ * 将生成结果保存到历史记录
+ * @param {string} result - 生成结果
+ * @param {Object} settings - 使用的设置
+ */
+function saveGenerationToHistory(result, settings) {
+  try {
+    const history = JSON.parse(localStorage.getItem('storyWeaverHistory') || '[]');
+
+    const entry = {
+      id: Date.now(),
+      timestamp: new Date().toISOString(),
+      result: result,
+      settings: settings,
+      preview: result.substring(0, 100) + '...'
+    };
+
+    history.unshift(entry);
+
+    // 限制历史记录数量
+    if (history.length > 50) {
+      history.splice(50);
+    }
+
+    localStorage.setItem('storyWeaverHistory', JSON.stringify(history));
+
+  } catch (error) {
+    console.warn('[SW] Failed to save to history:', error);
+  }
+}
+
+/**
+ * 刷新上下文数据
+ */
+async function refreshStoryWeaverContextData() {
+  try {
+    console.log('[SW] Refreshing context data...');
+
+    const statusElement = document.getElementById('sw-context-status');
+    if (statusElement) {
+      statusElement.textContent = '🔄 正在刷新数据...';
+    }
+
+    // 重新收集上下文信息
+    const contextLength = parseInt(document.getElementById('sw-context-length')?.value) || 10;
+    const contextInfo = await gatherContextInformation(contextLength);
+
+    if (statusElement) {
+      if (contextInfo) {
+        statusElement.textContent = '✅ 数据刷新成功，已获取最新上下文信息';
+        statusElement.style.color = '#28a745';
+      } else {
+        statusElement.textContent = '⚠️ 未获取到上下文数据，将使用基础生成模式';
+        statusElement.style.color = '#ffc107';
+      }
+    }
+
+    StoryWeaverErrorHandler.showNotification('上下文数据已刷新', 'success', 3000);
+
+  } catch (error) {
+    console.error('[SW] Failed to refresh context data:', error);
+    const statusElement = document.getElementById('sw-context-status');
+    if (statusElement) {
+      statusElement.textContent = '❌ 数据刷新失败';
+      statusElement.style.color = '#dc3545';
+    }
+    StoryWeaverErrorHandler.showNotification('数据刷新失败', 'error');
+  }
+}
+
+/**
+ * 预览上下文数据
+ */
+async function previewStoryWeaverContextData() {
+  try {
+    console.log('[SW] Previewing context data...');
+
+    const contextLength = parseInt(document.getElementById('sw-context-length')?.value) || 10;
+    const contextInfo = await gatherContextInformation(contextLength);
+
+    let previewContent = '';
+
+    if (!contextInfo || contextInfo.trim() === '') {
+      previewContent = '暂无可用的上下文数据。\n\n可能原因：\n- 当前没有活跃的角色对话\n- 世界书为空\n- 上下文长度设置为0';
+    } else {
+      previewContent = contextInfo;
+    }
+
+    // 创建预览窗口
+    createContextPreviewModal(previewContent);
+
+  } catch (error) {
+    console.error('[SW] Failed to preview context data:', error);
+    StoryWeaverErrorHandler.showNotification('预览失败: ' + error.message, 'error');
+  }
+}
+
+/**
+ * 创建上下文预览模态窗口
+ * @param {string} content - 要显示的内容
+ */
+function createContextPreviewModal(content) {
+  // 移除现有模态窗口
+  const existingModal = document.getElementById('sw-context-preview-modal');
+  if (existingModal) {
+    existingModal.remove();
+  }
+
+  const modal = document.createElement('div');
+  modal.id = 'sw-context-preview-modal';
+  modal.style.cssText =
+    'position: fixed; top: 0; left: 0; width: 100%; height: 100%; ' +
+    'background: rgba(0, 0, 0, 0.7); z-index: 10002; ' +
+    'display: flex; align-items: center; justify-content: center; ' +
+    'backdrop-filter: blur(3px);';
+
+  const modalContent = document.createElement('div');
+  modalContent.style.cssText =
+    'background: white; border-radius: 8px; padding: 0; ' +
+    'max-width: 80vw; max-height: 80vh; overflow: hidden; ' +
+    'display: flex; flex-direction: column; ' +
+    'box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);';
+
+  const modalHeader = document.createElement('div');
+  modalHeader.style.cssText =
+    'background: #17a2b8; color: white; padding: 15px 20px; ' +
+    'display: flex; justify-content: space-between; align-items: center;';
+
+  modalHeader.innerHTML = `
+    <h3 style="margin: 0; font-size: 18px;">👁️ 上下文数据预览</h3>
+    <button onclick="document.getElementById('sw-context-preview-modal').remove()"
+            style="background: none; border: none; color: white; font-size: 20px; cursor: pointer;">×</button>
+  `;
+
+  const modalBody = document.createElement('div');
+  modalBody.style.cssText =
+    'padding: 20px; overflow-y: auto; flex: 1; ' +
+    'font-family: "Courier New", monospace; font-size: 14px; ' +
+    'white-space: pre-wrap; line-height: 1.5;';
+
+  modalBody.textContent = content;
+
+  modalContent.appendChild(modalHeader);
+  modalContent.appendChild(modalBody);
+  modal.appendChild(modalContent);
+
+  // 点击外部关闭
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) {
+      modal.remove();
+    }
+  });
+
+  document.body.appendChild(modal);
+}
+
+// 全局函数别名，供HTML onclick使用
+window.handleNativeGenerate = handleStoryGeneration;
+window.refreshContextData = refreshStoryWeaverContextData;
+window.previewContextData = previewStoryWeaverContextData;
+
+// 预设管理功能
+window.loadSelectedPreset = function() {
+  try {
+    const presetSelect = document.getElementById('sw-preset-select');
+    if (!presetSelect || !presetSelect.value) {
+      StoryWeaverErrorHandler.showNotification('请先选择一个预设', 'warning');
+      return;
+    }
+
+    const presetName = presetSelect.value;
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+
+    if (savedPresets[presetName]) {
+      loadPresetSettings(savedPresets[presetName]);
+      StoryWeaverErrorHandler.showNotification(`预设 "${presetName}" 已加载`, 'success');
+    } else {
+      StoryWeaverErrorHandler.showNotification('预设不存在', 'error');
+    }
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'loadSelectedPreset');
+  }
+};
+
+window.showSavePresetDialog = function() {
+  try {
+    const presetName = prompt('请输入预设名称:');
+    if (presetName && presetName.trim()) {
+      saveCurrentPreset(presetName.trim());
+    }
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'showSavePresetDialog');
+  }
+};
+
+window.showPresetManager = function() {
+  try {
+    if (typeof showPresetManagerModal === 'function') {
+      showPresetManagerModal();
+    } else {
+      StoryWeaverErrorHandler.showNotification('预设管理器暂不可用', 'warning');
+    }
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'showPresetManager');
+  }
+};
+
+// 导出功能
+window.exportCurrentSettings = function() {
+  try {
+    const settings = getCurrentSettings();
+    const exportData = {
+      version: '2.0',
+      timestamp: new Date().toISOString(),
+      settings: settings
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `story-weaver-settings-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    StoryWeaverErrorHandler.showNotification('设置已导出', 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'exportCurrentSettings');
+  }
+};
+
+window.exportStoryOutline = function(format = 'txt') {
+  try {
+    const result = document.getElementById('sw-result');
+    if (!result || !result.textContent.trim()) {
+      StoryWeaverErrorHandler.showNotification('没有可导出的内容', 'warning');
+      return;
+    }
+
+    const content = result.textContent;
+    let mimeType, filename;
+
+    switch (format) {
+      case 'md':
+        mimeType = 'text/markdown';
+        filename = `story-outline-${new Date().toISOString().split('T')[0]}.md`;
+        break;
+      case 'json':
+        const jsonData = {
+          title: '故事大纲',
+          content: content,
+          timestamp: new Date().toISOString()
+        };
+        mimeType = 'application/json';
+        filename = `story-outline-${new Date().toISOString().split('T')[0]}.json`;
+        break;
+      default:
+        mimeType = 'text/plain';
+        filename = `story-outline-${new Date().toISOString().split('T')[0]}.txt`;
+    }
+
+    const exportContent = format === 'json' ? JSON.stringify(jsonData, null, 2) : content;
+    const blob = new Blob([exportContent], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    StoryWeaverErrorHandler.showNotification(`大纲已导出为 ${format.toUpperCase()}`, 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'exportStoryOutline');
+  }
+};
+
+// 结果管理功能
+window.copyNativeResult = function() {
+  try {
+    const result = document.getElementById('sw-result');
+    if (!result || !result.textContent.trim()) {
+      StoryWeaverErrorHandler.showNotification('没有可复制的内容', 'warning');
+      return;
+    }
+
+    navigator.clipboard.writeText(result.textContent).then(() => {
+      StoryWeaverErrorHandler.showNotification('内容已复制到剪贴板', 'success');
+    }).catch(() => {
+      const textarea = document.createElement('textarea');
+      textarea.value = result.textContent;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      StoryWeaverErrorHandler.showNotification('内容已复制到剪贴板', 'success');
+    });
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'copyNativeResult');
+  }
+};
+
+window.saveNativeResult = function() {
+  try {
+    const result = document.getElementById('sw-result');
+    if (!result || !result.textContent.trim()) {
+      StoryWeaverErrorHandler.showNotification('没有可保存的内容', 'warning');
+      return;
+    }
+
+    const savedResults = JSON.parse(localStorage.getItem('story_weaver_results') || '[]');
+    const newResult = {
+      id: Date.now(),
+      content: result.textContent,
+      timestamp: new Date().toISOString(),
+      title: `故事大纲 ${new Date().toLocaleString()}`
+    };
+
+    savedResults.unshift(newResult);
+    if (savedResults.length > 50) savedResults.pop();
+
+    localStorage.setItem('story_weaver_results', JSON.stringify(savedResults));
+    StoryWeaverErrorHandler.showNotification('内容已保存到本地历史', 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'saveNativeResult');
+  }
+};
+
+window.showExportOptions = function() {
+  try {
+    const modal = document.createElement('div');
+    modal.id = 'export-options-modal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+
+    modal.innerHTML = `
+      <div style="background: white; padding: 20px; border-radius: 10px; max-width: 400px;">
+        <h3>导出选项</h3>
+        <button onclick="exportStoryOutline('txt')" style="width: 100%; margin: 5px 0; padding: 10px; background: #17a2b8; color: white; border: none; border-radius: 5px;">导出为 TXT</button>
+        <button onclick="exportStoryOutline('md')" style="width: 100%; margin: 5px 0; padding: 10px; background: #6f42c1; color: white; border: none; border-radius: 5px;">导出为 Markdown</button>
+        <button onclick="exportStoryOutline('json')" style="width: 100%; margin: 5px 0; padding: 10px; background: #fd7e14; color: white; border: none; border-radius: 5px;">导出为 JSON</button>
+        <button onclick="exportCurrentSettings()" style="width: 100%; margin: 5px 0; padding: 10px; background: #28a745; color: white; border: none; border-radius: 5px;">导出设置</button>
+        <button onclick="this.parentElement.parentElement.remove()" style="width: 100%; margin: 10px 0 0 0; padding: 10px; background: #6c757d; color: white; border: none; border-radius: 5px;">取消</button>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'showExportOptions');
+  }
+};
+
+// 章节细纲功能
+window.generateChapterDetails = function() {
+  try {
+    const result = document.getElementById('sw-result');
+    if (!result || !result.textContent.trim()) {
+      StoryWeaverErrorHandler.showNotification('请先生成故事大纲', 'warning');
+      return;
+    }
+
+    if (typeof showChapterDetailModal === 'function') {
+      showChapterDetailModal();
+    } else {
+      StoryWeaverErrorHandler.showNotification('章节细纲功能暂不可用', 'warning');
+    }
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'generateChapterDetails');
+  }
+};
+
+window.generateSelectedChapterDetail = function() {
+  try {
+    StoryWeaverErrorHandler.showNotification('生成选中章节细纲功能开发中', 'info');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'generateSelectedChapterDetail');
+  }
+};
+
+window.copyChapterDetail = function() {
+  try {
+    const chapterResult = document.querySelector('.chapter-detail-result');
+    if (!chapterResult || !chapterResult.textContent.trim()) {
+      StoryWeaverErrorHandler.showNotification('没有可复制的章节细纲', 'warning');
+      return;
+    }
+
+    navigator.clipboard.writeText(chapterResult.textContent).then(() => {
+      StoryWeaverErrorHandler.showNotification('章节细纲已复制', 'success');
+    });
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'copyChapterDetail');
+  }
+};
+
+window.saveChapterDetail = function() {
+  try {
+    const chapterResult = document.querySelector('.chapter-detail-result');
+    if (!chapterResult || !chapterResult.textContent.trim()) {
+      StoryWeaverErrorHandler.showNotification('没有可保存的章节细纲', 'warning');
+      return;
+    }
+
+    const savedDetails = JSON.parse(localStorage.getItem('story_weaver_chapter_details') || '[]');
+    const newDetail = {
+      id: Date.now(),
+      content: chapterResult.textContent,
+      timestamp: new Date().toISOString(),
+      title: `章节细纲 ${new Date().toLocaleString()}`
+    };
+
+    savedDetails.unshift(newDetail);
+    if (savedDetails.length > 30) savedDetails.pop();
+
+    localStorage.setItem('story_weaver_chapter_details', JSON.stringify(savedDetails));
+    StoryWeaverErrorHandler.showNotification('章节细纲已保存', 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'saveChapterDetail');
+  }
+};
+
+// 导入导出管理
+window.showImportExportManager = function() {
+  try {
+    StoryWeaverErrorHandler.showNotification('导入导出管理中心开发中', 'info');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'showImportExportManager');
+  }
+};
+
+// 预设导出功能
+window.exportAllPresets = function() {
+  try {
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+    if (Object.keys(savedPresets).length === 0) {
+      StoryWeaverErrorHandler.showNotification('没有可导出的预设', 'warning');
+      return;
+    }
+
+    const exportData = {
+      version: '2.0',
+      timestamp: new Date().toISOString(),
+      presets: savedPresets
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `story-weaver-presets-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    StoryWeaverErrorHandler.showNotification('所有预设已导出', 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'exportAllPresets');
+  }
+};
+
+window.exportSinglePreset = function(presetName) {
+  try {
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+    if (!savedPresets[presetName]) {
+      StoryWeaverErrorHandler.showNotification('预设不存在', 'error');
+      return;
+    }
+
+    const exportData = {
+      version: '2.0',
+      timestamp: new Date().toISOString(),
+      preset: {
+        name: presetName,
+        data: savedPresets[presetName]
+      }
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `story-weaver-preset-${presetName}-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    StoryWeaverErrorHandler.showNotification(`预设 "${presetName}" 已导出`, 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'exportSinglePreset');
+  }
+};
+
+window.deleteSinglePreset = function(presetName) {
+  try {
+    if (!confirm(`确定要删除预设 "${presetName}" 吗？此操作不可撤销。`)) {
+      return;
+    }
+
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+    if (savedPresets[presetName]) {
+      delete savedPresets[presetName];
+      localStorage.setItem('story_weaver_presets', JSON.stringify(savedPresets));
+      StoryWeaverErrorHandler.showNotification(`预设 "${presetName}" 已删除`, 'success');
+
+      if (typeof refreshPresetManager === 'function') {
+        refreshPresetManager();
+      }
+    } else {
+      StoryWeaverErrorHandler.showNotification('预设不存在', 'error');
+    }
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'deleteSinglePreset');
+  }
+};
+
+// 帮助模态窗口
+window.showHelpModal = function() {
+  try {
+    const modal = document.createElement('div');
+    modal.id = 'help-modal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000; animation: fadeIn 0.3s ease-out;';
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = 'background: white; width: 90%; max-width: 800px; max-height: 90%; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out;';
+
+    modalContent.innerHTML = `
+      <div style="padding: 20px; border-bottom: 1px solid #eee; background: #f8f9fa;">
+        <h2 style="margin: 0; color: #333;">📖 Story Weaver 使用帮助</h2>
+      </div>
+      <div style="padding: 20px; overflow-y: auto; flex-grow: 1;">
+        <h3>🎯 功能概述</h3>
+        <p>Story Weaver 是一个智能故事大纲生成工具，帮助您快速创建结构化的故事框架。</p>
+
+        <h3>🔧 基本使用</h3>
+        <ol>
+          <li><strong>设置故事类型</strong>：选择您想要创作的故事类型（冒险、爱情、悬疑等）</li>
+          <li><strong>配置参数</strong>：调整章节数量、详细程度、写作风格等设置</li>
+          <li><strong>生成大纲</strong>：点击"开始生成"按钮创建故事大纲</li>
+          <li><strong>导出保存</strong>：将生成的内容导出为不同格式或保存到本地</li>
+        </ol>
+
+        <h3>💾 预设管理</h3>
+        <ul>
+          <li>保存常用的参数配置为预设</li>
+          <li>快速加载之前保存的设置</li>
+          <li>导出和导入预设文件</li>
+        </ul>
+
+        <h3>📤 导出功能</h3>
+        <ul>
+          <li>支持 TXT、Markdown、JSON 格式导出</li>
+          <li>可以导出故事大纲和设置参数</li>
+          <li>自动保存历史记录到本地存储</li>
+        </ul>
+
+        <h3>🔄 数据刷新</h3>
+        <p>点击"刷新数据"按钮可以重新读取 SillyTavern 的世界书和聊天历史，确保上下文信息是最新的。</p>
+      </div>
+      <div style="padding: 20px; border-top: 1px solid #eee; text-align: right; background: #f8f9fa;">
+        <button onclick="this.parentElement.parentElement.parentElement.remove()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer;">关闭</button>
+      </div>
+    `;
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'showHelpModal');
+  }
+};
 
