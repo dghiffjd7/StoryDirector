@@ -13,7 +13,7 @@
         if (!mount) return;
         const root = mount.attachShadow({ mode: 'open' });
         root.innerHTML =
-          '<style>@import url("https://dghiffjd7.github.io/StoryDirector/door/door.css");</style><div class="phone-wrap"><div class="phone"><div class="notch"></div><div class="screen"><div class="portal" aria-hidden="true"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div></div><div class="hud"><div class="topbar"><div class="title">空间门 · 控制面板</div><div class="pts" id="ui-pts">剩余点数：--</div></div><div class="cards"><div class="card" id="card-attrs"><div class="row"><div class="k">距离(m)</div><div class="val" id="v-range">--</div><div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div><div class="row"><div class="k">开口(cm)</div><div class="val" id="v-aperture">--</div><div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div><div class="row"><div class="k">持续(s)</div><div class="val" id="v-duration">--</div><div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div><div class="row"><div class="k">冷却(s)</div><div class="val" id="v-cd">--</div><div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div><div class="row"><div class="k">稳定等级</div><div class="val" id="v-stab">--</div><div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div></div></div><div class="foot"><div class="bar"><button id="btn-copy" class="ghost">复制提示片段</button><button id="btn-refresh" class="ghost">刷新数值</button></div><div class="frag" id="frag">提示片段将显示在此处…</div><div class="warn" id="msg"></div></div></div></div></div>';
+          '<style>@import url("https://dghiffjd7.github.io/StoryDirector/door/door.css");</style><div class="fs"><div class="phone-wrap"><div class="phone"><div class="notch"></div><div class="screen"><div class="portal" aria-hidden="true"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div></div><div class="hud"><div class="topbar"><div class="title">空间门 · 控制面板</div><div class="spacer"></div><button id="btn-full" class="icon-btn" title="全屏">⤢</button><div class="pts" id="ui-pts">剩余点数：--</div></div><div class="cards"><div class="card" id="card-attrs"><div class="row"><div class="k">距离(m)</div><div class="val" id="v-range">--</div><div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div><div class="row"><div class="k">开口(cm)</div><div class="val" id="v-aperture">--</div><div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div><div class="row"><div class="k">持续(s)</div><div class="val" id="v-duration">--</div><div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div><div class="row"><div class="k">冷却(s)</div><div class="val" id="v-cd">--</div><div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div><div class="row"><div class="k">稳定等级</div><div class="val" id="v-stab">--</div><div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div></div></div><div class="foot"><div class="bar"><button id="btn-copy" class="ghost">复制提示片段</button><button id="btn-refresh" class="ghost">刷新数值</button></div><div class="frag" id="frag">提示片段将显示在此处…</div><div class="warn" id="msg"></div></div></div></div></div></div>';
         const $ = sel => root.querySelector(sel);
         const $$ = sel => Array.from(root.querySelectorAll(sel));
         const Mvu = typeof parent !== 'undefined' && parent && parent.Mvu ? parent.Mvu : null;
@@ -29,6 +29,8 @@
             stab: $('#v-stab'),
           },
         };
+        const fsEl = root.querySelector('.fs');
+        const fullBtn = $('#btn-full');
         const n = x => (typeof x === 'number' ? x : Number(x) || 0);
         function boundsOf(key) {
           const map = {
@@ -128,6 +130,28 @@
               ui.msg.textContent = '复制失败：' + ((err && err.message) || err);
             }
           });
+          fullBtn.addEventListener('click', async () => {
+            try {
+              if (document.fullscreenElement === fsEl) {
+                await document.exitFullscreen();
+              } else {
+                await fsEl.requestFullscreen();
+              }
+            } catch (e) {}
+          });
+          document.addEventListener(
+            'fullscreenchange',
+            () => {
+              if (document.fullscreenElement === fsEl) {
+                fullBtn.textContent = '⤡';
+                fullBtn.title = '退出全屏';
+              } else {
+                fullBtn.textContent = '⤢';
+                fullBtn.title = '全屏';
+              }
+            },
+            { passive: true },
+          );
         }
         function init() {
           if (!Mvu) {

@@ -6,6 +6,15 @@
 *::after {
   box-sizing: border-box;
 }
+.fs {
+  position: relative;
+}
+.fs:fullscreen {
+  background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .phone-wrap {
   position: relative;
   width: 320px;
@@ -17,6 +26,11 @@
     width: 92vw;
     height: calc(92vw * 2);
   }
+}
+.fs:fullscreen .phone-wrap {
+  width: min(46vw, 42vh);
+  height: auto;
+  aspect-ratio: 1/2;
 }
 .phone {
   position: absolute;
@@ -105,7 +119,6 @@
 .topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
 }
 .title {
@@ -114,7 +127,31 @@
   letter-spacing: 0.4px;
   opacity: 0.92;
 }
+.spacer {
+  flex: 1;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(9, 19, 30, 0.6);
+  color: #eaffff;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.2s ease;
+}
+.icon-btn:hover {
+  background: rgba(15, 42, 63, 0.7);
+}
+.icon-btn:active {
+  transform: translateY(1px) scale(0.98);
+}
 .pts {
+  margin-left: auto;
   font-size: 13px;
   padding: 4px 8px;
   border-radius: 999px;
