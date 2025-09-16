@@ -385,16 +385,81 @@ function showWelcomeNotification() {
 function init() {
   console.log('[SW] Initializing Story Weaver Enhanced...');
   
-  // Register slash commands
-  registerSlashCommands();
+  // Only register slash commands if in TavernHelper context
+  if (typeof SlashCommandsAPI !== 'undefined') {
+    registerSlashCommands();
+  } else {
+    console.log('[SW] SlashCommandsAPI not available - running on main page');
+  }
   
-  // Initialize settings
-  initializeGlobalVariables();
+  // Only initialize TavernHelper variables if available
+  if (typeof TavernHelper !== 'undefined' && TavernHelper.getGlobalVariable) {
+    initializeGlobalVariables();
+  } else {
+    console.log('[SW] TavernHelper variables not available - using local storage');
+    initializeLocalStorage();
+  }
   
   // Create spirit ball on main page
   createMainPageSpiritBall();
   
   console.log('[SW] Story Weaver Enhanced v2.0 initialized!');
+}
+
+/**
+ * Initialize global variables for TavernHelper
+ */
+function initializeGlobalVariables() {
+  console.log('[SW] Initializing global variables...');
+  
+  // Initialize default settings if they don't exist
+  const currentSettings = TavernHelper.getGlobalVariable('storyWeaverSettings');
+  if (!currentSettings) {
+    const defaultSettings = {
+      storyType: 'adventure',
+      storyStyle: 'narrative',
+      contextLength: 100,
+      chapterCount: 5,
+      detailLevel: 'medium',
+      includeCharacters: true,
+      includeSummary: true,
+      includeThemes: true,
+      lastUsed: Date.now()
+    };
+    
+    TavernHelper.setGlobalVariable('storyWeaverSettings', JSON.stringify(defaultSettings));
+    console.log('[SW] Default settings initialized');
+  } else {
+    console.log('[SW] Existing settings loaded');
+  }
+}
+
+/**
+ * Initialize local storage for main page
+ */
+function initializeLocalStorage() {
+  console.log('[SW] Initializing local storage...');
+  
+  // Initialize default settings if they don't exist
+  const currentSettings = localStorage.getItem('storyWeaverSettings');
+  if (!currentSettings) {
+    const defaultSettings = {
+      storyType: 'adventure',
+      storyStyle: 'narrative',
+      contextLength: 100,
+      chapterCount: 5,
+      detailLevel: 'medium',
+      includeCharacters: true,
+      includeSummary: true,
+      includeThemes: true,
+      lastUsed: Date.now()
+    };
+    
+    localStorage.setItem('storyWeaverSettings', JSON.stringify(defaultSettings));
+    console.log('[SW] Default settings initialized in localStorage');
+  } else {
+    console.log('[SW] Existing settings loaded from localStorage');
+  }
 }
 
 /**
