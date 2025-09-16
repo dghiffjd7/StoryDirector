@@ -3,71 +3,20 @@
   <head>
     <meta charset="utf-8" />
     <title>MiPhone Door</title>
-    <!-- 可留可不留；我们已使用绝对 URL 引用 CSS -->
-    <base href="https://dghiffjd7.github.io/StoryDirector/" />
   </head>
   <body>
-    <!-- 让加载器的 html.indexOf('MiPhone') 判定成功 -->
     <div id="MiPhone-door-root" style="display: none">MiPhone</div>
-
-    <!-- 宿主节点：由脚本在其上创建 Shadow DOM 并渲染 UI -->
     <div data-door-ui></div>
-
     <script>
       (function () {
         const mount = document.querySelector('[data-door-ui]');
         if (!mount) return;
-
-        // Shadow DOM
         const root = mount.attachShadow({ mode: 'open' });
-
-        // 注意：样式改为外链，通过 @import 引入独立 door.css
-        root.innerHTML = `
-      <style>@import url("https://dghiffjd7.github.io/StoryDirector/door.css");</style>
-      <div class="phone-wrap">
-        <div class="phone">
-          <div class="notch"></div>
-          <div class="screen">
-            <div class="portal" aria-hidden="true">
-              <div class="ring r1"></div>
-              <div class="ring r2"></div>
-              <div class="ring r3"></div>
-            </div>
-            <div class="hud">
-              <div class="topbar">
-                <div class="title">空间门 · 控制面板</div>
-                <div class="pts" id="ui-pts">剩余点数：--</div>
-              </div>
-
-              <div class="cards">
-                <div class="card" id="card-attrs">
-                  <div class="row"><div class="k">距离(m)</div>     <div class="val" id="v-range">--</div>     <div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div>
-                  <div class="row"><div class="k">开口(cm)</div>    <div class="val" id="v-aperture">--</div>  <div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div>
-                  <div class="row"><div class="k">持续(s)</div>     <div class="val" id="v-duration">--</div>  <div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div>
-                  <div class="row"><div class="k">冷却(s)</div>     <div class="val" id="v-cd">--</div>        <div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div>
-                  <div class="row"><div class="k">稳定等级</div>    <div class="val" id="v-stab">--</div>      <div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div>
-                </div>
-              </div>
-
-              <div class="foot">
-                <div class="bar">
-                  <button id="btn-copy" class="ghost">复制提示片段</button>
-                  <button id="btn-refresh" class="ghost">刷新数值</button>
-                </div>
-                <div class="frag" id="frag">提示片段将显示在此处…</div>
-                <div class="warn" id="msg"></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-
-        // ===== 逻辑（保持与你现有版本一致） =====
+        root.innerHTML =
+          '<style>@import url("https://dghiffjd7.github.io/StoryDirector/door/door.css");</style><div class="phone-wrap"><div class="phone"><div class="notch"></div><div class="screen"><div class="portal" aria-hidden="true"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div></div><div class="hud"><div class="topbar"><div class="title">空间门 · 控制面板</div><div class="pts" id="ui-pts">剩余点数：--</div></div><div class="cards"><div class="card" id="card-attrs"><div class="row"><div class="k">距离(m)</div><div class="val" id="v-range">--</div><div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div><div class="row"><div class="k">开口(cm)</div><div class="val" id="v-aperture">--</div><div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div><div class="row"><div class="k">持续(s)</div><div class="val" id="v-duration">--</div><div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div><div class="row"><div class="k">冷却(s)</div><div class="val" id="v-cd">--</div><div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div><div class="row"><div class="k">稳定等级</div><div class="val" id="v-stab">--</div><div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div></div></div><div class="foot"><div class="bar"><button id="btn-copy" class="ghost">复制提示片段</button><button id="btn-refresh" class="ghost">刷新数值</button></div><div class="frag" id="frag">提示片段将显示在此处…</div><div class="warn" id="msg"></div></div></div></div></div>';
         const $ = sel => root.querySelector(sel);
-        const $$ = sel => [...root.querySelectorAll(sel)];
+        const $$ = sel => Array.from(root.querySelectorAll(sel));
         const Mvu = typeof parent !== 'undefined' && parent && parent.Mvu ? parent.Mvu : null;
-
         const ui = {
           pts: $('#ui-pts'),
           msg: $('#msg'),
@@ -80,35 +29,28 @@
             stab: $('#v-stab'),
           },
         };
-
         const n = x => (typeof x === 'number' ? x : Number(x) || 0);
-
         function boundsOf(key) {
-          return (
-            {
-              range_m: { min: 1, max: 100, step: 1 },
-              aperture_cm: { min: 5, max: 200, step: 2 },
-              duration_s: { min: 1, max: 120, step: 1 },
-              cooldown_s: { min: 0, max: 300, step: 2 },
-              stability: { min: 1, max: 10, step: 1 },
-            }[key] || { min: -1e9, max: 1e9, step: 1 }
-          );
+          const map = {
+            range_m: { min: 1, max: 100, step: 1 },
+            aperture_cm: { min: 5, max: 200, step: 2 },
+            duration_s: { min: 1, max: 120, step: 1 },
+            cooldown_s: { min: 0, max: 300, step: 2 },
+            stability: { min: 1, max: 10, step: 1 },
+          };
+          return map[key] || { min: -1e9, max: 1e9, step: 1 };
         }
-
         function render(data) {
           const get = (p, cat = 'stat') => Mvu.getMvuVariable(data, p, { category: cat });
           ui.pts.textContent = `剩余点数：${n(get('points.remaining'))}`;
-
           ui.vals.range.textContent = n(get('ability.spatial_gate.range_m'));
           ui.vals.aperture.textContent = n(get('ability.spatial_gate.aperture_cm'));
           ui.vals.duration.textContent = n(get('ability.spatial_gate.duration_s'));
           ui.vals.cd.textContent = n(get('ability.spatial_gate.cooldown_s'));
           ui.vals.stab.textContent = n(get('ability.spatial_gate.stability'));
-
           const frag = get('prompt.spatial_gate', 'display') || '';
           ui.frag.textContent = frag || '（尚未生成提示片段）';
         }
-
         async function updatePromptFragment(data) {
           const get = p => Mvu.getMvuVariable(data, p);
           const r = n(get('ability.spatial_gate.range_m'));
@@ -122,7 +64,6 @@
             is_recursive: true,
           });
         }
-
         async function applyDelta(key, delta) {
           ui.msg.textContent = '';
           if (!Mvu) {
@@ -130,27 +71,21 @@
             return;
           }
           const data = Mvu.getCurrentMvuData();
-
           const left = n(Mvu.getMvuVariable(data, 'points.remaining'));
           const cur = n(Mvu.getMvuVariable(data, `ability.spatial_gate.${key}`));
           const b = boundsOf(key);
-
-          // 冷却：变小更强 → 消耗点；变大不消耗
           let cost = 0;
           if (key === 'cooldown_s') cost = delta < 0 ? 1 : 0;
-          else cost = delta > 0 ? 1 : 0; // 回退不返还点；如需返还可改 <0 时 cost = -1
-
+          else cost = delta > 0 ? 1 : 0;
           if (cost > 0 && left <= 0) {
             ui.msg.textContent = '点数不足';
             return;
           }
-
           let nxt = Math.max(b.min, Math.min(b.max, cur + delta));
           if (nxt === cur) {
             ui.msg.textContent = '已到达边界';
             return;
           }
-
           await Mvu.setMvuVariable(data, `ability.spatial_gate.${key}`, nxt, {
             reason: `调参 ${key}: ${cur}->${nxt}`,
             is_recursive: true,
@@ -161,13 +96,11 @@
               is_recursive: true,
             });
           }
-
           await updatePromptFragment(data);
           await Mvu.replaceCurrentMvuData(data);
           render(data);
           ui.msg.textContent = `已更新 ${key}: ${cur} → ${nxt}`;
         }
-
         function bind() {
           $$('#card-attrs button[data-k]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -176,7 +109,6 @@
               applyDelta(key, delta);
             });
           });
-
           $('#btn-refresh').addEventListener('click', () => {
             if (!Mvu) {
               ui.msg.textContent = 'Mvu API 不可用';
@@ -185,7 +117,6 @@
             render(Mvu.getCurrentMvuData());
             ui.msg.textContent = '已刷新';
           });
-
           $('#btn-copy').addEventListener('click', async () => {
             try {
               if (!Mvu) throw new Error('Mvu API 不可用');
@@ -198,16 +129,14 @@
             }
           });
         }
-
         function init() {
           if (!Mvu) {
-            ui.msg.textContent = '未检测到 Mvu API（请确认你的 MVU 脚本已加载）';
+            ui.msg.textContent = '未检测到 Mvu API';
             return;
           }
           bind();
           render(Mvu.getCurrentMvuData());
         }
-
         init();
       })();
     </script>
