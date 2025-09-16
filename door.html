@@ -1,0 +1,256 @@
+<!--
+  空间门（Portal Door）前端 UI 片段 v1
+  用法（示例）：
+    1) 在 AI 回复的正文末尾加入占位：DoorStart ... DoorEnd。
+    2) 通过脚本/正则，把占位整段替换为本片段（建议一次替换成 <div data-door-ui></div><script>...</script> 这两块）。
+    3) 片段会在本消息中以“手机样式面板 + 旋转传送门背景”的形式渲染，按钮会通过 parent.Mvu.* 直接改“当前楼层”的 MVU 变量，实时生效，并更新 display_data.prompt.spatial_gate。
+
+  注意：
+    - 需要你的 MVU 脚本已把 API 暴露到 window.parent.Mvu。
+    - 若路径不存在（[initvar] 未初始化），按钮会提示错误。
+    - 该片段使用 Shadow DOM，尽量避免与酒馆主题样式冲突。
+    - 如需多个实例（同一消息里多次嵌入），可重复放置本片段；每个实例互不干扰。
+-->
+<div data-door-ui></div>
+<script>
+  (function () {
+    const mount = document.currentScript.previousElementSibling;
+    if (!mount || !mount.matches('[data-door-ui]')) return;
+
+    // Shadow DOM 隔离样式
+    const root = mount.attachShadow({ mode: 'open' });
+
+    // HTML 结构
+    root.innerHTML = `
+    <style>
+      :host { all: initial; }
+      *, *::before, *::after { box-sizing: border-box; }
+      .phone-wrap{ position:relative; width:320px; height:640px; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+      @media (max-width: 420px){ .phone-wrap{ width: 92vw; height: calc(92vw * 2); } }
+
+      .phone{ position:absolute; inset:0; border-radius: 32px; background:#0a0a0a; border:1px solid #242424; box-shadow: 0 16px 60px rgba(0,0,0,.55), inset 0 0 0 1px rgba(255,255,255,.03); overflow: hidden; }
+      .notch{ position:absolute; top:8px; left:50%; transform:translateX(-50%); width:120px; height:18px; background:#111; border-radius: 0 0 14px 14px; box-shadow: 0 1px 0 rgba(255,255,255,.04), inset 0 -1px 0 rgba(0,0,0,.6); z-index:3; }
+
+      .screen{ position:absolute; inset:0; }
+
+      /* 传送门背景（纯 CSS） */
+      .portal{ position:absolute; inset:0; background: radial-gradient(120% 120% at 50% 50%, #000 0%, #02030a 60%, #000 100%); overflow:hidden; }
+      .ring{ position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:140vmin; height:140vmin; border-radius:50%; mix-blend-mode: screen; opacity:.75; filter: blur(.2px) saturate(120%);
+        background: conic-gradient(from 0deg, rgba(0,255,255,.0) 0deg, rgba(0,255,255,.5) 60deg, rgba(170,0,255,.7) 120deg, rgba(0,255,255,.5) 180deg, rgba(170,0,255,.7) 240deg, rgba(0,255,255,.5) 300deg, rgba(0,0,0,0) 360deg);
+        mask: radial-gradient(circle at 50% 50%, transparent 0 34%, black 36% 100%);
+        animation: spin 22s linear infinite;
+      }
+      .ring.r2{ width:120vmin; height:120vmin; opacity:.65; animation-duration: 14s; filter: blur(0.4px); }
+      .ring.r3{ width:100vmin; height:100vmin; opacity:.55; animation-duration: 9s;  filter: blur(0.6px); }
+      @keyframes spin { to { transform: translate(-50%,-50%) rotate(360deg); } }
+
+      /* 前景 HUD */
+      .hud{ position:absolute; inset:0; display:flex; flex-direction:column; padding:14px; color:#e7f6ff; text-shadow: 0 1px 0 rgba(0,0,0,.5); z-index:2; }
+      .topbar{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+      .title{ font-weight:700; font-size:14px; letter-spacing:.4px; opacity:.92; }
+      .pts{ font-size:13px; padding:4px 8px; border-radius:999px; background:rgba(0, 180, 255, .14); border:1px solid rgba(0, 180, 255, .25); }
+
+      .cards{ margin-top:10px; display:grid; grid-template-columns:1fr; gap:10px; }
+      .card{ background: rgba(0,0,0,.42); border:1px solid rgba(255,255,255,.06); border-radius:16px; padding:10px; backdrop-filter: blur(4px); box-shadow: inset 0 0 0 1px rgba(255,255,255,.02), 0 10px 30px rgba(0,0,0,.35); }
+      .row{ display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:5px 0; }
+      .k{ font-size:12px; opacity:.86; }
+      .val{ font-variant-numeric: tabular-nums; font-weight:600; font-size:13px; text-align:right; opacity:.95; }
+      .btns{ display:flex; gap:6px; }
+      button{ appearance:none; border:1px solid rgba(255,255,255,.15); background: rgba(9,19,30,.6); color:#eaffff; font-size:12px; padding:5px 9px; border-radius:10px; cursor:pointer; transition: transform .06s ease, background .2s ease; }
+      button:hover{ background: rgba(15,42,63,.7); }
+      button:active{ transform: translateY(1px) scale(0.98); }
+
+      .foot{ margin-top:auto; display:flex; flex-direction:column; gap:8px; }
+      .frag{ font-size:11px; line-height:1.4; padding:8px; border-radius:12px; background: rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.06); white-space:pre-wrap; word-break:break-word; color:#d8ffff; }
+      .bar{ display:flex; gap:8px; }
+      .ghost{ opacity:.75; }
+      .warn{ color:#ffd8a8; font-size:12px; min-height:1.2em; }
+    </style>
+
+    <div class="phone-wrap">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="screen">
+          <div class="portal" aria-hidden="true">
+            <div class="ring r1"></div>
+            <div class="ring r2"></div>
+            <div class="ring r3"></div>
+          </div>
+          <div class="hud">
+            <div class="topbar">
+              <div class="title">空间门 · 控制面板</div>
+              <div class="pts" id="ui-pts">剩余点数：--</div>
+            </div>
+
+            <div class="cards">
+              <div class="card" id="card-attrs">
+                <div class="row"><div class="k">距离(m)</div>     <div class="val" id="v-range">--</div>     <div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div>
+                <div class="row"><div class="k">开口(cm)</div>    <div class="val" id="v-aperture">--</div>  <div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div>
+                <div class="row"><div class="k">持续(s)</div>     <div class="val" id="v-duration">--</div>  <div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div>
+                <div class="row"><div class="k">冷却(s)</div>     <div class="val" id="v-cd">--</div>        <div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div>
+                <div class="row"><div class="k">稳定等级</div>    <div class="val" id="v-stab">--</div>      <div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div>
+              </div>
+            </div>
+
+            <div class="foot">
+              <div class="bar">
+                <button id="btn-copy" class="ghost">复制提示片段</button>
+                <button id="btn-refresh" class="ghost">刷新数值</button>
+              </div>
+              <div class="frag" id="frag">提示片段将显示在此处…</div>
+              <div class="warn" id="msg"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+    // ===== 逻辑 =====
+    const $ = sel => root.querySelector(sel);
+    const $$ = sel => [...root.querySelectorAll(sel)];
+    const Mvu = typeof parent !== 'undefined' && parent && parent.Mvu ? parent.Mvu : null;
+    const ui = {
+      pts: $('#ui-pts'),
+      msg: $('#msg'),
+      frag: $('#frag'),
+      vals: {
+        range: $('#v-range'),
+        aperture: $('#v-aperture'),
+        duration: $('#v-duration'),
+        cd: $('#v-cd'),
+        stab: $('#v-stab'),
+      },
+    };
+
+    function n(x) {
+      return typeof x === 'number' ? x : Number(x) || 0;
+    }
+    function boundsOf(key) {
+      return (
+        {
+          range_m: { min: 1, max: 100, step: 1 },
+          aperture_cm: { min: 5, max: 200, step: 2 },
+          duration_s: { min: 1, max: 120, step: 1 },
+          cooldown_s: { min: 0, max: 300, step: 2 },
+          stability: { min: 1, max: 10, step: 1 },
+        }[key] || { min: -1e9, max: 1e9, step: 1 }
+      );
+    }
+
+    function render(data) {
+      const get = (p, cat = 'stat') => Mvu.getMvuVariable(data, p, { category: cat });
+      ui.pts.textContent = `剩余点数：${n(get('points.remaining'))}`;
+
+      ui.vals.range.textContent = n(get('ability.spatial_gate.range_m'));
+      ui.vals.aperture.textContent = n(get('ability.spatial_gate.aperture_cm'));
+      ui.vals.duration.textContent = n(get('ability.spatial_gate.duration_s'));
+      ui.vals.cd.textContent = n(get('ability.spatial_gate.cooldown_s'));
+      ui.vals.stab.textContent = n(get('ability.spatial_gate.stability'));
+
+      const frag = get('prompt.spatial_gate', 'display') || '';
+      ui.frag.textContent = frag || '（尚未生成提示片段）';
+    }
+
+    async function updatePromptFragment(data) {
+      const get = p => Mvu.getMvuVariable(data, p);
+      const r = n(get('ability.spatial_gate.range_m'));
+      const a = n(get('ability.spatial_gate.aperture_cm'));
+      const d = n(get('ability.spatial_gate.duration_s'));
+      const c = n(get('ability.spatial_gate.cooldown_s'));
+      const s = n(get('ability.spatial_gate.stability'));
+      const frag = `空间门 | 距离≤${r}m，开口≤${a}cm，持续≤${d}s，冷却≥${c}s，稳定Lv${s}`;
+      await Mvu.setMvuVariable(data, 'prompt.spatial_gate', frag, { reason: '刷新能力提示片段', is_recursive: true });
+    }
+
+    async function applyDelta(key, delta) {
+      ui.msg.textContent = '';
+      if (!Mvu) {
+        ui.msg.textContent = 'Mvu API 不可用';
+        return;
+      }
+      const data = Mvu.getCurrentMvuData();
+
+      // 点数逻辑
+      const left = n(Mvu.getMvuVariable(data, 'points.remaining'));
+      const cur = n(Mvu.getMvuVariable(data, `ability.spatial_gate.${key}`));
+      const b = boundsOf(key);
+
+      // 冷却：变小更强 → 消耗点；变大不消耗
+      let cost = 0;
+      if (key === 'cooldown_s') cost = delta < 0 ? 1 : 0;
+      else cost = delta > 0 ? 1 : 0; // 回退不返还点；如需返还可改 <0 时 cost = -1
+
+      if (cost > 0 && left <= 0) {
+        ui.msg.textContent = '点数不足';
+        return;
+      }
+
+      let nxt = cur + delta;
+      nxt = Math.max(b.min, Math.min(b.max, nxt));
+      if (nxt === cur) {
+        ui.msg.textContent = '已到达边界';
+        return;
+      }
+
+      await Mvu.setMvuVariable(data, `ability.spatial_gate.${key}`, nxt, {
+        reason: `调参 ${key}: ${cur}->${nxt}`,
+        is_recursive: true,
+      });
+      if (cost !== 0) {
+        const after = Math.max(0, left - cost);
+        await Mvu.setMvuVariable(data, 'points.remaining', after, {
+          reason: cost > 0 ? '消耗点数' : '返还点数',
+          is_recursive: true,
+        });
+      }
+
+      await updatePromptFragment(data);
+      await Mvu.replaceCurrentMvuData(data);
+      render(data);
+      ui.msg.textContent = `已更新 ${key}: ${cur} → ${nxt}`;
+    }
+
+    function bind() {
+      $$('#card-attrs button[data-k]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const key = btn.getAttribute('data-k');
+          const delta = Number(btn.getAttribute('data-d')) || 0;
+          applyDelta(key, delta);
+        });
+      });
+
+      $('#btn-refresh').addEventListener('click', () => {
+        if (!Mvu) {
+          ui.msg.textContent = 'Mvu API 不可用';
+          return;
+        }
+        render(Mvu.getCurrentMvuData());
+        ui.msg.textContent = '已刷新';
+      });
+
+      $('#btn-copy').addEventListener('click', async () => {
+        try {
+          if (!Mvu) throw new Error('Mvu API 不可用');
+          const data = Mvu.getCurrentMvuData();
+          const frag = Mvu.getMvuVariable(data, 'prompt.spatial_gate', { category: 'display' }) || '';
+          await navigator.clipboard.writeText(frag);
+          ui.msg.textContent = '已复制提示片段';
+        } catch (err) {
+          ui.msg.textContent = '复制失败：' + ((err && err.message) || err);
+        }
+      });
+    }
+
+    function init() {
+      if (!Mvu) {
+        ui.msg.textContent = '未检测到 Mvu API（请确认你的 MVU 脚本已加载）';
+        return;
+      }
+      bind();
+      render(Mvu.getCurrentMvuData());
+    }
+
+    init();
+  })();
+</script>

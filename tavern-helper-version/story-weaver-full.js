@@ -410,14 +410,14 @@ function buildSimpleInterface(settings) {
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事类型：</label>
           <select id="sw-type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-            ${Object.entries(STORY_TYPES).map(([k,v]) => 
+${Object.entries(STORY_TYPES).map(([k,v]) =>
               `<option value="${k}" ${k === settings.storyType ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">叙述风格：</label>
           <select id="sw-style" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-            ${Object.entries(STORY_STYLES).map(([k,v]) => 
+${Object.entries(STORY_STYLES).map(([k,v]) =>
               `<option value="${k}" ${k === settings.storyStyle ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
@@ -431,7 +431,7 @@ function buildSimpleInterface(settings) {
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">详细程度：</label>
           <select id="sw-detail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-            ${Object.entries(DETAIL_LEVELS).map(([k,v]) => 
+${Object.entries(DETAIL_LEVELS).map(([k,v]) =>
               `<option value="${k}" ${k === settings.detailLevel ? 'selected' : ''}>${v}</option>`).join('')}
           </select>
         </div>
@@ -625,7 +625,7 @@ function buildSimpleInterface(settings) {
             retryAction: () => handleNativeGenerate()
           });
           
-          outputContent.textContent = \`生成失败: \${errorInfo.userMessage\}\n\n提示：请确保您在SillyTavern的角色聊天页面，并且已连接到AI服务。\`;
+          outputContent.textContent = `生成失败: ${errorInfo.userMessage}\\n\\n提示：请确保您在SillyTavern的角色聊天页面，并且已连接到AI服务。`;
           outputSection.style.display = 'block';
           
           // Show notification
@@ -637,36 +637,36 @@ function buildSimpleInterface(settings) {
       }
       
       function buildNativePrompt(settings) {
-        let prompt = \`请为我生成一个\${STORY_TYPES[settings.storyType\] || settings.storyType\}类型的故事大纲。\`;
+        let prompt = `请为我生成一个${STORY_TYPES[settings.storyType] || settings.storyType}类型的故事大纲。`;
         
         if (settings.storyTheme) {
-          prompt += \`\\n\\n故事主题: \${settings.storyTheme\}\`;
+          prompt += `\n\n故事主题: ${settings.storyTheme}`;
         }
         
-        prompt += \`\\n\\n要求:
-1. 包含\${settings.chapterCount\}个章节
+        prompt += `\n\n要求:
+1. 包含${settings.chapterCount}个章节
 2. 每章有明确的情节发展和冲突
 3. 结构完整，逻辑清晰
-4. 符合\${STORY_STYLES[settings.storyStyle\] || settings.storyStyle\}的叙述风格
-5. 详细程度: \${DETAIL_LEVELS[settings.detailLevel\] || settings.detailLevel\}\`;
+4. 符合${STORY_STYLES[settings.storyStyle] || settings.storyStyle}的叙述风格
+5. 详细程度: ${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel}`;
 
         if (settings.specialRequirements) {
-          prompt += \`\\n6. 特殊要求: \${settings.specialRequirements\}\`;
+          prompt += `\n6. 特殊要求: ${settings.specialRequirements}`;
         }
         
         if (settings.includeSummary) {
-          prompt += \`\\n\\n请在大纲前提供故事摘要。\`;
+          prompt += `\\n\\n请在大纲前提供故事摘要。`;
         }
         
         if (settings.includeCharacters) {
-          prompt += \`\\n\\n请包含主要角色的性格特点和发展弧线。\`;
+          prompt += `\\n\\n请包含主要角色的性格特点和发展弧线。`;
         }
         
         if (settings.includeThemes) {
-          prompt += \`\\n\\n请说明故事要探讨的核心主题。\`;
+          prompt += `\\n\\n请说明故事要探讨的核心主题。`;
         }
         
-        prompt += \`\\n\\n请生成结构完整、逻辑清晰的故事大纲。\`;
+        prompt += `\\n\\n请生成结构完整、逻辑清晰的故事大纲。`;
         
         return prompt;
       }
@@ -687,7 +687,7 @@ function buildSimpleInterface(settings) {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = \`story-outline-\${new Date().getTime()\}.txt\`;
+          a.download = `story-outline-${new Date().getTime()\}.txt`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -716,7 +716,7 @@ function buildSimpleInterface(settings) {
           const charName = characterData.name || '未知';
           const chatCount = chatHistory.length;
           
-          statusEl.innerHTML = \`✅ 数据已刷新: \${worldCount}个世界书条目, 角色: \${charName\}, \${chatCount\}条对话\`;
+          statusEl.innerHTML = `✅ 数据已刷新: ${worldCount}个世界书条目, 角色: ${charName\}, ${chatCount\}条对话`;
           statusEl.style.color = '#28a745';
           
           console.log('[SW] Context data refreshed successfully');
@@ -740,33 +740,33 @@ function buildSimpleInterface(settings) {
           const authorsNote = resolveAuthorsNote();
           
           // Build preview content
-          const previewContent = \`=== 上下文数据预览 ===
+          const previewContent = `=== 上下文数据预览 ===
           
 📖 世界书信息:
-\${worldInfo}
+${worldInfo}
 
 👤 角色信息:
-姓名: \${characterData.name\}
-性格: \${characterData.personality || '无设定'\}
-描述: \${characterData.description || '无描述'\}
-情境: \${characterData.scenario || '无情境'\}
+姓名: ${characterData.name\}
+性格: ${characterData.personality || '无设定'\}
+描述: ${characterData.description || '无描述'\}
+情境: ${characterData.scenario || '无情境'\}
 
 💭 系统提示词:
-\${systemPrompt || '无系统提示词'\}
+${systemPrompt || '无系统提示词'\}
 
 📝 记忆摘要:
-\${memorySummary || '无记忆摘要'\}
+${memorySummary || '无记忆摘要'\}
 
 ✍️ 作者注释:
-\${authorsNote || '无作者注释'\}
+${authorsNote || '无作者注释'\}
 
-💬 对话历史 (最近\${contextLength\}条):
-\${buildChatHistoryText(chatHistory, contextLength)\}\`;
+💬 对话历史 (最近${contextLength\}条):
+${buildChatHistoryText(chatHistory, contextLength)\}`;
 
           // Show in new window or alert
           const newWindow = window.open('', '_blank', 'width=800,height=600');
           if (newWindow) {
-            newWindow.document.write(\`
+            newWindow.document.write(`
               <html>
                 <head>
                   <title>Story Weaver - 上下文数据预览</title>
@@ -777,10 +777,10 @@ function buildSimpleInterface(settings) {
                 </head>
                 <body>
                   <h2>📖 Story Weaver - 上下文数据预览</h2>
-                  <pre>\${previewContent\}</pre>
+                  <pre>${previewContent\}</pre>
                 </body>
               </html>
-            \`);
+            `);
             newWindow.document.close();
           } else {
             alert(previewContent);
@@ -835,8 +835,8 @@ function buildSimpleInterface(settings) {
           document.getElementById('sw-characters').checked = preset.includeCharacters !== false;
           document.getElementById('sw-themes').checked = preset.includeThemes === true;
           
-          alert(\`预设 "\${selectedName}" 已加载！\`);
-          console.log(\`[SW] Preset "\${selectedName}" applied to form\`);
+          alert(`预设 "${selectedName}" 已加载！`);
+          console.log(`[SW] Preset "${selectedName}" applied to form`);
         } else {
           alert('加载预设失败');
         }
@@ -864,7 +864,7 @@ function buildSimpleInterface(settings) {
           const success = PresetManager.savePreset(name.trim(), settings);
           
           if (success) {
-            alert(\`预设 "\${name.trim()}" 保存成功！\`);
+            alert(`预设 "${name.trim()}" 保存成功！`);
             loadPresetList(); // Refresh preset list
             
             // Select the newly saved preset
@@ -885,7 +885,7 @@ function buildSimpleInterface(settings) {
           return;
         }
         
-        let managerContent = \`
+        let managerContent = `
           <div style="padding: 20px; font-family: -apple-system, sans-serif;">
             <h2>💾 预设管理器</h2>
             <div style="margin-bottom: 20px;">
@@ -903,27 +903,27 @@ function buildSimpleInterface(settings) {
                 </tr>
               </thead>
               <tbody>
-        \`;
+        `;
         
         presetList.forEach(name => {
           const preset = presets[name];
           const saveDate = new Date(preset.savedAt).toLocaleString();
           const storyType = STORY_TYPES[preset.storyType] || preset.storyType;
           
-          managerContent += \`
+          managerContent += `
             <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;">\${name}</td>
-              <td style="padding: 10px; border: 1px solid #ddd;">\${storyType}</td>
-              <td style="padding: 10px; border: 1px solid #ddd;">\${saveDate}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${name}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${storyType}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${saveDate}</td>
               <td style="padding: 10px; border: 1px solid #ddd; text-align: center;">
-                <button onclick="exportSinglePreset('\${name}')" style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; margin-right: 5px;">导出</button>
-                <button onclick="deleteSinglePreset('\${name}')" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px;">删除</button>
+                <button onclick="exportSinglePreset('${name}')" style="padding: 4px 8px; background: #17a2b8; color: white; border: none; border-radius: 3px; margin-right: 5px;">导出</button>
+                <button onclick="deleteSinglePreset('${name}')" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px;">删除</button>
               </td>
             </tr>
-          \`;
+          `;
         });
         
-        managerContent += \`
+        managerContent += `
               </tbody>
             </table>
           </div>
@@ -935,7 +935,7 @@ function buildSimpleInterface(settings) {
                 reader.onload = function(e) {
                   const result = PresetManager.importPreset(e.target.result);
                   if (result.success) {
-                    alert(\`预设导入成功：\${result.name}\`);
+                    alert(`预设导入成功：${result.name}`);
                     window.location.reload();
                   } else {
                     alert('导入失败：' + result.error);
@@ -950,7 +950,7 @@ function buildSimpleInterface(settings) {
             }
             
             function deleteSinglePreset(name) {
-              if (confirm(\`确认删除预设 "\${name}" 吗？\`)) {
+              if (confirm(`确认删除预设 "${name}" 吗？`)) {
                 if (PresetManager.deletePreset(name)) {
                   alert('删除成功');
                   window.location.reload();
@@ -976,14 +976,14 @@ function buildSimpleInterface(settings) {
               
               const a = document.createElement('a');
               a.href = url;
-              a.download = \`story-weaver-presets-all-\${Date.now()}.json\`;
+              a.download = `story-weaver-presets-all-${Date.now()}.json`;
               document.body.appendChild(a);
               a.click();
               document.body.removeChild(a);
               URL.revokeObjectURL(url);
             }
           </script>
-        \`;
+        `;
         
         const newWindow = window.open('', '_blank', 'width=900,height=600');
         if (newWindow) {
@@ -1406,7 +1406,7 @@ function buildCompleteInterface(settings) {
           retryAction: () => handleGenerate()
         });
         
-        outputContent.textContent = \`生成失败: \${errorInfo.userMessage\}\`;
+        outputContent.textContent = `生成失败: ${errorInfo.userMessage}`;
         
         // Show notification
         ErrorHandler.showNotification(errorInfo.userMessage, 'error');
@@ -1418,33 +1418,33 @@ function buildCompleteInterface(settings) {
     }
     
     function buildPrompt(settings) {
-      let prompt = \`请为我生成一个\${STORY_TYPES[settings.storyType\] || settings.storyType\}类型的故事大纲。\`;
+      let prompt = `请为我生成一个${STORY_TYPES[settings.storyType] || settings.storyType}类型的故事大纲。`;
       
       if (settings.storyTheme) {
-        prompt += \`\\n\\n故事主题: \${settings.storyTheme\}\`;
+        prompt += `\\n\\n故事主题: ${settings.storyTheme}`;
       }
       
-      prompt += \`\\n\\n要求:
-1. 包含\${settings.chapterCount\}个章节
+      prompt += `\\n\\n要求:
+1. 包含${settings.chapterCount}个章节
 2. 每章有明确的情节发展和冲突
 3. 结构完整，逻辑清晰
-4. 符合\${STORY_STYLES[settings.storyStyle\] || settings.storyStyle\}的叙述风格
-5. 详细程度: \${DETAIL_LEVELS[settings.detailLevel\] || settings.detailLevel\}\`;
+4. 符合${STORY_STYLES[settings.storyStyle] || settings.storyStyle}的叙述风格
+5. 详细程度: ${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel}`;
 
       if (settings.specialRequirements) {
-        prompt += \`\\n6. 特殊要求: \${settings.specialRequirements\}\`;
+        prompt += `\\n6. 特殊要求: ${settings.specialRequirements}`;
       }
       
       if (settings.includeSummary) {
-        prompt += \`\\n\\n请在大纲前提供故事摘要。\`;
+        prompt += `\\n\\n请在大纲前提供故事摘要。`;
       }
       
       if (settings.includeCharacters) {
-        prompt += \`\\n\\n请包含主要角色的性格特点和发展弧线。\`;
+        prompt += `\\n\\n请包含主要角色的性格特点和发展弧线。`;
       }
       
       if (settings.includeThemes) {
-        prompt += \`\\n\\n请说明故事要探讨的核心主题。\`;
+        prompt += `\\n\\n请说明故事要探讨的核心主题。`;
       }
       
       // Add context if available
@@ -1457,30 +1457,30 @@ function buildCompleteInterface(settings) {
             const worldbookEntries = window.TavernHelper.getWorldbookEntries();
             
             if (characterData && characterData.name) {
-              prompt += \`\\n\\n当前角色: \${characterData.name\}\`;
+              prompt += `\\n\\n当前角色: ${characterData.name}`;
               if (characterData.personality) {
-                prompt += \`\\n角色性格: \${characterData.personality\}\`;
+                prompt += `\\n角色性格: ${characterData.personality}`;
               }
             }
             
             if (worldbookEntries && worldbookEntries.length > 0) {
-              prompt += \`\\n\\n世界设定:\`;
+              prompt += `\\n\\n世界设定:`;
               worldbookEntries.slice(0, 5).forEach(entry => {
                 const key = entry.key || (entry.keys && entry.keys[0]) || '';
                 const content = entry.content || entry.description || '';
                 if (key && content) {
-                  prompt += \`\\n- \${key\}: \${content.substring(0, 100\)\}...\`;
+                  prompt += `\\n- ${key}: ${content.substring(0, 100)}...`;
                 }
               });
             }
             
             if (chatHistory && chatHistory.length > 0) {
-              prompt += \`\\n\\n最近对话:\`;
+              prompt += `\\n\\n最近对话:`;
               chatHistory.slice(-3).forEach(msg => {
                 const name = msg.name || msg.user || '';
                 const content = (msg.mes || msg.message || '').substring(0, 100);
                 if (name && content) {
-                  prompt += \`\\n[\${name\}]: \${content\}...\`;
+                  prompt += `\\n[${name}]: ${content}...`;
                 }
               });
             }
@@ -1490,7 +1490,7 @@ function buildCompleteInterface(settings) {
         console.log('[SW] Context integration failed:', e);
       }
       
-      prompt += \`\\n\\n请生成结构完整、逻辑清晰的故事大纲。\`;
+      prompt += `\\n\\n请生成结构完整、逻辑清晰的故事大纲。`;
       
       return prompt;
     }
@@ -1517,11 +1517,11 @@ function buildCompleteInterface(settings) {
       // Update all statistics
       const elements = {
         'word-count': wordCount.toLocaleString(),
-        'generation-time': `\${Math.round(generationTime / 1000)}s`,
+        'generation-time': `${Math.round(generationTime / 1000)}s`,
         'actual-chapters': actualChapters,
         'avg-chapter-length': avgChapterLength > 0 ? avgChapterLength.toLocaleString() : '--',
         'creation-time': creationTime,
-        'story-type-display': storyTypeText.replace(/^[🏰💖🔍🚀🌸⚔️🎭👻😄🎨]\\s*/, '')
+        'story-type-display': storyTypeText.replace(/^[🏰💖🔍🚀🌸⚔️🎭👻😄🎨]\s*/, '')
       };
       
       // Update each element safely
@@ -1565,7 +1565,7 @@ function buildCompleteInterface(settings) {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = \`story-outline-\${new Date().getTime()\}.txt\`;
+          a.download = `story-outline-${new Date().getTime()\}.txt`;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
@@ -1581,7 +1581,7 @@ function buildCompleteInterface(settings) {
     
     function sendToChat() {
       if (currentResult && typeof window.TavernHelper !== 'undefined') {
-        const message = \`## 📖 Story Outline Generated\\n\\n\${currentResult\}\`;
+        const message = `## 📖 Story Outline Generated\\n\\n${currentResult\}`;
         window.TavernHelper.sendMessage(message);
         alert('结果已发送到聊天！');
       } else {
@@ -1801,15 +1801,15 @@ ${nativeResult}
     
     function exportToMarkdown() {
       if (nativeResult) {
-        let markdownContent = `# Story Outline\n\n`;
-        markdownContent += `**Generated at:** ${new Date().toLocaleString()}\n\n`;
-        markdownContent += `## Main Outline\n\n${nativeResult}\n\n`;
+        let markdownContent = `# Story Outline\\n\\n`;
+        markdownContent += `**Generated at:** ${new Date().toLocaleString()}\\n\\n`;
+        markdownContent += `## Main Outline\\n\\n${nativeResult}\\n\\n`;
         
         if (selectedChapterDetail) {
-          markdownContent += `## Chapter Detail\n\n${selectedChapterDetail}\n\n`;
+          markdownContent += `## Chapter Detail\\n\\n${selectedChapterDetail}\\n\\n`;
         }
         
-        markdownContent += `---\n*Generated by Story Weaver*`;
+        markdownContent += `---\\n*Generated by Story Weaver*`;
         
         const blob = new Blob([markdownContent], { type: 'text/markdown;charset=utf-8' });
         const url = URL.createObjectURL(blob);
@@ -1920,7 +1920,7 @@ ${nativeResult}
         // Show user-friendly message
         if (showAlert) {
           if (allowRetry && retryAction && typeof retryAction === 'function') {
-            const retry = confirm(`${userMessage}\n\n是否要重试？`);
+            const retry = confirm(`${userMessage}\\n\\n是否要重试？`);
             if (retry) {
               setTimeout(retryAction, 500);
               return;
@@ -2342,12 +2342,12 @@ ${nativeResult}
               <h3 style="color: #495057; margin-bottom: 10px;">🌍 世界书数据</h3>
               <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 5px; padding: 15px; max-height: 200px; overflow-y: auto;">
                 ${worldInfo && worldInfo.length > 0 ? 
-                  worldInfo.slice(0, 5).map(entry => `
-                    <div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;">
-                      <strong style="color: #495057;">${entry.key || 'Unknown Key'}:</strong>
-                      <div style="font-size: 13px; color: #666; margin-top: 4px;">${(entry.content || '').substring(0, 100)}${entry.content && entry.content.length > 100 ? '...' : ''}</div>
-                    </div>
-                  `).join('') + (worldInfo.length > 5 ? `<div style="text-align: center; color: #666; font-style: italic;">... 还有 ${worldInfo.length - 5} 条数据</div>` : '')
+                  worldInfo.slice(0, 5).map(entry => (
+                    '<div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;">' +
+                      '<strong style="color: #495057;">' + (entry.key || 'Unknown Key') + ':</strong>' +
+                      '<div style="font-size: 13px; color: #666; margin-top: 4px;">' + ((entry.content || '').substring(0, 100)) + (entry.content && entry.content.length > 100 ? '...' : '') + '</div>' +
+                    '</div>'
+                  )).join('') + (worldInfo.length > 5 ? '<div style="text-align: center; color: #666; font-style: italic;">... 还有 ' + (worldInfo.length - 5) + ' 条数据</div>' : '')
                   : '<div style="color: #666; text-align: center; font-style: italic;">未检测到世界书数据</div>'
                 }
               </div>
@@ -2357,12 +2357,12 @@ ${nativeResult}
               <h3 style="color: #495057; margin-bottom: 10px;">💬 对话历史</h3>
               <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 5px; padding: 15px; max-height: 200px; overflow-y: auto;">
                 ${chatHistory && chatHistory.length > 0 ? 
-                  chatHistory.slice(-3).map(msg => `
-                    <div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;">
-                      <strong style="color: #495057;">${msg.name || msg.user || 'Unknown'}:</strong>
-                      <div style="font-size: 13px; color: #666; margin-top: 4px;">${(msg.mes || msg.message || '').substring(0, 150)}${(msg.mes || msg.message || '').length > 150 ? '...' : ''}</div>
-                    </div>
-                  `).join('')
+                  chatHistory.slice(-3).map(msg => (
+                    '<div style="margin-bottom: 10px; padding: 8px; background: white; border-radius: 4px;">' +
+                      '<strong style="color: #495057;">' + (msg.name || msg.user || 'Unknown') + ':</strong>' +
+                      '<div style="font-size: 13px; color: #666; margin-top: 4px;">' + ((msg.mes || msg.message || '').substring(0, 150)) + ((msg.mes || msg.message || '').length > 150 ? '...' : '') + '</div>' +
+                    '</div>'
+                  )).join('')
                   : '<div style="color: #666; text-align: center; font-style: italic;">未检测到对话历史</div>'
                 }
               </div>
@@ -2823,28 +2823,28 @@ ${nativeResult}
     
     function generateMarkdownContent() {
       const settings = getCurrentSettings();
-      let markdown = `# Story Outline\n\n`;
+      let markdown = `# Story Outline\\n\\n`;
       
-      markdown += `**Generated at:** ${new Date().toLocaleString()}\n`;
-      markdown += `**Story Type:** ${settings.storyType}\n`;
-      markdown += `**Chapters:** ${settings.chapterCount}\n`;
-      markdown += `**Detail Level:** ${settings.detailLevel}\n\n`;
+      markdown += `**Generated at:** ${new Date().toLocaleString()}\\n`;
+      markdown += `**Story Type:** ${settings.storyType}\\n`;
+      markdown += `**Chapters:** ${settings.chapterCount}\\n`;
+      markdown += `**Detail Level:** ${settings.detailLevel}\\n\\n`;
       
       if (settings.storyTheme) {
-        markdown += `## Story Theme\n\n${settings.storyTheme}\n\n`;
+        markdown += `## Story Theme\\n\\n${settings.storyTheme}\\n\\n`;
       }
       
-      markdown += `## Main Outline\n\n${nativeResult}\n\n`;
+      markdown += `## Main Outline\\n\\n${nativeResult}\\n\\n`;
       
       if (selectedChapterDetail) {
-        markdown += `## Chapter Detail\n\n${selectedChapterDetail}\n\n`;
+        markdown += `## Chapter Detail\\n\\n${selectedChapterDetail}\\n\\n`;
       }
       
       if (settings.specialRequirements) {
-        markdown += `## Special Requirements\n\n${settings.specialRequirements}\n\n`;
+        markdown += `## Special Requirements\\n\\n${settings.specialRequirements}\\n\\n`;
       }
       
-      markdown += `---\n*Generated by Story Weaver*`;
+      markdown += `---\\n*Generated by Story Weaver*`;
       
       return markdown;
     }
@@ -3560,7 +3560,7 @@ function formatWorldInfoEntries(entries) {
                    (Array.isArray(entry.keys) ? entry.keys[0] : entry.keys) || 
                    'Entry';
       const world = entry.world ? ` (${entry.world})` : '';
-      return `**${title}${world}**\n${entry.content}`;
+      return `**${title}${world}**\\n${entry.content}`;
     })
     .join('\n\n');
 }
@@ -3854,11 +3854,11 @@ Based on the context above, generate a story outline that meets the following us
 **详细程度**: ${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel}`;
 
     if (settings.storyTheme) {
-      enhancedPrompt += `\n**故事主题**: ${settings.storyTheme}`;
+      enhancedPrompt += `\\n**故事主题**: ${settings.storyTheme}`;
     }
     
     if (settings.specialRequirements) {
-      enhancedPrompt += `\n**特殊要求**: ${settings.specialRequirements}`;
+      enhancedPrompt += `\\n**特殊要求**: ${settings.specialRequirements}`;
     }
     
     enhancedPrompt += `\n\n### GENERATION REQUIREMENTS ###
@@ -3870,18 +3870,18 @@ Based on the context above, generate a story outline that meets the following us
 5. 详细程度: ${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel}`;
 
     if (settings.includeSummary) {
-      enhancedPrompt += `\n\n请在大纲前提供故事摘要。`;
+      enhancedPrompt += `\\n\\n请在大纲前提供故事摘要。`;
     }
     
     if (settings.includeCharacters) {
-      enhancedPrompt += `\n\n请包含主要角色的性格特点和发展弧线。`;
+      enhancedPrompt += `\\n\\n请包含主要角色的性格特点和发展弧线。`;
     }
     
     if (settings.includeThemes) {
-      enhancedPrompt += `\n\n请说明故事要探讨的核心主题。`;
+      enhancedPrompt += `\\n\\n请说明故事要探讨的核心主题。`;
     }
     
-    enhancedPrompt += `\n\n请生成结构完整、逻辑清晰的故事大纲。`;
+    enhancedPrompt += `\\n\\n请生成结构完整、逻辑清晰的故事大纲。`;
     
     console.log('[SW] Enhanced prompt built successfully');
     return enhancedPrompt;
@@ -3905,22 +3905,17 @@ function buildSimplePrompt(settings) {
   let prompt = `请为我生成一个${STORY_TYPES[settings.storyType] || settings.storyType}类型的故事大纲。`;
   
   if (settings.storyTheme) {
-    prompt += `\n\n故事主题: ${settings.storyTheme}`;
+    prompt += `\\n\\n故事主题: ${settings.storyTheme}`;
   }
   
-  prompt += `\n\n要求:
-1. 包含${settings.chapterCount}个章节
-2. 每章有明确的情节发展和冲突
-3. 结构完整，逻辑清晰
-4. 符合${STORY_STYLES[settings.storyStyle] || settings.storyStyle}的叙述风格
-5. 详细程度: ${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel}`;
+  prompt += `\\n\\n要求:\n1. 包含${settings.chapterCount}个章节\n2. 每章有明确的情节发展和冲突\n3. 结构完整，逻辑清晰\n4. 符合${STORY_STYLES[settings.storyStyle] || settings.storyStyle}的叙述风格\n5. 详细程度: ${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel}`;
 
   if (settings.specialRequirements) {
-    prompt += `\n6. 特殊要求: ${settings.specialRequirements}`;
+    prompt += `\\n6. 特殊要求: ${settings.specialRequirements}`;
   }
   
   if (settings.includeSummary) {
-    prompt += `\n\n请在大纲前提供故事摘要。`;
+    prompt += `\\n\\n请在大纲前提供故事摘要。`;
   }
   
   if (settings.includeCharacters) {
@@ -4205,7 +4200,7 @@ async function handleQuickGeneration(args) {
   try {
     const prompt = buildQuickPrompt(quickSettings);
     const result = await TavernHelper.generateRaw(prompt);
-    TavernHelper.sendMessage(`## 📖 Quick Story Outline\n\n${result}`);
+    TavernHelper.sendMessage(`## 📖 Quick Story Outline\\n\\n${result}`);
     console.log('[SW] ✅ Quick generation completed');
   } catch (error) {
     console.error('[SW] Quick generation failed:', error);
