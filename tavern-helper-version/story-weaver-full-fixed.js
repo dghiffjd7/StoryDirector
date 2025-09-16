@@ -502,6 +502,12 @@ function createNativePopup() {
   // Inject popup
   $('body').append(popupHTML);
   
+  // Initialize preset and import functionality
+  setTimeout(() => {
+    loadPresetList();
+    initializeImportHandler();
+  }, 100);
+
   // Close button handler
   $('#sw-close-btn').click(() => {
     $('#sw-popup-overlay').fadeOut(300, function() {
@@ -523,180 +529,402 @@ function createNativePopup() {
 
 function buildSimpleInterface(settings) {
   return `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <h2 style="color: #667eea; margin-bottom: 20px; text-align: center;">📖 Story Weaver Enhanced</h2>
+    <style>
+      .sw-interface {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        line-height: 1.6;
+        color: #333;
+        max-width: 100%;
+        background: linear-gradient(to bottom, #f8f9fa 0%, #ffffff 100%);
+        min-height: 100vh;
+        overflow-y: auto;
+      }
+
+      .sw-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        margin: -20px -20px 20px -20px;
+        text-align: center;
+        box-shadow: 0 4px 20px rgba(102, 126, 234, 0.15);
+      }
+
+      .sw-header h2 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 700;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      }
+
+      .sw-section {
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+      }
+
+      .sw-section:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+      }
+
+      .sw-section-header {
+        color: #495057;
+        margin: 0 0 15px 0;
+        font-size: 18px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #f8f9fa;
+      }
+
+      .sw-form-group {
+        margin-bottom: 16px;
+      }
+
+      .sw-form-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+
+      .sw-form-row.triple {
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+
+      .sw-label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+        font-size: 13px;
+        color: #495057;
+      }
+
+      .sw-input, .sw-select, .sw-textarea {
+        width: 100%;
+        padding: 10px 12px;
+        border: 2px solid #e9ecef;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        background: #ffffff;
+        box-sizing: border-box;
+      }
+
+      .sw-input:focus, .sw-select:focus, .sw-textarea:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .sw-textarea {
+        resize: vertical;
+        min-height: 80px;
+      }
+
+      .sw-btn {
+        padding: 10px 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+        line-height: 1.4;
+      }
+
+      .sw-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      }
+
+      .sw-btn-primary { background: #667eea; color: white; }
+      .sw-btn-success { background: #28a745; color: white; }
+      .sw-btn-info { background: #17a2b8; color: white; }
+      .sw-btn-warning { background: #ffc107; color: #212529; }
+      .sw-btn-danger { background: #dc3545; color: white; }
+      .sw-btn-purple { background: #6f42c1; color: white; }
+      .sw-btn-orange { background: #fd7e14; color: white; }
+
+      .sw-btn-group {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .sw-btn-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+        gap: 8px;
+      }
+
+      .sw-generate-btn {
+        width: 100%;
+        padding: 16px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+        border: none;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 20px;
+        transition: all 0.3s ease;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+      }
+
+      .sw-generate-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+      }
+
+      .sw-output-section {
+        background: #f8f9fa;
+        border: 2px solid #e9ecef;
+        border-radius: 12px;
+        padding: 20px;
+        min-height: 150px;
+        font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        line-height: 1.6;
+      }
+
+      .sw-checkbox-group {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+      }
+
+      .sw-checkbox-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+      }
+
+      .sw-status-text {
+        font-size: 11px;
+        color: #6c757d;
+        margin-top: 6px;
+        font-style: italic;
+      }
+
+      .sw-context-controls {
+        display: flex;
+        gap: 8px;
+        margin-top: 10px;
+      }
+
+      .sw-help-text {
+        font-size: 11px;
+        color: #6c757d;
+        margin-top: 4px;
+        line-height: 1.4;
+      }
+
+      @media (max-width: 768px) {
+        .sw-form-row {
+          grid-template-columns: 1fr;
+        }
+        .sw-form-row.triple {
+          grid-template-columns: 1fr;
+        }
+        .sw-checkbox-group {
+          flex-direction: column;
+          gap: 12px;
+        }
+        .sw-btn-group {
+          justify-content: center;
+        }
+      }
+    </style>
+
+    <div class="sw-interface">
+      <div class="sw-header">
+        <h2>📖 Story Weaver Enhanced</h2>
+        <div style="font-size: 14px; opacity: 0.9; margin-top: 8px;">智能故事大纲生成器 v2.0</div>
+      </div>
       
       <!-- 上下文设定区域 -->
-      <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-        <h3 style="color: #495057; margin-bottom: 15px; font-size: 16px;">📖 剧情上下文设定</h3>
-        
-        <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-          <div style="flex: 1;">
-            <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">对话历史长度：</label>
-            <input type="number" id="sw-context-length" value="${settings.contextLength || 10}" min="0" max="50" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
-            <div style="font-size: 11px; color: #666; margin-top: 3px;">设置为0则不读取对话历史</div>
+      <div class="sw-section">
+        <h3 class="sw-section-header">📖 剧情上下文设定</h3>
+
+        <div class="sw-form-row">
+          <div class="sw-form-group">
+            <label class="sw-label">对话历史长度：</label>
+            <input type="number" id="sw-context-length" class="sw-input" value="${settings.contextLength || 10}" min="0" max="50">
+            <div class="sw-help-text">设置为0则不读取对话历史</div>
           </div>
-          <div style="flex: 2;">
-            <div style="display: flex; gap: 8px;">
-              <button id="sw-refresh-data" onclick="refreshContextData()" style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;" title="重新读取世界书和聊天历史数据">🔄 刷新数据</button>
-              <button id="sw-preview-data" onclick="previewContextData()" style="padding: 8px 12px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;" title="查看当前可访问的上下文数据">👁️ 预览数据</button>
+          <div class="sw-form-group">
+            <label class="sw-label">数据操作：</label>
+            <div class="sw-btn-group">
+              <button id="sw-refresh-data" onclick="refreshContextData()" class="sw-btn sw-btn-success" title="重新读取世界书和聊天历史数据">🔄 刷新数据</button>
+              <button id="sw-preview-data" onclick="previewContextData()" class="sw-btn sw-btn-info" title="查看当前可访问的上下文数据">👁️ 预览数据</button>
             </div>
-            <div id="sw-context-status" style="font-size: 11px; color: #666; margin-top: 5px;">将根据设定自动读取最近的对话内容</div>
+            <div id="sw-context-status" class="sw-status-text">将根据设定自动读取最近的对话内容</div>
           </div>
         </div>
       </div>
       
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事主题 / 核心冲突：</label>
-        <textarea id="sw-theme" placeholder="例如：主角需要拯救被诅咒的王国，同时面对内心的恐惧与过去的阴霾..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;">${settings.storyTheme || ''}</textarea>
-      </div>
-      
-      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事类型：</label>
-          <select id="sw-type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+      <!-- 基本设定区域 -->
+      <div class="sw-section">
+        <h3 class="sw-section-header">🎯 基本设定</h3>
+
+        <div class="sw-form-group">
+          <label class="sw-label">故事主题 / 核心冲突：</label>
+          <textarea id="sw-theme" class="sw-textarea" placeholder="例如：主角需要拯救被诅咒的王国，同时面对内心的恐惧与过去的阴霾...">${settings.storyTheme || ''}</textarea>
+        </div>
+
+        <div class="sw-form-row">
+          <div class="sw-form-group">
+            <label class="sw-label">故事类型：</label>
+            <select id="sw-type" class="sw-select">
 ${Object.entries(STORY_TYPES).map(([k,v]) =>
               `<option value="${k}" ${k === settings.storyType ? 'selected' : ''}>${v}</option>`).join('')}
-          </select>
-        </div>
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">叙述风格：</label>
-          <select id="sw-style" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            </select>
+          </div>
+          <div class="sw-form-group">
+            <label class="sw-label">叙述风格：</label>
+            <select id="sw-style" class="sw-select">
 ${Object.entries(STORY_STYLES).map(([k,v]) =>
               `<option value="${k}" ${k === settings.storyStyle ? 'selected' : ''}>${v}</option>`).join('')}
-          </select>
+            </select>
+          </div>
         </div>
-      </div>
-      
-      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">章节数量：</label>
-          <input type="number" id="sw-chapters" value="${settings.chapterCount || 5}" min="3" max="20" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
-        </div>
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">详细程度：</label>
-          <select id="sw-detail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+
+        <div class="sw-form-row">
+          <div class="sw-form-group">
+            <label class="sw-label">章节数量：</label>
+            <input type="number" id="sw-chapters" class="sw-input" value="${settings.chapterCount || 5}" min="3" max="20">
+          </div>
+          <div class="sw-form-group">
+            <label class="sw-label">详细程度：</label>
+            <select id="sw-detail" class="sw-select">
 ${Object.entries(DETAIL_LEVELS).map(([k,v]) =>
               `<option value="${k}" ${k === settings.detailLevel ? 'selected' : ''}>${v}</option>`).join('')}
-          </select>
+            </select>
+          </div>
         </div>
-      </div>
-      
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: 600;">特殊要求：</label>
-        <textarea id="sw-requirements" placeholder="任何特殊的剧情要求或风格偏好..." style="width: 100%; height: 60px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;">${settings.specialRequirements || ''}</textarea>
-      </div>
-      
-      <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 8px; font-weight: 600;">包含选项：</label>
-        <div style="display: flex; gap: 20px;">
-          <label style="display: flex; align-items: center; gap: 5px;">
-            <input type="checkbox" id="sw-summary" ${settings.includeSummary ? 'checked' : ''}>
-            故事摘要
-          </label>
-          <label style="display: flex; align-items: center; gap: 5px;">
-            <input type="checkbox" id="sw-characters" ${settings.includeCharacters ? 'checked' : ''}>
-            角色分析
-          </label>
-          <label style="display: flex; align-items: center; gap: 5px;">
-            <input type="checkbox" id="sw-themes" ${settings.includeThemes ? 'checked' : ''}>
-            主题探讨
-          </label>
+
+        <div class="sw-form-group">
+          <label class="sw-label">特殊要求：</label>
+          <textarea id="sw-requirements" class="sw-textarea" placeholder="任何特殊的剧情要求或风格偏好..." style="min-height: 60px;">${settings.specialRequirements || ''}</textarea>
+        </div>
+
+        <div class="sw-form-group">
+          <label class="sw-label">包含选项：</label>
+          <div class="sw-checkbox-group">
+            <label class="sw-checkbox-item">
+              <input type="checkbox" id="sw-summary" ${settings.includeSummary ? 'checked' : ''}>
+              故事摘要
+            </label>
+            <label class="sw-checkbox-item">
+              <input type="checkbox" id="sw-characters" ${settings.includeCharacters ? 'checked' : ''}>
+              角色分析
+            </label>
+            <label class="sw-checkbox-item">
+              <input type="checkbox" id="sw-themes" ${settings.includeThemes ? 'checked' : ''}>
+              主题探讨
+            </label>
+          </div>
         </div>
       </div>
       
       <!-- 预设管理区域 -->
-      <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-        <h3 style="color: #495057; margin-bottom: 15px; font-size: 16px;">💾 预设管理</h3>
-        
-        <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-          <select id="sw-preset-select" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 5px;">
-            <option value="">选择预设...</option>
-          </select>
-          <button onclick="loadSelectedPreset()" style="padding: 8px 12px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">📁 加载</button>
-          <button onclick="showSavePresetDialog()" style="padding: 8px 12px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">💾 保存</button>
-          <button onclick="showPresetManager()" style="padding: 8px 12px; background: #6f42c1; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 12px;">⚙️ 管理</button>
-        </div>
-        
-        <div style="font-size: 11px; color: #666;">
-          预设包含所有故事设定、选项配置等完整信息
+      <div class="sw-section">
+        <h3 class="sw-section-header">💾 预设管理</h3>
+
+        <div class="sw-form-group">
+          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
+            <select id="sw-preset-select" class="sw-select">
+              <option value="">选择预设...</option>
+            </select>
+            <button onclick="loadSelectedPreset()" class="sw-btn sw-btn-primary">📁 加载</button>
+            <button onclick="showSavePresetDialog()" class="sw-btn sw-btn-success">💾 保存</button>
+            <button onclick="showPresetManager()" class="sw-btn sw-btn-purple">⚙️ 管理</button>
+          </div>
+          <div class="sw-help-text">
+            预设包含所有故事设定、选项配置等完整信息
+          </div>
         </div>
       </div>
       
       <!-- 导入导出区域 -->
-      <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; margin-bottom: 20px;">
-        <h3 style="color: #495057; margin-bottom: 15px; font-size: 16px;">📁 导入导出管理</h3>
-        
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
-          <div style="text-align: center;">
+      <div class="sw-section">
+        <h3 class="sw-section-header">📁 导入导出管理</h3>
+
+        <div class="sw-form-row" style="margin-bottom: 16px;">
+          <div class="sw-form-group" style="text-align: center;">
             <input type="file" id="sw-import-file" accept=".json,.txt,.md" style="display: none;">
-            <button onclick="document.getElementById('sw-import-file').click()" style="width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px;">📥 导入文件</button>
-            <div style="font-size: 11px; color: #666; margin-top: 3px;">支持 JSON、TXT、MD 格式</div>
+            <button onclick="document.getElementById('sw-import-file').click()" class="sw-btn sw-btn-primary" style="width: 100%; padding: 12px;">📥 导入文件</button>
+            <div class="sw-help-text">支持 JSON、TXT、MD 格式</div>
           </div>
-          <div style="text-align: center;">
-            <button onclick="showImportExportManager()" style="width: 100%; padding: 10px; background: #6f42c1; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 13px;">🔧 管理中心</button>
-            <div style="font-size: 11px; color: #666; margin-top: 3px;">批量导入导出操作</div>
+          <div class="sw-form-group" style="text-align: center;">
+            <button onclick="showImportExportManager()" class="sw-btn sw-btn-purple" style="width: 100%; padding: 12px;">🔧 管理中心</button>
+            <div class="sw-help-text">批量导入导出操作</div>
           </div>
         </div>
-        
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 5px;">
-          <button onclick="exportCurrentSettings()" style="padding: 6px 8px; background: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">💾 导出设置</button>
-          <button onclick="exportStoryOutline('txt')" style="padding: 6px 8px; background: #17a2b8; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">📄 导出TXT</button>
-          <button onclick="exportStoryOutline('md')" style="padding: 6px 8px; background: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">📝 导出MD</button>
-          <button onclick="exportStoryOutline('json')" style="padding: 6px 8px; background: #fd7e14; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">🔧 导出JSON</button>
+
+        <div class="sw-btn-grid">
+          <button onclick="exportCurrentSettings()" class="sw-btn sw-btn-success">💾 导出设置</button>
+          <button onclick="exportStoryOutline('txt')" class="sw-btn sw-btn-info">📄 导出TXT</button>
+          <button onclick="exportStoryOutline('md')" class="sw-btn sw-btn-purple">📝 导出MD</button>
+          <button onclick="exportStoryOutline('json')" class="sw-btn sw-btn-orange">🔧 导出JSON</button>
         </div>
       </div>
+
+      <button id="sw-generate-btn" onclick="handleNativeGenerate()" class="sw-generate-btn">
+        🎯 生成故事大纲
+      </button>
       
-      <button id="sw-generate-btn" onclick="handleNativeGenerate()" style="
-        width: 100%;
-        padding: 12px;
-        background: #667eea;
-        color: white;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 15px;
-      ">🎯 生成故事大纲</button>
-      
-      <div id="sw-output-section" style="
-        background: #f8f9fa;
-        border: 1px solid #e9ecef;
-        border-radius: 5px;
-        padding: 15px;
-        min-height: 150px;
-        font-family: 'Courier New', monospace;
-        font-size: 13px;
-        white-space: pre-wrap;
-        display: none;
-      ">
+      <!-- 输出区域 -->
+      <div id="sw-output-section" class="sw-output-section" style="display: none;">
         <div id="sw-output-content"></div>
       </div>
-      
-      <div id="sw-output-controls" style="display: none; margin-top: 10px; text-align: center;">
-        <button onclick="copyNativeResult()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px;">📋 复制</button>
-        <button onclick="saveNativeResult()" style="padding: 8px 15px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px;">💾 保存</button>
-        <button onclick="showExportOptions()" style="padding: 8px 15px; background: #6f42c1; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px;">📤 导出</button>
-        <button onclick="generateChapterDetails()" style="padding: 8px 15px; background: #fd7e14; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 5px;">📝 章节细纲</button>
-        <button onclick="showHelpModal()" style="padding: 8px 15px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">❓ 帮助</button>
+
+      <div id="sw-output-controls" style="display: none; margin-top: 16px;">
+        <div class="sw-btn-group" style="justify-content: center; flex-wrap: wrap;">
+          <button onclick="copyNativeResult()" class="sw-btn sw-btn-success">📋 复制</button>
+          <button onclick="saveNativeResult()" class="sw-btn sw-btn-info">💾 保存</button>
+          <button onclick="showExportOptions()" class="sw-btn sw-btn-purple">📤 导出</button>
+          <button onclick="generateChapterDetails()" class="sw-btn sw-btn-orange">📝 章节细纲</button>
+          <button onclick="showHelpModal()" class="sw-btn sw-btn-primary">❓ 帮助</button>
+        </div>
       </div>
       
       <!-- 章节细纲区域 -->
-      <div id="sw-chapter-details-section" style="display: none; margin-top: 20px; padding-top: 15px; border-top: 2px solid #e9ecef;">
-        <h4 style="color: #495057; margin-bottom: 15px;">📝 章节细纲生成</h4>
-        <div style="margin-bottom: 10px;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600; font-size: 13px;">选择章节:</label>
-          <select id="sw-chapter-select" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 5px; margin-bottom: 10px;">
+      <div id="sw-chapter-details-section" class="sw-section" style="display: none; margin-top: 20px;">
+        <h3 class="sw-section-header">📝 章节细纲生成</h3>
+
+        <div class="sw-form-group">
+          <label class="sw-label">选择章节:</label>
+          <select id="sw-chapter-select" class="sw-select" style="margin-bottom: 12px;">
             <option value="">请先生成故事大纲...</option>
           </select>
-          <button onclick="generateSelectedChapterDetail()" style="width: 100%; padding: 10px; background: #fd7e14; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;">生成选中章节的细纲</button>
+          <button onclick="generateSelectedChapterDetail()" class="sw-btn sw-btn-orange" style="width: 100%; padding: 12px; font-weight: 600;">
+            生成选中章节的细纲
+          </button>
         </div>
-        <div id="sw-chapter-detail-output" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 5px; padding: 15px; min-height: 100px; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; display: none;">
+
+        <div id="sw-chapter-detail-output" class="sw-output-section" style="display: none; min-height: 120px;">
         </div>
-        <div id="sw-chapter-detail-controls" style="display: none; margin-top: 10px; text-align: center;">
-          <button onclick="copyChapterDetail()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">📋 复制细纲</button>
-          <button onclick="saveChapterDetail()" style="padding: 8px 15px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">💾 保存细纲</button>
+
+        <div id="sw-chapter-detail-controls" style="display: none; margin-top: 12px;">
+          <div class="sw-btn-group" style="justify-content: center;">
+            <button onclick="copyChapterDetail()" class="sw-btn sw-btn-success">📋 复制细纲</button>
+            <button onclick="saveChapterDetail()" class="sw-btn sw-btn-info">💾 保存细纲</button>
+          </div>
         </div>
       </div>
     </div>
@@ -2002,7 +2230,16 @@ $(document).ready(() => {
 console.log('[SW] ✅ Story Weaver Enhanced loaded successfully!');
 console.log('[SW] Available functions:', Object.keys(window.StoryWeaver));
 function buildCompleteInterface(settings) {
-  return buildSimpleInterface(settings);
+  // 为TavernHelper环境构建完整界面，包含所有功能区块
+  const completeInterface = buildSimpleInterface(settings);
+
+  // 确保预设管理区域在TavernHelper中也能正常工作
+  setTimeout(() => {
+    loadPresetList();
+    initializeImportHandler();
+  }, 100);
+
+  return completeInterface;
 }
 
 // ========================= ENHANCED PROMPT SYSTEM =========================
@@ -2980,4 +3217,238 @@ window.showHelpModal = function() {
     StoryWeaverErrorHandler.handleError(error, 'showHelpModal');
   }
 };
+
+// ========================= 预设管理辅助功能 =========================
+
+/**
+ * 加载预设列表到下拉框
+ */
+function loadPresetList() {
+  try {
+    const presetSelect = document.getElementById('sw-preset-select');
+    if (!presetSelect) return;
+
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+    const presetNames = Object.keys(savedPresets);
+
+    // 清空现有选项
+    presetSelect.innerHTML = '<option value="">选择预设...</option>';
+
+    // 添加预设选项
+    presetNames.forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      presetSelect.appendChild(option);
+    });
+
+    console.log('[SW] Loaded presets:', presetNames);
+  } catch (error) {
+    console.error('[SW] Failed to load preset list:', error);
+  }
+}
+
+/**
+ * 保存当前设置为预设
+ */
+function saveCurrentPreset(presetName) {
+  try {
+    const settings = getCurrentSettings();
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+
+    savedPresets[presetName] = {
+      ...settings,
+      timestamp: new Date().toISOString(),
+      version: '2.0'
+    };
+
+    localStorage.setItem('story_weaver_presets', JSON.stringify(savedPresets));
+    loadPresetList(); // 刷新预设列表
+
+    StoryWeaverErrorHandler.showNotification(`预设 "${presetName}" 已保存`, 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'saveCurrentPreset');
+  }
+}
+
+/**
+ * 加载预设设置到界面
+ */
+function loadPresetSettings(presetData) {
+  try {
+    // 加载基本设置
+    if (presetData.storyType) {
+      const typeSelect = document.getElementById('sw-type');
+      if (typeSelect) typeSelect.value = presetData.storyType;
+    }
+
+    if (presetData.storyStyle) {
+      const styleSelect = document.getElementById('sw-style');
+      if (styleSelect) styleSelect.value = presetData.storyStyle;
+    }
+
+    if (presetData.detailLevel) {
+      const detailSelect = document.getElementById('sw-detail');
+      if (detailSelect) detailSelect.value = presetData.detailLevel;
+    }
+
+    if (presetData.chapterCount) {
+      const chaptersInput = document.getElementById('sw-chapters');
+      if (chaptersInput) chaptersInput.value = presetData.chapterCount;
+    }
+
+    if (presetData.contextLength !== undefined) {
+      const contextInput = document.getElementById('sw-context-length');
+      if (contextInput) contextInput.value = presetData.contextLength;
+    }
+
+    // 加载文本字段
+    if (presetData.storyTheme) {
+      const themeTextarea = document.getElementById('sw-theme');
+      if (themeTextarea) themeTextarea.value = presetData.storyTheme;
+    }
+
+    if (presetData.specialRequirements) {
+      const requirementsTextarea = document.getElementById('sw-requirements');
+      if (requirementsTextarea) requirementsTextarea.value = presetData.specialRequirements;
+    }
+
+    // 加载复选框
+    if (presetData.includeSummary !== undefined) {
+      const summaryCheckbox = document.getElementById('sw-summary');
+      if (summaryCheckbox) summaryCheckbox.checked = presetData.includeSummary;
+    }
+
+    if (presetData.includeCharacters !== undefined) {
+      const charactersCheckbox = document.getElementById('sw-characters');
+      if (charactersCheckbox) charactersCheckbox.checked = presetData.includeCharacters;
+    }
+
+    if (presetData.includeThemes !== undefined) {
+      const themesCheckbox = document.getElementById('sw-themes');
+      if (themesCheckbox) themesCheckbox.checked = presetData.includeThemes;
+    }
+
+    console.log('[SW] Preset settings loaded successfully');
+  } catch (error) {
+    console.error('[SW] Failed to load preset settings:', error);
+    StoryWeaverErrorHandler.showNotification('预设加载失败', 'error');
+  }
+}
+
+/**
+ * 获取当前界面设置
+ */
+function getCurrentSettings() {
+  const settings = {};
+
+  try {
+    // 获取选择框的值
+    const typeSelect = document.getElementById('sw-type');
+    if (typeSelect) settings.storyType = typeSelect.value;
+
+    const styleSelect = document.getElementById('sw-style');
+    if (styleSelect) settings.storyStyle = styleSelect.value;
+
+    const detailSelect = document.getElementById('sw-detail');
+    if (detailSelect) settings.detailLevel = detailSelect.value;
+
+    // 获取数字输入
+    const chaptersInput = document.getElementById('sw-chapters');
+    if (chaptersInput) settings.chapterCount = parseInt(chaptersInput.value) || 5;
+
+    const contextInput = document.getElementById('sw-context-length');
+    if (contextInput) settings.contextLength = parseInt(contextInput.value) || 10;
+
+    // 获取文本字段
+    const themeTextarea = document.getElementById('sw-theme');
+    if (themeTextarea) settings.storyTheme = themeTextarea.value;
+
+    const requirementsTextarea = document.getElementById('sw-requirements');
+    if (requirementsTextarea) settings.specialRequirements = requirementsTextarea.value;
+
+    // 获取复选框
+    const summaryCheckbox = document.getElementById('sw-summary');
+    if (summaryCheckbox) settings.includeSummary = summaryCheckbox.checked;
+
+    const charactersCheckbox = document.getElementById('sw-characters');
+    if (charactersCheckbox) settings.includeCharacters = charactersCheckbox.checked;
+
+    const themesCheckbox = document.getElementById('sw-themes');
+    if (themesCheckbox) settings.includeThemes = themesCheckbox.checked;
+
+    return settings;
+  } catch (error) {
+    console.error('[SW] Failed to get current settings:', error);
+    return {};
+  }
+}
+
+/**
+ * 初始化导入处理器
+ */
+function initializeImportHandler() {
+  try {
+    const importInput = document.getElementById('sw-import-file');
+    if (!importInput) return;
+
+    importInput.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+
+          if (file.name.endsWith('.json')) {
+            const data = JSON.parse(content);
+
+            if (data.settings) {
+              // 导入设置
+              loadPresetSettings(data.settings);
+              StoryWeaverErrorHandler.showNotification('设置已导入', 'success');
+            } else if (data.presets) {
+              // 导入预设
+              const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+              Object.assign(savedPresets, data.presets);
+              localStorage.setItem('story_weaver_presets', JSON.stringify(savedPresets));
+              loadPresetList();
+              StoryWeaverErrorHandler.showNotification('预设已导入', 'success');
+            } else if (data.preset) {
+              // 导入单个预设
+              const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+              savedPresets[data.preset.name] = data.preset.data;
+              localStorage.setItem('story_weaver_presets', JSON.stringify(savedPresets));
+              loadPresetList();
+              StoryWeaverErrorHandler.showNotification(`预设 "${data.preset.name}" 已导入`, 'success');
+            }
+          } else {
+            // 处理文本文件
+            const themeTextarea = document.getElementById('sw-theme');
+            if (themeTextarea) {
+              themeTextarea.value = content;
+              StoryWeaverErrorHandler.showNotification('文本内容已导入到故事主题', 'success');
+            }
+          }
+        } catch (error) {
+          StoryWeaverErrorHandler.handleError(error, 'importFile');
+        }
+      };
+
+      if (file.name.endsWith('.json')) {
+        reader.readAsText(file);
+      } else {
+        reader.readAsText(file);
+      }
+
+      // 清空input
+      e.target.value = '';
+    });
+
+    console.log('[SW] Import handler initialized');
+  } catch (error) {
+    console.error('[SW] Failed to initialize import handler:', error);
+  }
+}
 
