@@ -234,17 +234,13 @@ function createMainPageSpiritBall() {
     </style>
   `;
 
-  // Inject into main page using jQuery (same method as 手机流式.html)
+  // Inject directly into main SillyTavern page
   if (typeof $ !== 'undefined') {
-    console.log('[SW] jQuery available, injecting into main page...');
+    console.log('[SW] Injecting spirit ball into main page...');
     
-    // Add styles to head
     $('head').append(styleHtml);
-    console.log('[SW] Styles injected');
-    
-    // Add spirit ball to body
     $('body').append(spiritHtml);
-    console.log('[SW] Spirit ball HTML injected');
+    console.log('[SW] Spirit ball injected successfully');
     
     // Make it interactive
     setTimeout(() => {
@@ -912,20 +908,22 @@ function forceCreateSpiritBall() {
 
 // ========================= INITIALIZATION =========================
 
-// Auto-initialize when script loads
-if (typeof TavernHelper !== 'undefined') {
-  // Small delay to ensure everything is ready
-  setTimeout(init, 500);
-} else {
-  console.warn('[SW] TavernHelper not available, retrying...');
-  setTimeout(() => {
-    if (typeof TavernHelper !== 'undefined') {
-      init();
-    } else {
-      console.error('[SW] TavernHelper still not available after retry');
-    }
-  }, 2000);
-}
+// Initialize using jQuery ready - same pattern as 手机流式.html
+$(document).ready(() => {
+  console.log('[SW] Document ready, initializing Story Weaver...');
+  if (typeof TavernHelper !== 'undefined') {
+    init();
+  } else {
+    console.warn('[SW] TavernHelper not available, retrying...');
+    setTimeout(() => {
+      if (typeof TavernHelper !== 'undefined') {
+        init();
+      } else {
+        console.error('[SW] TavernHelper still not available after retry');
+      }
+    }, 2000);
+  }
+});
 
 // Export functions globally for console access
 window.StoryWeaver = {
