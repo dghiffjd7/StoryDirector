@@ -527,33 +527,6 @@ function toggleSpiritBall() {
   }
 }
 
-/**
- * Initialize global variables
- */
-function initializeGlobalVariables() {
-  const defaultSettings = {
-    contextLength: '10',
-    storyType: 'adventure',
-    storyStyle: 'narrative',
-    storyTheme: '',
-    chapterCount: '5',
-    detailLevel: 'medium',
-    specialRequirements: '',
-    includeSummary: true,
-    includeCharacters: true,
-    includeThemes: false,
-    enableSystemPrompt: true,
-    enableMemorySummary: true,
-    enableAuthorsNote: true,
-    enableJailbreak: false,
-    customPromptTemplate: ''
-  };
-
-  const existingSettings = TavernHelper.getGlobalVariable('storyWeaverSettings');
-  if (!existingSettings) {
-    TavernHelper.setGlobalVariable('storyWeaverSettings', JSON.stringify(defaultSettings));
-  }
-}
 
 /**
  * Open Story Weaver interface
