@@ -132,7 +132,7 @@
           });
           fullBtn.addEventListener('click', async () => {
             try {
-              if (document.fullscreenElement === fsEl) {
+              if (document.fullscreenElement) {
                 await document.exitFullscreen();
               } else {
                 await fsEl.requestFullscreen();
@@ -142,7 +142,7 @@
           document.addEventListener(
             'fullscreenchange',
             () => {
-              if (document.fullscreenElement === fsEl) {
+              if (document.fullscreenElement) {
                 fullBtn.textContent = '⤡';
                 fullBtn.title = '退出全屏';
               } else {
