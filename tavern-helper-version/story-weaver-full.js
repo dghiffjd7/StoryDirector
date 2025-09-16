@@ -256,6 +256,7 @@ function showWelcomeNotification() {
 function openStoryWeaverInterface() {
   console.log('[SW] Opening Story Weaver interface...');
   
+  // Try TavernHelper first (if in TavernHelper iframe)
   if (typeof TavernHelper !== 'undefined' && TavernHelper.showWindow) {
     const settings = loadSettings();
     const interfaceHTML = buildCompleteInterface(settings);
@@ -270,9 +271,329 @@ function openStoryWeaverInterface() {
     
     showNotification('Story Weaver Enhanced 已打开', 'success');
   } else {
-    console.error('[SW] TavernHelper not available');
-    alert('Story Weaver需要在TavernHelper环境中运行');
+    // Fallback: Create native popup on main ST page
+    console.log('[SW] Using native popup for main ST page');
+    createNativePopup();
   }
+}
+
+function createNativePopup() {
+  // Remove existing popup
+  $('#sw-popup-overlay').remove();
+  
+  const settings = loadSettings();
+  
+  // Create overlay and popup
+  const popupHTML = `
+    <div id="sw-popup-overlay" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+    ">
+      <div id="sw-popup-window" style="
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 90vw;
+        max-height: 90vh;
+        width: 800px;
+        height: 700px;
+        overflow: hidden;
+        position: relative;
+        animation: popupFadeIn 0.3s ease-out;
+      ">
+        <div style="
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 15px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+        ">
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器</span>
+          <button id="sw-close-btn" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+          ">✕</button>
+        </div>
+        <div id="sw-popup-content" style="
+          height: calc(100% - 60px);
+          overflow: auto;
+          padding: 20px;
+        ">
+          ${buildSimpleInterface(settings)}
+        </div>
+      </div>
+    </div>
+    
+    <style>
+      @keyframes popupFadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.9) translateY(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
+      }
+    </style>
+  `;
+  
+  // Inject popup
+  $('body').append(popupHTML);
+  
+  // Close button handler
+  $('#sw-close-btn').click(() => {
+    $('#sw-popup-overlay').fadeOut(300, function() {
+      $(this).remove();
+    });
+  });
+  
+  // Click outside to close
+  $('#sw-popup-overlay').click((e) => {
+    if (e.target.id === 'sw-popup-overlay') {
+      $('#sw-popup-overlay').fadeOut(300, function() {
+        $(this).remove();
+      });
+    }
+  });
+  
+  console.log('[SW] ✅ Native popup opened');
+}
+
+function buildSimpleInterface(settings) {
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <h2 style="color: #667eea; margin-bottom: 20px; text-align: center;">📖 Story Weaver Enhanced</h2>
+      
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事主题：</label>
+        <textarea id="sw-theme" placeholder="描述您想要的故事主题..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;">${settings.storyTheme || ''}</textarea>
+      </div>
+      
+      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事类型：</label>
+          <select id="sw-type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            ${Object.entries(STORY_TYPES).map(([k,v]) => 
+              `<option value="${k}" ${k === settings.storyType ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">叙述风格：</label>
+          <select id="sw-style" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            ${Object.entries(STORY_STYLES).map(([k,v]) => 
+              `<option value="${k}" ${k === settings.storyStyle ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">章节数量：</label>
+          <input type="number" id="sw-chapters" value="${settings.chapterCount || 5}" min="3" max="20" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+        </div>
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">详细程度：</label>
+          <select id="sw-detail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+            ${Object.entries(DETAIL_LEVELS).map(([k,v]) => 
+              `<option value="${k}" ${k === settings.detailLevel ? 'selected' : ''}>${v}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: 600;">特殊要求：</label>
+        <textarea id="sw-requirements" placeholder="任何特殊的剧情要求或风格偏好..." style="width: 100%; height: 60px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;">${settings.specialRequirements || ''}</textarea>
+      </div>
+      
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 8px; font-weight: 600;">包含选项：</label>
+        <div style="display: flex; gap: 20px;">
+          <label style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="sw-summary" ${settings.includeSummary ? 'checked' : ''}>
+            故事摘要
+          </label>
+          <label style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="sw-characters" ${settings.includeCharacters ? 'checked' : ''}>
+            角色分析
+          </label>
+          <label style="display: flex; align-items: center; gap: 5px;">
+            <input type="checkbox" id="sw-themes" ${settings.includeThemes ? 'checked' : ''}>
+            主题探讨
+          </label>
+        </div>
+      </div>
+      
+      <button id="sw-generate-btn" onclick="handleNativeGenerate()" style="
+        width: 100%;
+        padding: 12px;
+        background: #667eea;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 15px;
+      ">🎯 生成故事大纲</button>
+      
+      <div id="sw-output-section" style="
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
+        border-radius: 5px;
+        padding: 15px;
+        min-height: 150px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        white-space: pre-wrap;
+        display: none;
+      ">
+        <div id="sw-output-content"></div>
+      </div>
+      
+      <div id="sw-output-controls" style="display: none; margin-top: 10px; text-align: center;">
+        <button onclick="copyNativeResult()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">📋 复制</button>
+        <button onclick="saveNativeResult()" style="padding: 8px 15px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">💾 保存</button>
+      </div>
+    </div>
+    
+    <script>
+      let nativeResult = '';
+      
+      async function handleNativeGenerate() {
+        const btn = document.getElementById('sw-generate-btn');
+        const outputSection = document.getElementById('sw-output-section');
+        const outputContent = document.getElementById('sw-output-content');
+        const outputControls = document.getElementById('sw-output-controls');
+        
+        btn.textContent = '⏳ 生成中...';
+        btn.disabled = true;
+        
+        try {
+          const settings = {
+            storyTheme: document.getElementById('sw-theme').value,
+            storyType: document.getElementById('sw-type').value,
+            storyStyle: document.getElementById('sw-style').value,
+            chapterCount: document.getElementById('sw-chapters').value,
+            detailLevel: document.getElementById('sw-detail').value,
+            specialRequirements: document.getElementById('sw-requirements').value,
+            includeSummary: document.getElementById('sw-summary').checked,
+            includeCharacters: document.getElementById('sw-characters').checked,
+            includeThemes: document.getElementById('sw-themes').checked
+          };
+          
+          const prompt = buildNativePrompt(settings);
+          console.log('[SW] Generating story with prompt:', prompt);
+          
+          // Try to use ST's native generation
+          let result;
+          if (typeof generate !== 'undefined') {
+            // Use SillyTavern's generate function
+            result = await generate(prompt);
+          } else if (typeof getGenerateUrl !== 'undefined' && typeof generateRaw !== 'undefined') {
+            // Alternative ST generation method
+            result = await generateRaw(prompt);
+          } else {
+            throw new Error('SillyTavern生成功能不可用，请在角色聊天页面使用');
+          }
+          
+          if (result && result.trim()) {
+            nativeResult = result;
+            outputContent.textContent = result;
+            outputSection.style.display = 'block';
+            outputControls.style.display = 'block';
+            console.log('[SW] ✅ Generation successful');
+          } else {
+            throw new Error('生成结果为空');
+          }
+          
+        } catch (error) {
+          console.error('[SW] Generation failed:', error);
+          outputContent.textContent = \`生成失败: \${error.message\}\n\n提示：请确保您在SillyTavern的角色聊天页面，并且已连接到AI服务。\`;
+          outputSection.style.display = 'block';
+        } finally {
+          btn.textContent = '🎯 生成故事大纲';
+          btn.disabled = false;
+        }
+      }
+      
+      function buildNativePrompt(settings) {
+        let prompt = \`请为我生成一个\${STORY_TYPES[settings.storyType\] || settings.storyType\}类型的故事大纲。\`;
+        
+        if (settings.storyTheme) {
+          prompt += \`\\n\\n故事主题: \${settings.storyTheme\}\`;
+        }
+        
+        prompt += \`\\n\\n要求:
+1. 包含\${settings.chapterCount\}个章节
+2. 每章有明确的情节发展和冲突
+3. 结构完整，逻辑清晰
+4. 符合\${STORY_STYLES[settings.storyStyle\] || settings.storyStyle\}的叙述风格
+5. 详细程度: \${DETAIL_LEVELS[settings.detailLevel\] || settings.detailLevel\}\`;
+
+        if (settings.specialRequirements) {
+          prompt += \`\\n6. 特殊要求: \${settings.specialRequirements\}\`;
+        }
+        
+        if (settings.includeSummary) {
+          prompt += \`\\n\\n请在大纲前提供故事摘要。\`;
+        }
+        
+        if (settings.includeCharacters) {
+          prompt += \`\\n\\n请包含主要角色的性格特点和发展弧线。\`;
+        }
+        
+        if (settings.includeThemes) {
+          prompt += \`\\n\\n请说明故事要探讨的核心主题。\`;
+        }
+        
+        prompt += \`\\n\\n请生成结构完整、逻辑清晰的故事大纲。\`;
+        
+        return prompt;
+      }
+      
+      function copyNativeResult() {
+        if (nativeResult) {
+          navigator.clipboard.writeText(nativeResult).then(() => {
+            alert('结果已复制到剪贴板！');
+          }).catch(() => {
+            alert('复制失败，请手动选择文本复制');
+          });
+        }
+      }
+      
+      function saveNativeResult() {
+        if (nativeResult) {
+          const blob = new Blob([nativeResult], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = \`story-outline-\${new Date().getTime()\}.txt\`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          alert('文件已保存！');
+        }
+      }
+    </script>
+  `;
 }
 
 function buildCompleteInterface(settings) {
