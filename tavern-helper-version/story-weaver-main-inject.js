@@ -16,7 +16,7 @@ const STORY_TYPES = {
   slice_of_life: '日常生活',
   comedy: '喜剧轻松',
   drama: '剧情情感',
-  action: '动作战斗'
+  action: '动作战斗',
 };
 
 const STORY_STYLES = {
@@ -24,13 +24,13 @@ const STORY_STYLES = {
   dialogue: '对话性',
   descriptive: '描述性',
   stream_of_consciousness: '意识流',
-  epistolary: '书信体'
+  epistolary: '书信体',
 };
 
 const DETAIL_LEVELS = {
   brief: '简洁大纲',
   medium: '中等详细',
-  detailed: '详细描述'
+  detailed: '详细描述',
 };
 
 // ========================= MAIN PAGE SPIRIT BALL INJECTION =========================
@@ -40,7 +40,7 @@ const DETAIL_LEVELS = {
  */
 function createMainPageSpiritBall() {
   console.log('[SW] Creating spirit ball on main ST page...');
-  
+
   // Remove existing spirit ball if present
   if (typeof $ !== 'undefined') {
     $('.sw-spirit-ball').remove();
@@ -237,15 +237,15 @@ function createMainPageSpiritBall() {
   // Inject directly into main SillyTavern page
   if (typeof $ !== 'undefined') {
     console.log('[SW] Injecting spirit ball into main page...');
-    
+
     $('head').append(styleHtml);
     $('body').append(spiritHtml);
     console.log('[SW] Spirit ball injected successfully');
-    
+
     // Make it interactive
     setTimeout(() => {
       makeSpiritBallInteractive();
-      
+
       // Show with animation
       setTimeout(() => {
         $('#story-weaver-spirit').addClass('sw-spirit-visible');
@@ -253,7 +253,6 @@ function createMainPageSpiritBall() {
         showWelcomeNotification();
       }, 100);
     }, 50);
-    
   } else {
     console.error('[SW] ❌ jQuery not available, cannot inject into main page');
   }
@@ -273,23 +272,23 @@ function makeSpiritBallInteractive() {
   console.log('[SW] Making spirit ball interactive...');
 
   // Click handler
-  $spiritBall.on('click', function(e) {
+  $spiritBall.on('click', function (e) {
     if (!hasMoved) {
       console.log('[SW] Spirit ball clicked!');
-      
+
       // Add click effect
       $(this).addClass('sw-spirit-active');
       setTimeout(() => {
         $(this).removeClass('sw-spirit-active');
       }, 600);
-      
+
       // Open Story Weaver interface
       openStoryWeaverInterface();
     }
   });
 
   // Make draggable
-  $spiritBall.on('mousedown', function(e) {
+  $spiritBall.on('mousedown', function (e) {
     isDragging = true;
     hasMoved = false;
     startPos = { x: e.clientX, y: e.clientY };
@@ -297,32 +296,32 @@ function makeSpiritBallInteractive() {
     e.preventDefault();
   });
 
-  $(document).on('mousemove', function(e) {
+  $(document).on('mousemove', function (e) {
     if (!isDragging) return;
-    
+
     const deltaX = Math.abs(e.clientX - startPos.x);
     const deltaY = Math.abs(e.clientY - startPos.y);
-    
+
     if (deltaX > 5 || deltaY > 5) {
       hasMoved = true;
-      
+
       const newX = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - 30));
       const newY = Math.max(0, Math.min(window.innerHeight - 60, e.clientY - 30));
-      
+
       $spiritBall.css({
         left: newX + 'px',
         top: newY + 'px',
         right: 'auto',
-        bottom: 'auto'
+        bottom: 'auto',
       });
     }
   });
 
-  $(document).on('mouseup', function() {
+  $(document).on('mouseup', function () {
     if (isDragging) {
       isDragging = false;
       $spiritBall.removeClass('sw-spirit-dragging');
-      
+
       setTimeout(() => {
         hasMoved = false;
       }, 100);
@@ -363,11 +362,11 @@ function showWelcomeNotification() {
 
   if (typeof $ !== 'undefined') {
     $('body').append(notificationHtml);
-    
+
     setTimeout(() => {
       $('#sw-welcome-notification').css('transform', 'translateX(0)');
     }, 500);
-    
+
     setTimeout(() => {
       $('#sw-welcome-notification').css('transform', 'translateX(100%)');
       setTimeout(() => {
@@ -384,14 +383,14 @@ function showWelcomeNotification() {
  */
 function init() {
   console.log('[SW] Initializing Story Weaver Enhanced...');
-  
+
   // Only register slash commands if in TavernHelper context
   if (typeof SlashCommandsAPI !== 'undefined') {
     registerSlashCommands();
   } else {
     console.log('[SW] SlashCommandsAPI not available - running on main page');
   }
-  
+
   // Only initialize TavernHelper variables if available
   if (typeof TavernHelper !== 'undefined' && TavernHelper.getGlobalVariable) {
     initializeGlobalVariables();
@@ -399,10 +398,10 @@ function init() {
     console.log('[SW] TavernHelper variables not available - using local storage');
     initializeLocalStorage();
   }
-  
+
   // Create spirit ball on main page
   createMainPageSpiritBall();
-  
+
   console.log('[SW] Story Weaver Enhanced v2.0 initialized!');
 }
 
@@ -411,7 +410,7 @@ function init() {
  */
 function initializeGlobalVariables() {
   console.log('[SW] Initializing global variables...');
-  
+
   // Initialize default settings if they don't exist
   const currentSettings = TavernHelper.getGlobalVariable('storyWeaverSettings');
   if (!currentSettings) {
@@ -424,9 +423,9 @@ function initializeGlobalVariables() {
       includeCharacters: true,
       includeSummary: true,
       includeThemes: true,
-      lastUsed: Date.now()
+      lastUsed: Date.now(),
     };
-    
+
     TavernHelper.setGlobalVariable('storyWeaverSettings', JSON.stringify(defaultSettings));
     console.log('[SW] Default settings initialized');
   } else {
@@ -439,7 +438,7 @@ function initializeGlobalVariables() {
  */
 function initializeLocalStorage() {
   console.log('[SW] Initializing local storage...');
-  
+
   // Initialize default settings if they don't exist
   const currentSettings = localStorage.getItem('storyWeaverSettings');
   if (!currentSettings) {
@@ -452,9 +451,9 @@ function initializeLocalStorage() {
       includeCharacters: true,
       includeSummary: true,
       includeThemes: true,
-      lastUsed: Date.now()
+      lastUsed: Date.now(),
     };
-    
+
     localStorage.setItem('storyWeaverSettings', JSON.stringify(defaultSettings));
     console.log('[SW] Default settings initialized in localStorage');
   } else {
@@ -471,28 +470,28 @@ function registerSlashCommands() {
       name: 'sw',
       description: 'Open Story Weaver interface - 打开故事大纲生成器',
       callback: openStoryWeaverInterface,
-      helpString: 'Opens the enhanced Story Weaver interface'
+      helpString: 'Opens the enhanced Story Weaver interface',
     });
 
     SlashCommandsAPI.registerSlashCommand({
       name: 'storyweaver',
       description: 'Open Story Weaver interface (alias) - 打开故事大纲生成器',
       callback: openStoryWeaverInterface,
-      helpString: 'Alias for /sw command'
+      helpString: 'Alias for /sw command',
     });
 
     SlashCommandsAPI.registerSlashCommand({
       name: 'swquick',
       description: 'Quick story generation - 快速生成故事大纲',
       callback: handleQuickGeneration,
-      helpString: 'Usage: /swquick [type] [chapters]'
+      helpString: 'Usage: /swquick [type] [chapters]',
     });
 
     SlashCommandsAPI.registerSlashCommand({
       name: 'swspirit',
       description: 'Toggle spirit ball - 切换精灵球显示',
       callback: toggleSpiritBall,
-      helpString: 'Show/hide the floating spirit ball'
+      helpString: 'Show/hide the floating spirit ball',
     });
 
     console.log('[SW] Slash commands registered successfully');
@@ -527,22 +526,21 @@ function toggleSpiritBall() {
   }
 }
 
-
 /**
  * Open Story Weaver interface
  */
 function openStoryWeaverInterface() {
   const settings = loadSettings();
   const interfaceHTML = buildSimpleInterface(settings);
-  
+
   TavernHelper.showWindow({
     title: 'Story Weaver Enhanced - 故事大纲生成器',
     content: interfaceHTML,
     width: 800,
     height: 600,
-    resizable: true
+    resizable: true,
   });
-  
+
   showNotification('Story Weaver Enhanced 已打开', 'success');
   console.log('[SW] Interface opened');
 }
@@ -554,15 +552,15 @@ function handleQuickGeneration(args) {
   const params = args.split(' ').filter(p => p.trim());
   const storyType = params[0] || 'adventure';
   const chapterCount = params[1] || '5';
-  
+
   const quickSettings = {
     ...loadSettings(),
     storyType: STORY_TYPES[storyType] ? storyType : 'adventure',
     chapterCount: chapterCount,
     storyTheme: '基于当前对话和世界观生成合适的故事主题',
-    detailLevel: 'medium'
+    detailLevel: 'medium',
   };
-  
+
   generateStoryOutline(quickSettings);
 }
 
@@ -573,17 +571,17 @@ async function generateStoryOutline(settings) {
   try {
     console.log('[SW] Starting story generation...');
     showNotification('开始生成故事大纲...', 'info');
-    
+
     const template = settings.customPromptTemplate || getDefaultPromptTemplate();
     const prompt = processPromptTemplate(template, settings);
-    
+
     console.log('[SW] Calling TavernHelper.generateRaw...');
     const response = await TavernHelper.generateRaw(prompt, {
       temperature: 0.8,
       max_tokens: 4000,
-      top_p: 0.9
+      top_p: 0.9,
     });
-    
+
     if (response && response.trim()) {
       console.log('[SW] Generation successful, result length:', response.length);
       TavernHelper.sendMessage(`## 📖 Story Outline Generated\n\n${response}`);
@@ -630,12 +628,12 @@ function getDefaultPromptTemplate() {
  */
 function processPromptTemplate(template, settings) {
   const contextLength = parseInt(settings.contextLength || '10');
-  
+
   try {
     const worldbookEntries = formatWorldbookEntries(TavernHelper.getWorldbookEntries());
     const characterData = formatCharacterData(TavernHelper.getCharacterData());
     const chatHistory = formatChatHistory(TavernHelper.getChatHistory(contextLength));
-    
+
     return template
       .replace(/\{worldbook_entries\}/g, worldbookEntries)
       .replace(/\{character_data\}/g, characterData.combined)
@@ -657,12 +655,14 @@ function processPromptTemplate(template, settings) {
  */
 function formatWorldbookEntries(entries) {
   if (!entries || entries.length === 0) return '暂无世界观条目';
-  
-  return entries.map(entry => {
-    const key = entry.key || (entry.keys && entry.keys[0]) || '未知';
-    const content = entry.content || entry.description || '';
-    return `**${key}:** ${content}`;
-  }).join('\n\n');
+
+  return entries
+    .map(entry => {
+      const key = entry.key || (entry.keys && entry.keys[0]) || '未知';
+      const content = entry.content || entry.description || '';
+      return `**${key}:** ${content}`;
+    })
+    .join('\n\n');
 }
 
 /**
@@ -670,17 +670,17 @@ function formatWorldbookEntries(entries) {
  */
 function formatCharacterData(data) {
   if (!data) return { combined: '暂无角色数据', persona: '', scenario: '' };
-  
+
   const persona = data.personality || data.persona || '';
   const scenario = data.scenario || data.mes_example || '';
   const name = data.name || '未知角色';
   const description = data.description || '';
-  
+
   const combined = `**角色姓名:** ${name}
 **角色描述:** ${description}
 **角色性格:** ${persona}
 **当前情境:** ${scenario}`;
-  
+
   return { combined, persona, scenario };
 }
 
@@ -689,12 +689,15 @@ function formatCharacterData(data) {
  */
 function formatChatHistory(history) {
   if (!history || history.length === 0) return '暂无对话历史';
-  
-  return history.map(msg => {
-    const name = msg.name || msg.user || '未知';
-    const content = msg.mes || msg.message || '';
-    return `[${name}]: ${content}`;
-  }).slice(-10).join('\n');
+
+  return history
+    .map(msg => {
+      const name = msg.name || msg.user || '未知';
+      const content = msg.mes || msg.message || '';
+      return `[${name}]: ${content}`;
+    })
+    .slice(-10)
+    .join('\n');
 }
 
 /**
@@ -727,7 +730,7 @@ function getDefaultSettings() {
     specialRequirements: '',
     includeSummary: true,
     includeCharacters: true,
-    includeThemes: false
+    includeThemes: false,
   };
 }
 
@@ -816,15 +819,20 @@ function buildSimpleInterface(settings) {
         
         <div class="form-group">
             <label class="label">故事主题：</label>
-            <textarea id="story-theme" class="textarea" rows="3" placeholder="描述您想要的故事主题...">${settings.storyTheme}</textarea>
+            <textarea id="story-theme" class="textarea" rows="3" placeholder="描述您想要的故事主题...">${
+              settings.storyTheme
+            }</textarea>
         </div>
         
         <div class="form-group">
             <label class="label">故事类型：</label>
             <select id="story-type" class="select">
-                ${Object.entries(STORY_TYPES).map(([key, label]) => 
-                  `<option value="${key}" ${key === settings.storyType ? 'selected' : ''}>${label}</option>`
-                ).join('')}
+                ${Object.entries(STORY_TYPES)
+                  .map(
+                    ([key, label]) =>
+                      `<option value="${key}" ${key === settings.storyType ? 'selected' : ''}>${label}</option>`,
+                  )
+                  .join('')}
             </select>
         </div>
         
@@ -895,7 +903,7 @@ function showNotification(message, type = 'info') {
   try {
     TavernHelper.showNotification(message, {
       type: type,
-      duration: 3000
+      duration: 3000,
     });
   } catch (error) {
     console.log('[SW] Notification:', message);
@@ -914,14 +922,14 @@ function debugEnvironment() {
   console.log('[SW] Spirit ball exists:', $('#story-weaver-spirit').length > 0);
   console.log('[SW] Spirit ball visible:', $('#story-weaver-spirit').is(':visible'));
   console.log('[SW] Window size:', window.innerWidth + 'x' + window.innerHeight);
-  
+
   if ($('#story-weaver-spirit').length > 0) {
     const $ball = $('#story-weaver-spirit');
     console.log('[SW] Spirit ball position:', {
       top: $ball.css('top'),
       left: $ball.css('left'),
       right: $ball.css('right'),
-      bottom: $ball.css('bottom')
+      bottom: $ball.css('bottom'),
     });
     console.log('[SW] Spirit ball classes:', $ball.attr('class'));
   }
@@ -934,7 +942,7 @@ function debugEnvironment() {
 function forceCreateSpiritBall() {
   console.log('[SW] Force creating spirit ball...');
   createMainPageSpiritBall();
-  
+
   setTimeout(() => {
     if ($('#story-weaver-spirit').length > 0) {
       console.log('[SW] ✅ Spirit ball created successfully');
@@ -971,7 +979,7 @@ window.StoryWeaver = {
   toggleSpiritBall,
   debugEnvironment,
   openStoryWeaverInterface,
-  generateStoryOutline
+  generateStoryOutline,
 };
 
 // Try to expose to main window if possible
