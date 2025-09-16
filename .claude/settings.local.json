@@ -8,7 +8,11 @@
       "WebFetch(domain:n0vi028.github.io)",
       "WebFetch(domain:github.com)",
       "WebFetch(domain:dghiffjd7.github.io)",
-      "Bash(sed:*)"
+      "Bash(sed:*)",
+      "Bash(git restore:*)",
+      "Bash(xxd:*)",
+      "Bash(awk:*)",
+      "Bash(cat:*)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
