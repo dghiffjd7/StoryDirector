@@ -6,7 +6,8 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "WebFetch(domain:n0vi028.github.io)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:dghiffjd7.github.io)"
     ],
     "defaultMode": "acceptEdits",
     "additionalDirectories": [
