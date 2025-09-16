@@ -1,0 +1,214 @@
+:host {
+  all: initial;
+}
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.phone-wrap {
+  position: relative;
+  width: 320px;
+  height: 640px;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+}
+@media (max-width: 420px) {
+  .phone-wrap {
+    width: 92vw;
+    height: calc(92vw * 2);
+  }
+}
+
+.phone {
+  position: absolute;
+  inset: 0;
+  border-radius: 32px;
+  background: #0a0a0a;
+  border: 1px solid #242424;
+  box-shadow: 0 16px 60px rgba(0, 0, 0, 0.55), inset 0 0 0 1px rgba(255, 255, 255, 0.03);
+  overflow: hidden;
+}
+.notch {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 120px;
+  height: 18px;
+  background: #111;
+  border-radius: 0 0 14px 14px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 -1px 0 rgba(0, 0, 0, 0.6);
+  z-index: 3;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+}
+
+/* 传送门背景（纯 CSS） */
+.portal {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 120% at 50% 50%, #000 0%, #02030a 60%, #000 100%);
+  overflow: hidden;
+}
+.ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 140vmin;
+  height: 140vmin;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  opacity: 0.75;
+  filter: blur(0.2px) saturate(120%);
+  background: conic-gradient(
+    from 0deg,
+    rgba(0, 255, 255, 0) 0deg,
+    rgba(0, 255, 255, 0.5) 60deg,
+    rgba(170, 0, 255, 0.7) 120deg,
+    rgba(0, 255, 255, 0.5) 180deg,
+    rgba(170, 0, 255, 0.7) 240deg,
+    rgba(0, 255, 255, 0.5) 300deg,
+    rgba(0, 0, 0, 0) 360deg
+  );
+  mask: radial-gradient(circle at 50% 50%, transparent 0 34%, black 36% 100%);
+  animation: spin 22s linear infinite;
+}
+.ring.r2 {
+  width: 120vmin;
+  height: 120vmin;
+  opacity: 0.65;
+  animation-duration: 14s;
+  filter: blur(0.4px);
+}
+.ring.r3 {
+  width: 100vmin;
+  height: 100vmin;
+  opacity: 0.55;
+  animation-duration: 9s;
+  filter: blur(0.6px);
+}
+@keyframes spin {
+  to {
+    transform: translate(-50%, -50%) rotate(360deg);
+  }
+}
+
+/* 前景 HUD */
+.hud {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 14px;
+  color: #e7f6ff;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.title {
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.4px;
+  opacity: 0.92;
+}
+.pts {
+  font-size: 13px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(0, 180, 255, 0.14);
+  border: 1px solid rgba(0, 180, 255, 0.25);
+}
+
+.cards {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+.card {
+  background: rgba(0, 0, 0, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 16px;
+  padding: 10px;
+  backdrop-filter: blur(4px);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.02), 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 5px 0;
+}
+.k {
+  font-size: 12px;
+  opacity: 0.86;
+}
+.val {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  font-size: 13px;
+  text-align: right;
+  opacity: 0.95;
+}
+.btns {
+  display: flex;
+  gap: 6px;
+}
+button {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(9, 19, 30, 0.6);
+  color: #eaffff;
+  font-size: 12px;
+  padding: 5px 9px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform 0.06s ease, background 0.2s ease;
+}
+button:hover {
+  background: rgba(15, 42, 63, 0.7);
+}
+button:active {
+  transform: translateY(1px) scale(0.98);
+}
+
+.foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.frag {
+  font-size: 11px;
+  line-height: 1.4;
+  padding: 8px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #d8ffff;
+}
+.bar {
+  display: flex;
+  gap: 8px;
+}
+.ghost {
+  opacity: 0.75;
+}
+.warn {
+  color: #ffd8a8;
+  font-size: 12px;
+  min-height: 1.2em;
+}
