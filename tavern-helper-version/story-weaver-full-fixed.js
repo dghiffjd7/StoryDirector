@@ -733,6 +733,52 @@ function buildSimpleInterface(settings) {
         line-height: 1.4;
       }
 
+      .sw-settings-container {
+        position: relative;
+        display: inline-block;
+      }
+
+      .sw-settings-menu {
+        position: absolute;
+        top: 100%;
+        right: 0;
+        background: white;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        z-index: 10001;
+        min-width: 200px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+
+      .sw-settings-menu-item {
+        padding: 12px 16px;
+        cursor: pointer;
+        border-bottom: 1px solid #f8f9fa;
+        transition: background-color 0.2s ease;
+        font-size: 14px;
+        font-weight: 500;
+        color: #495057;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .sw-settings-menu-item:hover {
+        background-color: #f8f9fa;
+        color: #667eea;
+      }
+
+      .sw-settings-menu-item:last-child {
+        border-bottom: none;
+      }
+
+      .sw-settings-btn-active {
+        background: rgba(255,255,255,0.3) !important;
+        border-color: rgba(255,255,255,0.5) !important;
+      }
+
       @media (max-width: 768px) {
         .sw-form-row {
           grid-template-columns: 1fr;
@@ -747,35 +793,49 @@ function buildSimpleInterface(settings) {
         .sw-btn-group {
           justify-content: center;
         }
+        .sw-settings-menu {
+          right: 0;
+          left: auto;
+          min-width: 180px;
+        }
       }
     </style>
 
     <div class="sw-interface">
       <div class="sw-header">
-        <h2>📖 Story Weaver Enhanced</h2>
-        <div style="font-size: 14px; opacity: 0.9; margin-top: 8px;">智能故事大纲生成器 v2.0</div>
-      </div>
-      
-      <!-- 上下文设定区域 -->
-      <div class="sw-section">
-        <h3 class="sw-section-header">📖 剧情上下文设定</h3>
-
-        <div class="sw-form-row">
-          <div class="sw-form-group">
-            <label class="sw-label">对话历史长度：</label>
-            <input type="number" id="sw-context-length" class="sw-input" value="${settings.contextLength || 10}" min="0" max="50">
-            <div class="sw-help-text">设置为0则不读取对话历史</div>
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <h2>📖 Story Weaver Enhanced</h2>
+            <div style="font-size: 14px; opacity: 0.9; margin-top: 8px;">智能故事大纲生成器 v2.0</div>
           </div>
-          <div class="sw-form-group">
-            <label class="sw-label">数据操作：</label>
-            <div class="sw-btn-group">
-              <button id="sw-refresh-data" onclick="refreshContextData()" class="sw-btn sw-btn-success" title="重新读取世界书和聊天历史数据">🔄 刷新数据</button>
-              <button id="sw-preview-data" onclick="previewContextData()" class="sw-btn sw-btn-info" title="查看当前可访问的上下文数据">👁️ 预览数据</button>
+          <div class="sw-settings-container">
+            <button id="sw-settings-btn" onclick="toggleSettingsMenu()" class="sw-btn" style="background: rgba(255,255,255,0.2); color: white; border: 2px solid rgba(255,255,255,0.3); padding: 8px 12px;">
+              ⚙️ 设定
+            </button>
+            <div id="sw-settings-menu" class="sw-settings-menu" style="display: none;">
+              <div class="sw-settings-menu-item" onclick="openPresetManager()">
+                💾 预设管理
+              </div>
+              <div class="sw-settings-menu-item" onclick="openWorldBookViewer()">
+                🌍 世界书查看
+              </div>
+              <div class="sw-settings-menu-item" onclick="openPromptManager()">
+                📝 提示词管理
+              </div>
+              <div class="sw-settings-menu-item" onclick="openImportExportManager()">
+                📁 导入导出管理
+              </div>
+              <div class="sw-settings-menu-item" onclick="openHistoryManager()">
+                📜 历史记录管理
+              </div>
+              <div class="sw-settings-menu-item" onclick="openAdvancedSettings()">
+                🔧 高级设定
+              </div>
             </div>
-            <div id="sw-context-status" class="sw-status-text">将根据设定自动读取最近的对话内容</div>
           </div>
         </div>
       </div>
+      
       
       <!-- 基本设定区域 -->
       <div class="sw-section">
@@ -841,48 +901,6 @@ ${Object.entries(DETAIL_LEVELS).map(([k,v]) =>
         </div>
       </div>
       
-      <!-- 预设管理区域 -->
-      <div class="sw-section">
-        <h3 class="sw-section-header">💾 预设管理</h3>
-
-        <div class="sw-form-group">
-          <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px; align-items: center;">
-            <select id="sw-preset-select" class="sw-select">
-              <option value="">选择预设...</option>
-            </select>
-            <button onclick="loadSelectedPreset()" class="sw-btn sw-btn-primary">📁 加载</button>
-            <button onclick="showSavePresetDialog()" class="sw-btn sw-btn-success">💾 保存</button>
-            <button onclick="showPresetManager()" class="sw-btn sw-btn-purple">⚙️ 管理</button>
-          </div>
-          <div class="sw-help-text">
-            预设包含所有故事设定、选项配置等完整信息
-          </div>
-        </div>
-      </div>
-      
-      <!-- 导入导出区域 -->
-      <div class="sw-section">
-        <h3 class="sw-section-header">📁 导入导出管理</h3>
-
-        <div class="sw-form-row" style="margin-bottom: 16px;">
-          <div class="sw-form-group" style="text-align: center;">
-            <input type="file" id="sw-import-file" accept=".json,.txt,.md" style="display: none;">
-            <button onclick="document.getElementById('sw-import-file').click()" class="sw-btn sw-btn-primary" style="width: 100%; padding: 12px;">📥 导入文件</button>
-            <div class="sw-help-text">支持 JSON、TXT、MD 格式</div>
-          </div>
-          <div class="sw-form-group" style="text-align: center;">
-            <button onclick="showImportExportManager()" class="sw-btn sw-btn-purple" style="width: 100%; padding: 12px;">🔧 管理中心</button>
-            <div class="sw-help-text">批量导入导出操作</div>
-          </div>
-        </div>
-
-        <div class="sw-btn-grid">
-          <button onclick="exportCurrentSettings()" class="sw-btn sw-btn-success">💾 导出设置</button>
-          <button onclick="exportStoryOutline('txt')" class="sw-btn sw-btn-info">📄 导出TXT</button>
-          <button onclick="exportStoryOutline('md')" class="sw-btn sw-btn-purple">📝 导出MD</button>
-          <button onclick="exportStoryOutline('json')" class="sw-btn sw-btn-orange">🔧 导出JSON</button>
-        </div>
-      </div>
 
       <button id="sw-generate-btn" onclick="handleNativeGenerate()" class="sw-generate-btn">
         🎯 生成故事大纲
@@ -3451,4 +3469,339 @@ function initializeImportHandler() {
     console.error('[SW] Failed to initialize import handler:', error);
   }
 }
+
+// ========================= 设定菜单系统 =========================
+
+/**
+ * 切换设定菜单显示/隐藏
+ */
+window.toggleSettingsMenu = function() {
+  try {
+    const settingsMenu = document.getElementById('sw-settings-menu');
+    const settingsBtn = document.getElementById('sw-settings-btn');
+
+    if (!settingsMenu) return;
+
+    const isVisible = settingsMenu.style.display !== 'none';
+
+    if (isVisible) {
+      settingsMenu.style.display = 'none';
+      settingsBtn.classList.remove('sw-settings-btn-active');
+    } else {
+      settingsMenu.style.display = 'block';
+      settingsBtn.classList.add('sw-settings-btn-active');
+    }
+  } catch (error) {
+    console.error('[SW] Error toggling settings menu:', error);
+  }
+};
+
+/**
+ * 关闭设定菜单
+ */
+function closeSettingsMenu() {
+  const settingsMenu = document.getElementById('sw-settings-menu');
+  const settingsBtn = document.getElementById('sw-settings-btn');
+
+  if (settingsMenu) {
+    settingsMenu.style.display = 'none';
+  }
+  if (settingsBtn) {
+    settingsBtn.classList.remove('sw-settings-btn-active');
+  }
+}
+
+/**
+ * 预设管理模态窗口
+ */
+window.openPresetManager = function() {
+  try {
+    closeSettingsMenu();
+
+    const modal = document.createElement('div');
+    modal.id = 'preset-manager-modal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = 'background: white; width: 90%; max-width: 600px; max-height: 80vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3);';
+
+    modalContent.innerHTML = `
+      <div style="padding: 20px; border-bottom: 1px solid #eee; background: #667eea; color: white;">
+        <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">💾 预设管理</h2>
+      </div>
+      <div style="padding: 20px; overflow-y: auto; flex-grow: 1;">
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">快速操作:</label>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px;">
+            <button onclick="saveCurrentPresetDialog()" class="sw-btn sw-btn-success" style="padding: 10px;">💾 保存当前设置</button>
+            <button onclick="importPresetFile()" class="sw-btn sw-btn-primary" style="padding: 10px;">📥 导入预设</button>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 20px;">
+          <label style="display: block; margin-bottom: 8px; font-weight: 600;">已保存的预设:</label>
+          <div id="preset-list-container" style="border: 1px solid #e9ecef; border-radius: 8px; max-height: 300px; overflow-y: auto;">
+            <div style="padding: 20px; text-align: center; color: #6c757d;">加载中...</div>
+          </div>
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <button onclick="exportAllPresets()" class="sw-btn sw-btn-info" style="width: 100%; padding: 10px;">📤 导出所有预设</button>
+        </div>
+      </div>
+      <div style="padding: 20px; border-top: 1px solid #eee; text-align: right; background: #f8f9fa;">
+        <button onclick="this.parentElement.parentElement.parentElement.remove()" class="sw-btn" style="background: #6c757d; color: white; padding: 10px 20px;">关闭</button>
+      </div>
+    `;
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // 加载预设列表
+    loadPresetListForManager();
+
+    // 点击外部关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'openPresetManager');
+  }
+};
+
+/**
+ * 世界书查看器
+ */
+window.openWorldBookViewer = function() {
+  try {
+    closeSettingsMenu();
+
+    const modal = document.createElement('div');
+    modal.id = 'worldbook-viewer-modal';
+    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = 'background: white; width: 90%; max-width: 800px; max-height: 90vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3);';
+
+    modalContent.innerHTML = `
+      <div style="padding: 20px; border-bottom: 1px solid #eee; background: #28a745; color: white;">
+        <h2 style="margin: 0; display: flex; align-items: center; gap: 8px;">🌍 世界书内容查看</h2>
+        <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">查看和管理当前可用的世界设定信息</div>
+      </div>
+      <div style="padding: 20px; overflow-y: auto; flex-grow: 1;">
+        <div style="margin-bottom: 15px;">
+          <button onclick="refreshWorldBookData()" class="sw-btn sw-btn-success" style="margin-right: 10px;">🔄 刷新数据</button>
+          <button onclick="exportWorldBookData()" class="sw-btn sw-btn-info">📤 导出世界书</button>
+        </div>
+
+        <div id="worldbook-content" style="border: 1px solid #e9ecef; border-radius: 8px; padding: 15px; min-height: 200px; max-height: 400px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 13px; white-space: pre-wrap; background: #f8f9fa;">
+          正在加载世界书数据...
+        </div>
+
+        <div style="margin-top: 15px; font-size: 12px; color: #6c757d;">
+          💡 提示：这里显示的是当前SillyTavern中可访问的世界书条目。刷新数据可以获取最新信息。
+        </div>
+      </div>
+      <div style="padding: 20px; border-top: 1px solid #eee; text-align: right; background: #f8f9fa;">
+        <button onclick="this.parentElement.parentElement.parentElement.remove()" class="sw-btn" style="background: #6c757d; color: white; padding: 10px 20px;">关闭</button>
+      </div>
+    `;
+
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
+
+    // 加载世界书数据
+    loadWorldBookContent();
+
+    // 点击外部关闭
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.remove();
+      }
+    });
+
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'openWorldBookViewer');
+  }
+};
+
+/**
+ * 简化版本的其他管理功能
+ */
+window.openPromptManager = function() {
+  closeSettingsMenu();
+  StoryWeaverErrorHandler.showNotification('提示词管理功能开发中', 'info');
+};
+
+window.openImportExportManager = function() {
+  closeSettingsMenu();
+  StoryWeaverErrorHandler.showNotification('导入导出管理功能开发中', 'info');
+};
+
+window.openHistoryManager = function() {
+  closeSettingsMenu();
+  StoryWeaverErrorHandler.showNotification('历史记录管理功能开发中', 'info');
+};
+
+window.openAdvancedSettings = function() {
+  closeSettingsMenu();
+  StoryWeaverErrorHandler.showNotification('高级设定功能开发中', 'info');
+};
+
+// ========================= 辅助函数 =========================
+
+/**
+ * 为预设管理器加载预设列表
+ */
+function loadPresetListForManager() {
+  try {
+    const container = document.getElementById('preset-list-container');
+    if (!container) return;
+
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+    const presetNames = Object.keys(savedPresets);
+
+    if (presetNames.length === 0) {
+      container.innerHTML = '<div style="padding: 20px; text-align: center; color: #6c757d;">暂无保存的预设</div>';
+      return;
+    }
+
+    let html = '';
+    presetNames.forEach(name => {
+      const preset = savedPresets[name];
+      const date = preset.timestamp ? new Date(preset.timestamp).toLocaleString() : '未知时间';
+
+      html += `
+        <div style="padding: 15px; border-bottom: 1px solid #f0f0f0; display: flex; justify-content: between; align-items: center;">
+          <div style="flex: 1;">
+            <div style="font-weight: 600; margin-bottom: 5px;">${name}</div>
+            <div style="font-size: 12px; color: #6c757d;">保存时间: ${date}</div>
+          </div>
+          <div style="display: flex; gap: 5px;">
+            <button onclick="loadSelectedPresetInManager('${name}')" style="padding: 4px 8px; background: #007bff; color: white; border: none; border-radius: 3px; font-size: 11px;">加载</button>
+            <button onclick="exportSinglePreset('${name}')" style="padding: 4px 8px; background: #28a745; color: white; border: none; border-radius: 3px; font-size: 11px;">导出</button>
+            <button onclick="deleteSinglePreset('${name}')" style="padding: 4px 8px; background: #dc3545; color: white; border: none; border-radius: 3px; font-size: 11px;">删除</button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  } catch (error) {
+    console.error('[SW] Failed to load preset list for manager:', error);
+  }
+}
+
+/**
+ * 在管理器中加载选中的预设
+ */
+window.loadSelectedPresetInManager = function(presetName) {
+  try {
+    const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
+    if (savedPresets[presetName]) {
+      loadPresetSettings(savedPresets[presetName]);
+      StoryWeaverErrorHandler.showNotification(`预设 "${presetName}" 已加载到主界面`, 'success');
+
+      // 关闭预设管理器
+      const modal = document.getElementById('preset-manager-modal');
+      if (modal) modal.remove();
+    }
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'loadSelectedPresetInManager');
+  }
+};
+
+/**
+ * 保存当前设置为预设（在管理器中）
+ */
+window.saveCurrentPresetDialog = function() {
+  try {
+    const presetName = prompt('请输入预设名称:');
+    if (presetName && presetName.trim()) {
+      saveCurrentPreset(presetName.trim());
+      // 刷新预设列表
+      setTimeout(() => {
+        loadPresetListForManager();
+      }, 100);
+    }
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'saveCurrentPresetDialog');
+  }
+};
+
+/**
+ * 加载世界书内容
+ */
+async function loadWorldBookContent() {
+  try {
+    const container = document.getElementById('worldbook-content');
+    if (!container) return;
+
+    container.textContent = '正在加载世界书数据...';
+
+    const contextInfo = await gatherContextInformation(0); // 不包含对话历史
+
+    if (contextInfo && contextInfo.trim()) {
+      container.textContent = contextInfo;
+    } else {
+      container.textContent = '未找到可用的世界书数据。\n\n可能的原因：\n1. 当前没有加载的世界书\n2. SillyTavern环境不支持\n3. 世界书数据获取失败\n\n请检查SillyTavern的世界书设置。';
+    }
+  } catch (error) {
+    const container = document.getElementById('worldbook-content');
+    if (container) {
+      container.textContent = `加载世界书数据时出错：${error.message}`;
+    }
+    console.error('[SW] Failed to load world book content:', error);
+  }
+}
+
+/**
+ * 刷新世界书数据
+ */
+window.refreshWorldBookData = function() {
+  loadWorldBookContent();
+  StoryWeaverErrorHandler.showNotification('正在刷新世界书数据...', 'info');
+};
+
+/**
+ * 导出世界书数据
+ */
+window.exportWorldBookData = function() {
+  try {
+    const container = document.getElementById('worldbook-content');
+    if (!container || !container.textContent.trim()) {
+      StoryWeaverErrorHandler.showNotification('没有可导出的世界书数据', 'warning');
+      return;
+    }
+
+    const exportData = {
+      title: '世界书数据导出',
+      timestamp: new Date().toISOString(),
+      content: container.textContent
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `worldbook-export-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    StoryWeaverErrorHandler.showNotification('世界书数据已导出', 'success');
+  } catch (error) {
+    StoryWeaverErrorHandler.handleError(error, 'exportWorldBookData');
+  }
+};
+
+// 点击其他地方关闭设定菜单
+document.addEventListener('click', function(e) {
+  const settingsContainer = document.querySelector('.sw-settings-container');
+  if (settingsContainer && !settingsContainer.contains(e.target)) {
+    closeSettingsMenu();
+  }
+});
 
