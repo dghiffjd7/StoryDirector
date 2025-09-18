@@ -1526,7 +1526,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
   let startX, startY, startLeft, startTop;
   let dragNamespace = '.drag' + elementSelector.replace('#', '');
 
-  $(document).on('mousedown' + dragNamespace, elementSelector + ' ' + handleSelector, function(e) {
+  $(document).on('mousedown' + dragNamespace, elementSelector + ' ' + handleSelector, function (e) {
     if (e.button !== 0) return; // Only left mouse button
 
     const element = $(elementSelector);
@@ -1542,8 +1542,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
     // Disable transitions during drag
     element.css({
-      'transition': 'none',
-      'user-select': 'none'
+      transition: 'none',
+      'user-select': 'none',
     });
 
     // Add dragging class for visual feedback
@@ -1556,7 +1556,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
     console.log('[SW] Started dragging element:', elementSelector);
   });
 
-  $(document).on('mousemove' + dragNamespace, function(e) {
+  $(document).on('mousemove' + dragNamespace, function (e) {
     if (!isDragging) return;
 
     const element = $(elementSelector);
@@ -1580,11 +1580,11 @@ function makeElementDraggable(elementSelector, handleSelector) {
       left: newLeft + 'px',
       top: newTop + 'px',
       right: 'auto', // Override any right positioning
-      position: 'fixed' // Ensure fixed positioning
+      position: 'fixed', // Ensure fixed positioning
     });
   });
 
-  $(document).on('mouseup' + dragNamespace, function(e) {
+  $(document).on('mouseup' + dragNamespace, function (e) {
     if (!isDragging) return;
 
     const element = $(elementSelector);
@@ -1593,9 +1593,9 @@ function makeElementDraggable(elementSelector, handleSelector) {
     // Re-enable transitions with smooth effect
     setTimeout(() => {
       element.css({
-        'transition': 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        'transform': 'scale(1)',
-        'user-select': 'auto'
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: 'scale(1)',
+        'user-select': 'auto',
       });
     }, 50);
 
@@ -1774,17 +1774,23 @@ function buildPromptItem(prompt) {
 function setupPromptManagerEvents() {
   console.log('[SW] Setting up prompt manager events...');
 
-  // Clear any existing event handlers to prevent duplicates
-  $(document).off('click.swpromptevents');
+  const $panel = $('#sw-prompt-panel');
+  if ($panel.length === 0) {
+    console.log('[SW] Prompt panel not found; defer binding until panel is created.');
+    return;
+  }
+
+  // Clear any existing event handlers on the panel to prevent duplicates
+  $panel.off('.swpromptevents');
 
   // Add a generic click handler for all buttons in the prompt panel for debugging
-  $(document).on('click.swpromptevents', '#sw-prompt-panel button', function (e) {
+  $panel.on('click.swpromptevents', 'button', function (e) {
     console.log('[SW] Button clicked in prompt panel:', this.id, this.className);
     // Don't prevent default here, let specific handlers handle it
   });
 
   // Toggle prompt enabled/disabled
-  $(document).on('click.swpromptevents', '.sw-prompt-toggle', function (e) {
+  $panel.on('click.swpromptevents', '.sw-prompt-toggle', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Toggle clicked for:', $(this).data('identifier'));
@@ -1799,7 +1805,7 @@ function setupPromptManagerEvents() {
   });
 
   // Edit prompt
-  $(document).on('click.swpromptevents', '.sw-prompt-edit', function (e) {
+  $panel.on('click.swpromptevents', '.sw-prompt-edit', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Edit clicked for:', $(this).data('identifier'));
@@ -1808,7 +1814,7 @@ function setupPromptManagerEvents() {
   });
 
   // Copy prompt
-  $(document).on('click.swpromptevents', '.sw-prompt-copy', function (e) {
+  $panel.on('click.swpromptevents', '.sw-prompt-copy', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Copy clicked for:', $(this).data('identifier'));
@@ -1817,7 +1823,7 @@ function setupPromptManagerEvents() {
   });
 
   // Delete prompt
-  $(document).on('click.swpromptevents', '.sw-prompt-delete', function (e) {
+  $panel.on('click.swpromptevents', '.sw-prompt-delete', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Delete clicked for:', $(this).data('identifier'));
@@ -1826,7 +1832,7 @@ function setupPromptManagerEvents() {
   });
 
   // Add new prompt
-  $(document).on('click.swpromptevents', '#sw-add-prompt-btn', function (e) {
+  $panel.on('click.swpromptevents', '#sw-add-prompt-btn', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Add prompt clicked');
@@ -1834,7 +1840,7 @@ function setupPromptManagerEvents() {
   });
 
   // Reset prompts
-  $(document).on('click.swpromptevents', '#sw-reset-prompts-btn', function (e) {
+  $panel.on('click.swpromptevents', '#sw-reset-prompts-btn', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Reset prompts clicked');
@@ -1844,7 +1850,7 @@ function setupPromptManagerEvents() {
   });
 
   // Import prompts
-  $(document).on('click.swpromptevents', '#sw-import-prompts-btn', function (e) {
+  $panel.on('click.swpromptevents', '#sw-import-prompts-btn', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Import prompts clicked');
@@ -1852,7 +1858,7 @@ function setupPromptManagerEvents() {
   });
 
   // Export prompts
-  $(document).on('click.swpromptevents', '#sw-export-prompts-btn', function (e) {
+  $panel.on('click.swpromptevents', '#sw-export-prompts-btn', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Export prompts clicked');
@@ -1860,7 +1866,7 @@ function setupPromptManagerEvents() {
   });
 
   // Preview final prompt
-  $(document).on('click.swpromptevents', '#sw-preview-final-prompt-btn', function (e) {
+  $panel.on('click.swpromptevents', '#sw-preview-final-prompt-btn', function (e) {
     e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Preview prompt clicked');
