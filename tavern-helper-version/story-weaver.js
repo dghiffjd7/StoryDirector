@@ -75,6 +75,60 @@ const DETAIL_LEVELS = {
   detailed: '详细描述',
 };
 
+// ========================= GLOBAL CONTEXT BUILDERS (SAFE) =========================
+
+// Some features (like preview) run outside the native popup script block.
+// Provide a safe, global implementation so it is always available.
+if (typeof window.buildStoryContextForNative !== 'function') {
+  function buildStoryContextForNative(settings) {
+    let context = `请为我生成一个${STORY_TYPES[settings.storyType] || settings.storyType}类型的故事大纲。`;
+
+    if (settings.storyTheme) {
+      context += `\n\n故事主题: ${settings.storyTheme}`;
+    }
+
+    context += `\n\n要求:
+1. 包含${settings.chapterCount}个章节
+2. 每章有明确的情节发展和冲突
+3. 结构完整，逻辑清晰
+4. 符合${STORY_STYLES[settings.storyStyle] || settings.storyStyle}的叙述风格
+5. 详细程度: ${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel}`;
+
+    if (settings.specialRequirements) {
+      context += `\n6. 特殊要求: ${settings.specialRequirements}`;
+    }
+
+    if (settings.includeSummary) {
+      context += `\n\n请在大纲前提供故事摘要。`;
+    }
+
+    if (settings.includeCharacters) {
+      context += `\n\n请包含主要角色的性格特点和发展弧线。`;
+    }
+
+    if (settings.includeThemes) {
+      context += `\n\n请说明故事要探讨的核心主题。`;
+    }
+
+    return context;
+  }
+  window.buildStoryContextForNative = buildStoryContextForNative;
+}
+
+// Helper: copy text in preview dialogs
+if (typeof window.copyPreviewContent !== 'function') {
+  window.copyPreviewContent = function (text) {
+    try {
+      navigator.clipboard
+        .writeText(text)
+        .then(() => showNotification('已复制到剪贴板', 'success'))
+        .catch(() => showNotification('复制失败', 'error'));
+    } catch (e) {
+      showNotification('复制失败', 'error');
+    }
+  };
+}
+
 // ========================= SPIRIT BALL =========================
 
 function createSpiritBall() {
@@ -2082,7 +2136,7 @@ function showPromptEditor(identifier) {
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.8);
-      z-index: 10003;
+      z-index: 10006;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -2104,6 +2158,8 @@ function showPromptEditor(identifier) {
           justify-content: space-between;
           align-items: center;
           font-weight: 600;
+          cursor: move;
+          user-select: none;
         ">
           <span>${isNew ? '✨ 新建提示词' : '✏️ 编辑提示词'}</span>
           <button id="sw-editor-close-btn" style="
@@ -3013,12 +3069,12 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
       width: 100%;
       height: 100%;
       background: rgba(0, 0, 0, 0.8);
-      z-index: 10005;
+      z-index: 10006;
       display: flex;
       align-items: center;
       justify-content: center;
     ">
-      <div style="
+      <div id="sw-preview-dialog-window" class="sw-draggable-window" style="
         background: white;
         border-radius: 12px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -3029,7 +3085,7 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
         display: flex;
         flex-direction: column;
       ">
-        <div style="
+        <div class="sw-preview-header" style="
           background: linear-gradient(135deg, #667eea, #764ba2);
           color: white;
           padding: 15px 20px;
@@ -3038,6 +3094,8 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
           align-items: center;
           font-weight: 600;
           flex-shrink: 0;
+          cursor: move;
+          user-select: none;
         ">
           <span>👁️ 最终提示词预览</span>
           <button id="sw-preview-close-btn" style="
