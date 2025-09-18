@@ -538,7 +538,7 @@ function buildSimpleInterface(settings) {
     </div>
     
     <script>
-      let nativeResult = '';
+      window.swNativeResult = window.swNativeResult || '';
       
       async function handleNativeGenerate() {
         const btn = document.getElementById('sw-generate-btn');
@@ -578,7 +578,7 @@ function buildSimpleInterface(settings) {
           }
           
           if (result && result.trim()) {
-            nativeResult = result;
+            window.swNativeResult = result;
             outputContent.textContent = result;
             outputSection.style.display = 'block';
             outputControls.style.display = 'block';
@@ -679,8 +679,8 @@ function buildSimpleInterface(settings) {
       }
       
       function copyNativeResult() {
-        if (nativeResult) {
-          navigator.clipboard.writeText(nativeResult).then(() => {
+        if (window.swNativeResult) {
+          navigator.clipboard.writeText(window.swNativeResult).then(() => {
             alert('结果已复制到剪贴板！');
           }).catch(() => {
             alert('复制失败，请手动选择文本复制');
@@ -689,8 +689,8 @@ function buildSimpleInterface(settings) {
       }
       
       function saveNativeResult() {
-        if (nativeResult) {
-          const blob = new Blob([nativeResult], { type: 'text/plain;charset=utf-8' });
+        if (window.swNativeResult) {
+          const blob = new Blob([window.swNativeResult], { type: 'text/plain;charset=utf-8' });
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
@@ -1746,7 +1746,7 @@ function setupPromptDragAndDrop() {
         opacity: '0.7',
         transform: 'scale(0.98)',
         zIndex: '1000',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
       });
 
       // Create and insert placeholder
@@ -1764,9 +1764,8 @@ function setupPromptDragAndDrop() {
     if (!draggedElement || !placeholderElement) return;
 
     const mouseY = e.clientY;
-    const items = Array.from(promptList.children).filter(child =>
-      !child.classList.contains('sw-dragging') &&
-      !child.classList.contains('sw-prompt-placeholder')
+    const items = Array.from(promptList.children).filter(
+      child => !child.classList.contains('sw-dragging') && !child.classList.contains('sw-prompt-placeholder'),
     );
 
     let targetIndex = -1;
@@ -1807,7 +1806,7 @@ function setupPromptDragAndDrop() {
       opacity: '',
       transform: '',
       zIndex: '',
-      boxShadow: ''
+      boxShadow: '',
     });
 
     // Insert dragged element at placeholder position
@@ -2237,7 +2236,7 @@ function showPlaceholderMenu() {
     { key: '{{CHARACTER_NAME}}', desc: '角色名称' },
     { key: '{{STORY_TYPE}}', desc: '故事类型' },
     { key: '{{STORY_THEME}}', desc: '故事主题' },
-    { key: '{{CHAPTER_COUNT}}', desc: '章节数量' }
+    { key: '{{CHAPTER_COUNT}}', desc: '章节数量' },
   ];
 
   const menu = $(`
@@ -2250,7 +2249,9 @@ function showPlaceholderMenu() {
       z-index: 10006;
       min-width: 200px;
     ">
-      ${placeholders.map(p => `
+      ${placeholders
+        .map(
+          p => `
         <div class="placeholder-item" data-placeholder="${p.key}" style="
           padding: 8px 12px;
           cursor: pointer;
@@ -2260,7 +2261,9 @@ function showPlaceholderMenu() {
           <div style="font-weight: 600; font-size: 12px; font-family: monospace;">${p.key}</div>
           <div style="font-size: 11px; color: #666;">${p.desc}</div>
         </div>
-      `).join('')}
+      `,
+        )
+        .join('')}
     </div>
   `);
 
@@ -2270,13 +2273,13 @@ function showPlaceholderMenu() {
   menu.css({
     position: 'absolute',
     top: offset.top + button.outerHeight() + 5,
-    left: offset.left
+    left: offset.left,
   });
 
   $('body').append(menu);
 
   // Handle clicks
-  menu.find('.placeholder-item').click(function() {
+  menu.find('.placeholder-item').click(function () {
     const placeholder = $(this).data('placeholder');
     const textarea = $('#sw-editor-content')[0];
     const start = textarea.selectionStart;
@@ -2292,8 +2295,12 @@ function showPlaceholderMenu() {
 
   // Style hover effects
   menu.find('.placeholder-item').hover(
-    function() { $(this).css('background', '#f5f5f5'); },
-    function() { $(this).css('background', 'white'); }
+    function () {
+      $(this).css('background', '#f5f5f5');
+    },
+    function () {
+      $(this).css('background', 'white');
+    },
   );
 
   // Close on outside click
@@ -2316,7 +2323,7 @@ function previewPromptContent() {
     CHARACTER_NAME: '艾丽克斯',
     STORY_TYPE: '冒险故事',
     STORY_THEME: '探险与成长',
-    CHAPTER_COUNT: '5'
+    CHAPTER_COUNT: '5',
   };
 
   let previewContent = content;
@@ -2438,8 +2445,8 @@ function exportPrompts() {
       order: storyWeaverPromptOrder,
       metadata: {
         count: storyWeaverPrompts.size,
-        exported_by: 'Story Weaver Enhanced v2.0'
-      }
+        exported_by: 'Story Weaver Enhanced v2.0',
+      },
     };
 
     // Generate filename
@@ -2452,7 +2459,6 @@ function exportPrompts() {
 
     showNotification(`提示词已导出: ${filename}`, 'success');
     console.log('[SW] Prompts exported:', filename);
-
   } catch (error) {
     console.error('[SW] Export failed:', error);
     showNotification('导出失败: ' + error.message, 'error');
@@ -2466,12 +2472,12 @@ function importPrompts() {
   fileInput.accept = '.json';
   fileInput.style.display = 'none';
 
-  fileInput.onchange = function(e) {
+  fileInput.onchange = function (e) {
     const file = e.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = function(e) {
+    reader.onload = function (e) {
       try {
         const importData = JSON.parse(e.target.result);
         processImportData(importData);
@@ -2519,7 +2525,6 @@ function processImportData(data) {
 
     // Show import confirmation dialog
     showImportConfirmationDialog(prompts, order);
-
   } catch (error) {
     console.error('[SW] Import processing failed:', error);
     showNotification('导入失败: ' + error.message, 'error');
@@ -2578,7 +2583,14 @@ function showImportConfirmationDialog(prompts, order) {
               找到 <strong>${prompts.length}</strong> 个提示词，确定要导入吗？
             </p>
             <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa;">
-              ${prompts.map(p => `<div style="margin-bottom: 5px;">• ${p.name || p.identifier || 'Unnamed'} (${p.role || 'unknown'})</div>`).join('')}
+              ${prompts
+                .map(
+                  p =>
+                    `<div style="margin-bottom: 5px;">• ${p.name || p.identifier || 'Unnamed'} (${
+                      p.role || 'unknown'
+                    })</div>`,
+                )
+                .join('')}
             </div>
           </div>
 
@@ -2702,7 +2714,6 @@ function performImport(prompts, order, mode) {
 
     showNotification(`成功导入 ${importedCount} 个提示词`, 'success');
     console.log(`[SW] Imported ${importedCount} prompts in ${mode} mode`);
-
   } catch (error) {
     console.error('[SW] Import execution failed:', error);
     showNotification('导入失败: ' + error.message, 'error');
@@ -2733,7 +2744,7 @@ function previewFinalPrompt() {
       specialRequirements: '包含神秘元素和友情主题',
       includeSummary: true,
       includeCharacters: true,
-      includeThemes: false
+      includeThemes: false,
     };
 
     // Build final prompt using current settings
@@ -2741,7 +2752,6 @@ function previewFinalPrompt() {
 
     // Show preview dialog
     showPromptPreviewDialog(finalPrompt, sampleSettings);
-
   } catch (error) {
     console.error('[SW] Preview failed:', error);
     showNotification('预览失败: ' + error.message, 'error');
@@ -2773,7 +2783,7 @@ function buildPromptForPreview(settings) {
       name: prompt.name,
       role: prompt.role,
       content: processedContent,
-      order: prompt.injection_order
+      order: prompt.injection_order,
     });
 
     // Build final prompt
@@ -2789,7 +2799,7 @@ function buildPromptForPreview(settings) {
   return {
     final: finalPrompt.trim(),
     sections: promptSections,
-    context: contextData
+    context: contextData,
   };
 }
 
@@ -2907,7 +2917,9 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
             <!-- Sections Tab -->
             <div class="preview-content" data-content="sections" style="display: none;">
               <h4 style="margin: 0 0 15px 0; color: #333;">提示词分段详情：</h4>
-              ${promptData.sections.map((section, index) => `
+              ${promptData.sections
+                .map(
+                  (section, index) => `
                 <div style="
                   border: 1px solid #ddd;
                   border-radius: 5px;
@@ -2938,7 +2950,9 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
                     overflow-y: auto;
                   ">${section.content}</div>
                 </div>
-              `).join('')}
+              `,
+                )
+                .join('')}
             </div>
 
             <!-- Settings Tab -->
@@ -2966,19 +2980,19 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
   $('body').append(dialog);
 
   // Tab switching
-  $('.preview-tab').click(function() {
+  $('.preview-tab').click(function () {
     const tab = $(this).data('tab');
 
     // Update tab styles
     $('.preview-tab').css({
       background: 'transparent',
       borderBottom: '2px solid transparent',
-      fontWeight: 'normal'
+      fontWeight: 'normal',
     });
     $(this).css({
       background: 'white',
       borderBottom: '2px solid #667eea',
-      fontWeight: '600'
+      fontWeight: '600',
     });
 
     // Show/hide content
@@ -2993,12 +3007,15 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
 }
 
 // Global function for copying preview content
-window.copyPreviewContent = function(content, type) {
-  navigator.clipboard.writeText(content).then(() => {
-    showNotification('内容已复制到剪贴板', 'success');
-  }).catch(() => {
-    showNotification('复制失败', 'error');
-  });
+window.copyPreviewContent = function (content, type) {
+  navigator.clipboard
+    .writeText(content)
+    .then(() => {
+      showNotification('内容已复制到剪贴板', 'success');
+    })
+    .catch(() => {
+      showNotification('复制失败', 'error');
+    });
 };
 
 // ========================= SETTINGS MENU =========================
