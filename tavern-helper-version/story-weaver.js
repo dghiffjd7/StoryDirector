@@ -1560,10 +1560,6 @@ function createPromptManagerPanel() {
   // Make panel draggable
   makeElementDraggable('#sw-prompt-panel', '.sw-panel-header');
 
-  // Ensure starting position uses left/top so dragging works even if initially right-anchored
-  const rect = $('#sw-prompt-panel')[0].getBoundingClientRect();
-  $('#sw-prompt-panel').css({ position: 'fixed', right: 'auto', left: rect.left + 'px', top: rect.top + 'px' });
-
   // Ensure events are bound immediately after panel creation
   setTimeout(() => {
     setupPromptManagerEvents();
