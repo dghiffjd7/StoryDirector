@@ -338,7 +338,7 @@ function createNativePopup() {
       justify-content: center;
       backdrop-filter: blur(5px);
     ">
-      <div id="sw-popup-window" style="
+      <div id="sw-popup-window" class="sw-draggable-window" style="
         background: white;
         border-radius: 12px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -350,7 +350,7 @@ function createNativePopup() {
         position: relative;
         animation: popupFadeIn 0.3s ease-out;
       ">
-        <div style="
+        <div class="sw-window-header" style="
           background: linear-gradient(135deg, #667eea, #764ba2);
           color: white;
           padding: 15px 20px;
@@ -358,6 +358,8 @@ function createNativePopup() {
           justify-content: space-between;
           align-items: center;
           font-weight: 600;
+          cursor: move;
+          user-select: none;
         ">
           <span>📖 Story Weaver Enhanced - 故事大纲生成器</span>
           <div style="display: flex; align-items: center; gap: 10px;">
@@ -427,6 +429,9 @@ function createNativePopup() {
       });
     }
   });
+
+  // Make main window draggable
+  makeElementDraggable('#sw-popup-window', '.sw-window-header');
 
   console.log('[SW] ✅ Native popup opened');
 }
@@ -1367,82 +1372,213 @@ function initializePrompts() {
 }
 
 function openPromptManager() {
-  // Remove existing modal
-  $('#sw-prompt-manager-modal').remove();
+  const promptPanel = $('#sw-prompt-panel');
 
-  const modal = $(`
-    <div id="sw-prompt-manager-modal" style="
+  if (promptPanel.length === 0) {
+    // First time opening - create the panel
+    createPromptManagerPanel();
+  }
+
+  // Show the panel with slide animation
+  $('#sw-prompt-panel').addClass('sw-panel-open');
+  console.log('[SW] Prompt manager panel opened');
+}
+
+function createPromptManagerPanel() {
+  const panelHTML = `
+    <div id="sw-prompt-panel" class="sw-draggable-panel" style="
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 10002;
+      top: 100px;
+      right: -450px;
+      width: 420px;
+      height: 600px;
+      background: white;
+      border-radius: 12px 0 0 12px;
+      box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
+      z-index: 9999;
       display: flex;
-      align-items: center;
-      justify-content: center;
-      backdrop-filter: blur(5px);
+      flex-direction: column;
+      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid #e1e5e9;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     ">
-      <div style="
-        background: white;
-        border-radius: 12px;
-        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        max-width: 90vw;
-        max-height: 90vh;
-        width: 900px;
-        height: 600px;
-        overflow: hidden;
-        position: relative;
+      <div class="sw-panel-header" style="
+        padding: 16px 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 12px 0 0 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: move;
+        user-select: none;
       ">
-        <div style="
-          background: linear-gradient(135deg, #667eea, #764ba2);
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 18px;">📝</span>
+          <h3 style="margin: 0; font-size: 16px; font-weight: 600;">提示词管理器</h3>
+        </div>
+        <button id="sw-prompt-panel-close" style="
+          background: rgba(255,255,255,0.2);
+          border: 1px solid rgba(255,255,255,0.3);
           color: white;
-          padding: 15px 20px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          font-weight: 600;
-        ">
-          <span>📝 提示词管理器</span>
-          <button id="sw-prompt-close-btn" style="
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-          ">✕</button>
-        </div>
-        <div style="
-          height: calc(100% - 60px);
-          overflow: auto;
-          padding: 20px;
-        ">
-          ${buildPromptManagerContent()}
-        </div>
+          padding: 4px 8px;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 14px;
+          transition: background 0.2s;
+        " onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+           onmouseout="this.style.background='rgba(255,255,255,0.2)'">✕</button>
+      </div>
+
+      <div class="sw-panel-content" style="
+        flex: 1;
+        overflow-y: auto;
+        padding: 16px;
+      ">
+        ${buildPromptManagerContent()}
       </div>
     </div>
-  `);
 
-  $('body').append(modal);
+    <style>
+      .sw-panel-open {
+        right: 0 !important;
+      }
 
-  // Wait for DOM insertion then bind events
-  // Bind events immediately
-  $('#sw-prompt-close-btn').click(() => {
-    $('#sw-prompt-manager-modal').remove();
+      .sw-draggable-panel {
+        transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+
+      .sw-draggable-panel.sw-dragging {
+        box-shadow: -8px 0 35px rgba(0, 0, 0, 0.25);
+        transform: scale(1.02);
+        z-index: 10001;
+      }
+
+      .sw-draggable-window.sw-dragging {
+        box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+        transform: scale(1.02);
+        z-index: 10001;
+      }
+
+      .sw-panel-header:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+      }
+
+      .sw-window-header:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+      }
+
+      .sw-panel-content::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      .sw-panel-content::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+      }
+
+      .sw-panel-content::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+      }
+
+      .sw-panel-content::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+      }
+    </style>
+  `;
+
+  $('body').append(panelHTML);
+
+  // Bind panel events
+  $('#sw-prompt-panel-close').click(() => {
+    closePromptManager();
   });
 
-  $('#sw-prompt-manager-modal').click(e => {
-    if (e.target.id === 'sw-prompt-manager-modal') {
-      $('#sw-prompt-manager-modal').remove();
-    }
+  // Make panel draggable
+  makeElementDraggable('#sw-prompt-panel', '.sw-panel-header');
+
+  console.log('[SW] Prompt manager panel created');
+}
+
+function closePromptManager() {
+  $('#sw-prompt-panel').removeClass('sw-panel-open');
+  console.log('[SW] Prompt manager panel closed');
+}
+
+function makeElementDraggable(elementSelector, handleSelector) {
+  let isDragging = false;
+  let startX, startY, startLeft, startTop;
+
+  $(document).on('mousedown', `${elementSelector} ${handleSelector}`, function(e) {
+    if (e.button !== 0) return; // Only left mouse button
+
+    const element = $(elementSelector);
+    const rect = element[0].getBoundingClientRect();
+
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+    startLeft = rect.left;
+    startTop = rect.top;
+
+    // Disable transitions during drag
+    element.css('transition', 'none');
+
+    // Add dragging class for visual feedback
+    element.addClass('sw-dragging');
+
+    // Prevent text selection
+    e.preventDefault();
+    e.stopPropagation();
+
+    console.log('[SW] Started dragging element');
   });
 
-  // Force immediate event setup
-  setupPromptManagerEvents();
-  console.log('[SW] Prompt manager events bound successfully');
+  $(document).on('mousemove', function(e) {
+    if (!isDragging) return;
+
+    const element = $(elementSelector);
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+
+    let newLeft = startLeft + deltaX;
+    let newTop = startTop + deltaY;
+
+    // Constrain to viewport
+    const maxLeft = window.innerWidth - element.outerWidth();
+    const maxTop = window.innerHeight - element.outerHeight();
+
+    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    newTop = Math.max(0, Math.min(newTop, maxTop));
+
+    element.css({
+      left: newLeft + 'px',
+      top: newTop + 'px',
+      right: 'auto' // Override the right positioning
+    });
+  });
+
+  $(document).on('mouseup', function(e) {
+    if (!isDragging) return;
+
+    const element = $(elementSelector);
+    isDragging = false;
+
+    // Re-enable transitions with smooth effect
+    setTimeout(() => {
+      element.css({
+        'transition': 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        'transform': 'scale(1)',
+        'z-index': ''
+      });
+    }, 50);
+
+    // Remove dragging class
+    element.removeClass('sw-dragging');
+
+    console.log('[SW] Finished dragging element');
+  });
 }
 
 function openPromptManagerTH() {
@@ -2389,7 +2525,7 @@ function resetToDefaultPrompts() {
 
 function refreshPromptManager() {
   const content = buildPromptManagerContent();
-  $('#sw-prompt-manager-modal').find('[style*="padding: 20px"]').html(content);
+  $('#sw-prompt-panel .sw-panel-content').html(content);
   // Don't call setupPromptManagerEvents() here as events are globally bound
   setupPromptDragAndDrop(); // Only re-setup drag and drop for new elements
 }
