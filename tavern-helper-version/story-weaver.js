@@ -1428,18 +1428,22 @@ function openPromptManager() {
 
   $('body').append(modal);
 
-  // Event handlers
-  $('#sw-prompt-close-btn').click(() => {
-    $('#sw-prompt-manager-modal').remove();
-  });
-
-  $('#sw-prompt-manager-modal').click(e => {
-    if (e.target.id === 'sw-prompt-manager-modal') {
+  // Wait for DOM insertion then bind events
+  setTimeout(() => {
+    // Event handlers
+    $('#sw-prompt-close-btn').click(() => {
       $('#sw-prompt-manager-modal').remove();
-    }
-  });
+    });
 
-  setupPromptManagerEvents();
+    $('#sw-prompt-manager-modal').click(e => {
+      if (e.target.id === 'sw-prompt-manager-modal') {
+        $('#sw-prompt-manager-modal').remove();
+      }
+    });
+
+    setupPromptManagerEvents();
+    console.log('[SW] Prompt manager events bound successfully');
+  }, 50);
 }
 
 function openPromptManagerTH() {
@@ -1608,83 +1612,90 @@ function buildPromptItem(prompt) {
 }
 
 function setupPromptManagerEvents() {
+  console.log('[SW] Setting up prompt manager events...');
+
+  // Use document-level event delegation for dynamically created elements
+  $(document).off('click.swpromptevents');
+
   // Toggle prompt enabled/disabled
-  $(document)
-    .off('click', '.sw-prompt-toggle')
-    .on('click', '.sw-prompt-toggle', function () {
-      const identifier = $(this).data('identifier');
-      const prompt = storyWeaverPrompts.get(identifier);
-      if (prompt) {
-        prompt.enabled = !prompt.enabled;
-        savePromptSettings();
-        refreshPromptManager();
-        showNotification(prompt.enabled ? '提示词已启用' : '提示词已禁用', 'info');
-      }
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-toggle', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Toggle clicked');
+    const identifier = $(this).data('identifier');
+    const prompt = storyWeaverPrompts.get(identifier);
+    if (prompt) {
+      prompt.enabled = !prompt.enabled;
+      savePromptSettings();
+      refreshPromptManager();
+      showNotification(prompt.enabled ? '提示词已启用' : '提示词已禁用', 'info');
+    }
+  });
 
   // Edit prompt
-  $(document)
-    .off('click', '.sw-prompt-edit')
-    .on('click', '.sw-prompt-edit', function () {
-      const identifier = $(this).data('identifier');
-      showPromptEditor(identifier);
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-edit', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Edit clicked');
+    const identifier = $(this).data('identifier');
+    showPromptEditor(identifier);
+  });
 
   // Copy prompt
-  $(document)
-    .off('click', '.sw-prompt-copy')
-    .on('click', '.sw-prompt-copy', function () {
-      const identifier = $(this).data('identifier');
-      copyPromptToClipboard(identifier);
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-copy', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Copy clicked');
+    const identifier = $(this).data('identifier');
+    copyPromptToClipboard(identifier);
+  });
 
   // Delete prompt
-  $(document)
-    .off('click', '.sw-prompt-delete')
-    .on('click', '.sw-prompt-delete', function () {
-      const identifier = $(this).data('identifier');
-      deletePrompt(identifier);
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-delete', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Delete clicked');
+    const identifier = $(this).data('identifier');
+    deletePrompt(identifier);
+  });
 
   // Add new prompt
-  $(document)
-    .off('click', '#sw-add-prompt-btn')
-    .on('click', '#sw-add-prompt-btn', function () {
-      showPromptEditor('new');
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-add-prompt-btn', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Add prompt clicked');
+    showPromptEditor('new');
+  });
 
   // Reset prompts
-  $(document)
-    .off('click', '#sw-reset-prompts-btn')
-    .on('click', '#sw-reset-prompts-btn', function () {
-      if (confirm('确定要重置所有提示词为默认设置吗？此操作不可撤销。')) {
-        resetToDefaultPrompts();
-      }
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-reset-prompts-btn', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Reset prompts clicked');
+    if (confirm('确定要重置所有提示词为默认设置吗？此操作不可撤销。')) {
+      resetToDefaultPrompts();
+    }
+  });
 
   // Import prompts
-  $(document)
-    .off('click', '#sw-import-prompts-btn')
-    .on('click', '#sw-import-prompts-btn', function () {
-      importPrompts();
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-import-prompts-btn', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Import prompts clicked');
+    importPrompts();
+  });
 
   // Export prompts
-  $(document)
-    .off('click', '#sw-export-prompts-btn')
-    .on('click', '#sw-export-prompts-btn', function () {
-      exportPrompts();
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-export-prompts-btn', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Export prompts clicked');
+    exportPrompts();
+  });
 
   // Preview final prompt
-  $(document)
-    .off('click', '#sw-preview-final-prompt-btn')
-    .on('click', '#sw-preview-final-prompt-btn', function () {
-      previewFinalPrompt();
-    });
+  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-preview-final-prompt-btn', function (e) {
+    e.stopPropagation();
+    console.log('[SW] Preview prompt clicked');
+    previewFinalPrompt();
+  });
 
   // Setup drag and drop sorting
   setupPromptDragAndDrop();
+
+  console.log('[SW] All prompt manager events bound successfully');
 }
 
 function setupPromptDragAndDrop() {
@@ -3341,6 +3352,10 @@ try {
 $(document).ready(() => {
   console.log('[SW] Document ready, initializing...');
   init();
+
+  // Initialize prompt manager events globally
+  setupPromptManagerEvents();
+  console.log('[SW] Global prompt manager events initialized');
 });
 
 console.log('[SW] ✅ Story Weaver Enhanced loaded successfully!');
