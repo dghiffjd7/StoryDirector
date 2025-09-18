@@ -1429,21 +1429,20 @@ function openPromptManager() {
   $('body').append(modal);
 
   // Wait for DOM insertion then bind events
-  setTimeout(() => {
-    // Event handlers
-    $('#sw-prompt-close-btn').click(() => {
+  // Bind events immediately
+  $('#sw-prompt-close-btn').click(() => {
+    $('#sw-prompt-manager-modal').remove();
+  });
+
+  $('#sw-prompt-manager-modal').click(e => {
+    if (e.target.id === 'sw-prompt-manager-modal') {
       $('#sw-prompt-manager-modal').remove();
-    });
+    }
+  });
 
-    $('#sw-prompt-manager-modal').click(e => {
-      if (e.target.id === 'sw-prompt-manager-modal') {
-        $('#sw-prompt-manager-modal').remove();
-      }
-    });
-
-    setupPromptManagerEvents();
-    console.log('[SW] Prompt manager events bound successfully');
-  }, 50);
+  // Force immediate event setup
+  setupPromptManagerEvents();
+  console.log('[SW] Prompt manager events bound successfully');
 }
 
 function openPromptManagerTH() {
@@ -1614,13 +1613,16 @@ function buildPromptItem(prompt) {
 function setupPromptManagerEvents() {
   console.log('[SW] Setting up prompt manager events...');
 
-  // Use document-level event delegation for dynamically created elements
+  // Clear any existing event handlers to prevent duplicates
   $(document).off('click.swpromptevents');
 
+  // Use more specific selectors and add better debugging
+
   // Toggle prompt enabled/disabled
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-toggle', function (e) {
+  $(document).on('click.swpromptevents', '.sw-prompt-toggle', function (e) {
+    e.preventDefault();
     e.stopPropagation();
-    console.log('[SW] Toggle clicked');
+    console.log('[SW] Toggle clicked for:', $(this).data('identifier'));
     const identifier = $(this).data('identifier');
     const prompt = storyWeaverPrompts.get(identifier);
     if (prompt) {
@@ -1632,38 +1634,43 @@ function setupPromptManagerEvents() {
   });
 
   // Edit prompt
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-edit', function (e) {
+  $(document).on('click.swpromptevents', '.sw-prompt-edit', function (e) {
+    e.preventDefault();
     e.stopPropagation();
-    console.log('[SW] Edit clicked');
+    console.log('[SW] Edit clicked for:', $(this).data('identifier'));
     const identifier = $(this).data('identifier');
     showPromptEditor(identifier);
   });
 
   // Copy prompt
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-copy', function (e) {
+  $(document).on('click.swpromptevents', '.sw-prompt-copy', function (e) {
+    e.preventDefault();
     e.stopPropagation();
-    console.log('[SW] Copy clicked');
+    console.log('[SW] Copy clicked for:', $(this).data('identifier'));
     const identifier = $(this).data('identifier');
     copyPromptToClipboard(identifier);
   });
 
   // Delete prompt
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal .sw-prompt-delete', function (e) {
+  $(document).on('click.swpromptevents', '.sw-prompt-delete', function (e) {
+    e.preventDefault();
     e.stopPropagation();
-    console.log('[SW] Delete clicked');
+    console.log('[SW] Delete clicked for:', $(this).data('identifier'));
     const identifier = $(this).data('identifier');
     deletePrompt(identifier);
   });
 
   // Add new prompt
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-add-prompt-btn', function (e) {
+  $(document).on('click.swpromptevents', '#sw-add-prompt-btn', function (e) {
+    e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Add prompt clicked');
     showPromptEditor('new');
   });
 
   // Reset prompts
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-reset-prompts-btn', function (e) {
+  $(document).on('click.swpromptevents', '#sw-reset-prompts-btn', function (e) {
+    e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Reset prompts clicked');
     if (confirm('确定要重置所有提示词为默认设置吗？此操作不可撤销。')) {
@@ -1672,21 +1679,24 @@ function setupPromptManagerEvents() {
   });
 
   // Import prompts
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-import-prompts-btn', function (e) {
+  $(document).on('click.swpromptevents', '#sw-import-prompts-btn', function (e) {
+    e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Import prompts clicked');
     importPrompts();
   });
 
   // Export prompts
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-export-prompts-btn', function (e) {
+  $(document).on('click.swpromptevents', '#sw-export-prompts-btn', function (e) {
+    e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Export prompts clicked');
     exportPrompts();
   });
 
   // Preview final prompt
-  $(document).on('click.swpromptevents', '#sw-prompt-manager-modal #sw-preview-final-prompt-btn', function (e) {
+  $(document).on('click.swpromptevents', '#sw-preview-final-prompt-btn', function (e) {
+    e.preventDefault();
     e.stopPropagation();
     console.log('[SW] Preview prompt clicked');
     previewFinalPrompt();
@@ -2373,7 +2383,8 @@ function resetToDefaultPrompts() {
 function refreshPromptManager() {
   const content = buildPromptManagerContent();
   $('#sw-prompt-manager-modal').find('[style*="padding: 20px"]').html(content);
-  setupPromptManagerEvents();
+  // Don't call setupPromptManagerEvents() here as events are globally bound
+  setupPromptDragAndDrop(); // Only re-setup drag and drop for new elements
 }
 
 function savePromptSettings() {
