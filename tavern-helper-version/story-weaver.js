@@ -1544,6 +1544,10 @@ function makeElementDraggable(elementSelector, handleSelector) {
     element.css({
       transition: 'none',
       'user-select': 'none',
+      right: 'auto',
+      position: 'fixed',
+      left: rect.left + 'px',
+      top: rect.top + 'px',
     });
 
     // Add dragging class for subtle visual feedback
@@ -1586,6 +1590,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       top: newTop + 'px',
       right: 'auto', // Override any right positioning
       position: 'fixed', // Ensure fixed positioning
+      willChange: 'transform,left,top',
     });
   });
 
@@ -1628,7 +1633,7 @@ function buildPromptManagerContent() {
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h3 style="margin: 0; color: #333;">提示词列表</h3>
-        <div>
+        <div style="display:flex; flex-wrap: wrap; gap: 10px;">
           <button id="sw-add-prompt-btn" style="
             background: #667eea;
             color: white;
@@ -1636,7 +1641,7 @@ function buildPromptManagerContent() {
             padding: 8px 16px;
             border-radius: 5px;
             cursor: pointer;
-            margin-right: 10px;
+            margin-right: 0;
           ">➕ 添加提示词</button>
           <button id="sw-import-prompts-btn" style="
             background: #28a745;
@@ -1645,7 +1650,7 @@ function buildPromptManagerContent() {
             padding: 8px 16px;
             border-radius: 5px;
             cursor: pointer;
-            margin-right: 10px;
+            margin-right: 0;
           ">📥 导入</button>
           <button id="sw-export-prompts-btn" style="
             background: #17a2b8;
@@ -1654,7 +1659,7 @@ function buildPromptManagerContent() {
             padding: 8px 16px;
             border-radius: 5px;
             cursor: pointer;
-            margin-right: 10px;
+            margin-right: 0;
           ">📤 导出</button>
           <button id="sw-reset-prompts-btn" style="
             background: #dc3545;
@@ -1701,7 +1706,7 @@ function buildPromptItem(prompt) {
       align-items: center;
       gap: 15px;
       background: ${isEnabled ? 'white' : '#f8f9fa'};
-      cursor: move;
+      cursor: default;
       position: relative;
       transition: all 0.2s ease;
     ">
@@ -1742,12 +1747,12 @@ function buildPromptItem(prompt) {
         </div>
       </div>
 
-      <div style="display: flex; gap: 5px;">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap;">
         <button class="sw-prompt-edit" data-identifier="${prompt.identifier}" style="
           background: #17a2b8;
           color: white;
           border: none;
-          padding: 5px 10px;
+          padding: 6px 12px;
           border-radius: 3px;
           cursor: pointer;
           font-size: 12px;
@@ -1756,7 +1761,7 @@ function buildPromptItem(prompt) {
           background: #28a745;
           color: white;
           border: none;
-          padding: 5px 10px;
+          padding: 6px 12px;
           border-radius: 3px;
           cursor: pointer;
           font-size: 12px;
@@ -1768,7 +1773,7 @@ function buildPromptItem(prompt) {
           background: #dc3545;
           color: white;
           border: none;
-          padding: 5px 10px;
+          padding: 6px 12px;
           border-radius: 3px;
           cursor: pointer;
           font-size: 12px;
