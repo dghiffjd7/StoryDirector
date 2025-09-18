@@ -22,7 +22,7 @@ const DEFAULT_PROMPTS = [
     system_prompt: true,
     injection_order: 1,
     injection_depth: 0,
-    injection_position: 0
+    injection_position: 0,
   },
   {
     identifier: 'sw_user_context',
@@ -33,7 +33,7 @@ const DEFAULT_PROMPTS = [
     system_prompt: false,
     injection_order: 2,
     injection_depth: 1,
-    injection_position: 0
+    injection_position: 0,
   },
   {
     identifier: 'sw_format_guide',
@@ -44,8 +44,8 @@ const DEFAULT_PROMPTS = [
     system_prompt: false,
     injection_order: 3,
     injection_depth: 0,
-    injection_position: 0
-  }
+    injection_position: 0,
+  },
 ];
 
 const STORY_TYPES = {
@@ -1464,6 +1464,24 @@ function buildPromptManagerContent() {
             cursor: pointer;
             margin-right: 10px;
           ">➕ 添加提示词</button>
+          <button id="sw-import-prompts-btn" style="
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+          ">📥 导入</button>
+          <button id="sw-export-prompts-btn" style="
+            background: #17a2b8;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+          ">📤 导出</button>
           <button id="sw-reset-prompts-btn" style="
             background: #dc3545;
             color: white;
@@ -1482,6 +1500,19 @@ function buildPromptManagerContent() {
       ">
         ${prompts.map(prompt => buildPromptItem(prompt)).join('')}
       </div>
+
+      <div style="margin-top: 20px; text-align: center;">
+        <button id="sw-preview-final-prompt-btn" style="
+          background: #6f42c1;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 5px;
+          cursor: pointer;
+          font-size: 16px;
+          font-weight: 600;
+        ">👁️ 预览最终提示词</button>
+      </div>
     </div>
   `;
 }
@@ -1496,7 +1527,22 @@ function buildPromptItem(prompt) {
       align-items: center;
       gap: 15px;
       background: ${isEnabled ? 'white' : '#f8f9fa'};
+      cursor: move;
+      position: relative;
+      transition: all 0.2s ease;
     ">
+      <div class="sw-prompt-drag-handle" style="
+        width: 20px;
+        height: 20px;
+        color: #999;
+        cursor: grab;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        margin-right: 5px;
+      " title="拖拽排序">⋮⋮</div>
+
       <div style="
         width: 20px;
         height: 20px;
@@ -1512,7 +1558,7 @@ function buildPromptItem(prompt) {
         ${isEnabled ? '✓' : '✕'}
       </div>
 
-      <div style="flex: 1;">
+      <div style="flex: 1; min-width: 0;">
         <div style="font-weight: 600; margin-bottom: 5px;">${prompt.name}</div>
         <div style="font-size: 12px; color: #666;">
           角色: ${prompt.role} | 顺序: ${prompt.injection_order} | 深度: ${prompt.injection_depth}
@@ -1541,7 +1587,9 @@ function buildPromptItem(prompt) {
           cursor: pointer;
           font-size: 12px;
         ">复制</button>
-        ${!prompt.system_prompt ? `
+        ${
+          !prompt.system_prompt
+            ? `
         <button class="sw-prompt-delete" data-identifier="${prompt.identifier}" style="
           background: #dc3545;
           color: white;
@@ -1551,7 +1599,9 @@ function buildPromptItem(prompt) {
           cursor: pointer;
           font-size: 12px;
         ">删除</button>
-        ` : ''}
+        `
+            : ''
+        }
       </div>
     </div>
   `;
@@ -1559,46 +1609,225 @@ function buildPromptItem(prompt) {
 
 function setupPromptManagerEvents() {
   // Toggle prompt enabled/disabled
-  $(document).off('click', '.sw-prompt-toggle').on('click', '.sw-prompt-toggle', function() {
-    const identifier = $(this).data('identifier');
-    const prompt = storyWeaverPrompts.get(identifier);
-    if (prompt) {
-      prompt.enabled = !prompt.enabled;
-      savePromptSettings();
-      refreshPromptManager();
-      showNotification(prompt.enabled ? '提示词已启用' : '提示词已禁用', 'info');
-    }
-  });
+  $(document)
+    .off('click', '.sw-prompt-toggle')
+    .on('click', '.sw-prompt-toggle', function () {
+      const identifier = $(this).data('identifier');
+      const prompt = storyWeaverPrompts.get(identifier);
+      if (prompt) {
+        prompt.enabled = !prompt.enabled;
+        savePromptSettings();
+        refreshPromptManager();
+        showNotification(prompt.enabled ? '提示词已启用' : '提示词已禁用', 'info');
+      }
+    });
 
   // Edit prompt
-  $(document).off('click', '.sw-prompt-edit').on('click', '.sw-prompt-edit', function() {
-    const identifier = $(this).data('identifier');
-    showPromptEditor(identifier);
-  });
+  $(document)
+    .off('click', '.sw-prompt-edit')
+    .on('click', '.sw-prompt-edit', function () {
+      const identifier = $(this).data('identifier');
+      showPromptEditor(identifier);
+    });
 
   // Copy prompt
-  $(document).off('click', '.sw-prompt-copy').on('click', '.sw-prompt-copy', function() {
-    const identifier = $(this).data('identifier');
-    copyPromptToClipboard(identifier);
-  });
+  $(document)
+    .off('click', '.sw-prompt-copy')
+    .on('click', '.sw-prompt-copy', function () {
+      const identifier = $(this).data('identifier');
+      copyPromptToClipboard(identifier);
+    });
 
   // Delete prompt
-  $(document).off('click', '.sw-prompt-delete').on('click', '.sw-prompt-delete', function() {
-    const identifier = $(this).data('identifier');
-    deletePrompt(identifier);
-  });
+  $(document)
+    .off('click', '.sw-prompt-delete')
+    .on('click', '.sw-prompt-delete', function () {
+      const identifier = $(this).data('identifier');
+      deletePrompt(identifier);
+    });
 
   // Add new prompt
-  $(document).off('click', '#sw-add-prompt-btn').on('click', '#sw-add-prompt-btn', function() {
-    showPromptEditor('new');
-  });
+  $(document)
+    .off('click', '#sw-add-prompt-btn')
+    .on('click', '#sw-add-prompt-btn', function () {
+      showPromptEditor('new');
+    });
 
   // Reset prompts
-  $(document).off('click', '#sw-reset-prompts-btn').on('click', '#sw-reset-prompts-btn', function() {
-    if (confirm('确定要重置所有提示词为默认设置吗？此操作不可撤销。')) {
-      resetToDefaultPrompts();
+  $(document)
+    .off('click', '#sw-reset-prompts-btn')
+    .on('click', '#sw-reset-prompts-btn', function () {
+      if (confirm('确定要重置所有提示词为默认设置吗？此操作不可撤销。')) {
+        resetToDefaultPrompts();
+      }
+    });
+
+  // Import prompts
+  $(document)
+    .off('click', '#sw-import-prompts-btn')
+    .on('click', '#sw-import-prompts-btn', function () {
+      importPrompts();
+    });
+
+  // Export prompts
+  $(document)
+    .off('click', '#sw-export-prompts-btn')
+    .on('click', '#sw-export-prompts-btn', function () {
+      exportPrompts();
+    });
+
+  // Preview final prompt
+  $(document)
+    .off('click', '#sw-preview-final-prompt-btn')
+    .on('click', '#sw-preview-final-prompt-btn', function () {
+      previewFinalPrompt();
+    });
+
+  // Setup drag and drop sorting
+  setupPromptDragAndDrop();
+}
+
+function setupPromptDragAndDrop() {
+  const promptList = $('#sw-prompt-list')[0];
+  if (!promptList) return;
+
+  let draggedElement = null;
+  let draggedIndex = -1;
+  let placeholderElement = null;
+
+  // Create placeholder element
+  function createPlaceholder() {
+    const placeholder = document.createElement('div');
+    placeholder.style.cssText = `
+      height: 2px;
+      background: #667eea;
+      margin: 5px 0;
+      border-radius: 1px;
+      opacity: 0.8;
+      transition: all 0.2s ease;
+    `;
+    placeholder.className = 'sw-prompt-placeholder';
+    return placeholder;
+  }
+
+  // Handle drag start
+  $(promptList)
+    .off('mousedown.promptdrag')
+    .on('mousedown.promptdrag', '.sw-prompt-drag-handle', function (e) {
+      e.preventDefault();
+      const promptItem = $(this).closest('.sw-prompt-item')[0];
+
+      draggedElement = promptItem;
+      draggedIndex = Array.from(promptList.children).indexOf(promptItem);
+
+      // Add dragging styles
+      $(draggedElement).addClass('sw-dragging').css({
+        opacity: '0.7',
+        transform: 'scale(0.98)',
+        zIndex: '1000',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+      });
+
+      // Create and insert placeholder
+      placeholderElement = createPlaceholder();
+      promptItem.parentNode.insertBefore(placeholderElement, promptItem.nextSibling);
+
+      // Bind mouse events
+      $(document).on('mousemove.promptdrag', handleDragMove);
+      $(document).on('mouseup.promptdrag', handleDragEnd);
+
+      console.log('[SW] Drag started for prompt:', $(promptItem).data('identifier'));
+    });
+
+  function handleDragMove(e) {
+    if (!draggedElement || !placeholderElement) return;
+
+    const mouseY = e.clientY;
+    const items = Array.from(promptList.children).filter(child =>
+      !child.classList.contains('sw-dragging') &&
+      !child.classList.contains('sw-prompt-placeholder')
+    );
+
+    let targetIndex = -1;
+    let insertPosition = 'after';
+
+    // Find the best insertion point
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const rect = item.getBoundingClientRect();
+      const itemCenterY = rect.top + rect.height / 2;
+
+      if (mouseY < itemCenterY) {
+        targetIndex = i;
+        insertPosition = 'before';
+        break;
+      } else if (i === items.length - 1) {
+        targetIndex = i;
+        insertPosition = 'after';
+      }
     }
-  });
+
+    // Move placeholder to the correct position
+    if (targetIndex !== -1) {
+      const targetItem = items[targetIndex];
+      if (insertPosition === 'before') {
+        promptList.insertBefore(placeholderElement, targetItem);
+      } else {
+        promptList.insertBefore(placeholderElement, targetItem.nextSibling);
+      }
+    }
+  }
+
+  function handleDragEnd() {
+    if (!draggedElement || !placeholderElement) return;
+
+    // Remove dragging styles
+    $(draggedElement).removeClass('sw-dragging').css({
+      opacity: '',
+      transform: '',
+      zIndex: '',
+      boxShadow: ''
+    });
+
+    // Insert dragged element at placeholder position
+    promptList.insertBefore(draggedElement, placeholderElement);
+    placeholderElement.remove();
+
+    // Update prompt order
+    updatePromptOrder();
+
+    // Clean up
+    draggedElement = null;
+    draggedIndex = -1;
+    placeholderElement = null;
+
+    $(document).off('mousemove.promptdrag mouseup.promptdrag');
+
+    console.log('[SW] Drag ended, order updated');
+  }
+
+  function updatePromptOrder() {
+    const newOrder = Array.from(promptList.children).map((item, index) => {
+      const identifier = $(item).data('identifier');
+      const prompt = storyWeaverPrompts.get(identifier);
+      if (prompt) {
+        prompt.injection_order = index + 1;
+      }
+      return identifier;
+    });
+
+    // Update global order
+    storyWeaverPromptOrder = newOrder;
+
+    // Save settings
+    savePromptSettings();
+
+    // Refresh to show updated order numbers
+    setTimeout(() => {
+      refreshPromptManager();
+      showNotification('提示词顺序已更新', 'success');
+    }, 100);
+  }
 }
 
 function showPromptEditor(identifier) {
@@ -1616,7 +1845,7 @@ function showPromptEditor(identifier) {
       system_prompt: false,
       injection_order: storyWeaverPrompts.size + 1,
       injection_depth: 0,
-      injection_position: 0
+      injection_position: 0,
     };
   } else {
     prompt = storyWeaverPrompts.get(identifier);
@@ -1682,12 +1911,21 @@ function showPromptEditor(identifier) {
   $('body').append(editorModal);
 
   // Set up form values
-  $('#sw-editor-name').val(prompt.name);
-  $('#sw-editor-role').val(prompt.role);
-  $('#sw-editor-content').val(prompt.content);
-  $('#sw-editor-injection-order').val(prompt.injection_order);
-  $('#sw-editor-injection-depth').val(prompt.injection_depth);
-  $('#sw-editor-injection-position').val(prompt.injection_position);
+  $('#sw-editor-name').val(prompt.name || '');
+  $('#sw-editor-description').val(prompt.description || '');
+  $('#sw-editor-role').val(prompt.role || 'user');
+  $('#sw-editor-content').val(prompt.content || '');
+  $('#sw-editor-injection-order').val(prompt.injection_order || 1);
+  $('#sw-editor-injection-depth').val(prompt.injection_depth || 0);
+  $('#sw-editor-injection-position').val(prompt.injection_position || 0);
+  $('#sw-editor-enabled').prop('checked', prompt.enabled !== false);
+
+  // Character counter
+  function updateCharCount() {
+    const content = $('#sw-editor-content').val();
+    $('#sw-editor-char-count').text(`字符数: ${content.length}`);
+  }
+  updateCharCount();
 
   // Event handlers
   $('#sw-editor-close-btn').click(() => {
@@ -1701,110 +1939,240 @@ function showPromptEditor(identifier) {
   $('#sw-editor-cancel-btn').click(() => {
     $('#sw-prompt-editor-modal').remove();
   });
+
+  // Enhanced event handlers
+  $('#sw-editor-content').on('input', updateCharCount);
+
+  $('#sw-editor-insert-placeholder').click(() => {
+    showPlaceholderMenu();
+  });
+
+  $('#sw-editor-preview-content').click(() => {
+    previewPromptContent();
+  });
+
+  $('#sw-editor-test-btn').click(() => {
+    testPrompt();
+  });
 }
 
 function buildPromptEditorForm(prompt) {
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-      <div style="margin-bottom: 15px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: 600;">名称：</label>
-        <input type="text" id="sw-editor-name" style="
-          width: 100%;
-          padding: 8px 12px;
-          border: 1px solid #ddd;
-          border-radius: 5px;
-        ">
-      </div>
-
-      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">角色：</label>
-          <select id="sw-editor-role" style="
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-          ">
-            <option value="system">System</option>
-            <option value="user">User</option>
-            <option value="assistant">Assistant</option>
-          </select>
-        </div>
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">注入顺序：</label>
-          <input type="number" id="sw-editor-injection-order" min="1" max="999" style="
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-          ">
-        </div>
-      </div>
-
-      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">注入深度：</label>
-          <input type="number" id="sw-editor-injection-depth" min="0" max="999" style="
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-          ">
-        </div>
-        <div style="flex: 1;">
-          <label style="display: block; margin-bottom: 5px; font-weight: 600;">位置模式：</label>
-          <select id="sw-editor-injection-position" style="
-            width: 100%;
-            padding: 8px 12px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-          ">
-            <option value="0">相对位置</option>
-            <option value="1">绝对深度</option>
-          </select>
-        </div>
-      </div>
-
+      <!-- Basic Information -->
       <div style="margin-bottom: 20px;">
-        <label style="display: block; margin-bottom: 5px; font-weight: 600;">内容：</label>
+        <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px;">基本信息</h4>
+
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">名称：</label>
+          <input type="text" id="sw-editor-name" style="
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+          " placeholder="为提示词命名，例如：系统角色设定">
+        </div>
+
+        <div style="margin-bottom: 15px;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">
+            描述 <span style="color: #999; font-weight: normal;">(可选)</span>：
+          </label>
+          <input type="text" id="sw-editor-description" style="
+            width: 100%;
+            padding: 10px 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+          " placeholder="简短描述这个提示词的作用">
+        </div>
+
+        <div style="display: flex; gap: 15px;">
+          <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 600;">角色类型：</label>
+            <select id="sw-editor-role" style="
+              width: 100%;
+              padding: 10px 12px;
+              border: 2px solid #e1e5e9;
+              border-radius: 6px;
+              font-size: 14px;
+              background: white;
+            ">
+              <option value="system">System - 系统角色设定</option>
+              <option value="user">User - 用户输入</option>
+              <option value="assistant">Assistant - 助手响应</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 600;">
+              启用状态：
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; padding: 10px; border: 2px solid #e1e5e9; border-radius: 6px; background: white;">
+              <input type="checkbox" id="sw-editor-enabled" checked>
+              <span>启用此提示词</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Advanced Settings -->
+      <div style="margin-bottom: 20px;">
+        <h4 style="margin: 0 0 15px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 8px;">高级设置</h4>
+
+        <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+          <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 600;">注入顺序：</label>
+            <input type="number" id="sw-editor-injection-order" min="1" max="999" style="
+              width: 100%;
+              padding: 10px 12px;
+              border: 2px solid #e1e5e9;
+              border-radius: 6px;
+              font-size: 14px;
+            ">
+            <small style="color: #666; font-size: 12px;">数字越小优先级越高</small>
+          </div>
+          <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 600;">注入深度：</label>
+            <input type="number" id="sw-editor-injection-depth" min="0" max="999" style="
+              width: 100%;
+              padding: 10px 12px;
+              border: 2px solid #e1e5e9;
+              border-radius: 6px;
+              font-size: 14px;
+            ">
+            <small style="color: #666; font-size: 12px;">控制注入的深度位置</small>
+          </div>
+          <div style="flex: 1;">
+            <label style="display: block; margin-bottom: 5px; font-weight: 600;">位置模式：</label>
+            <select id="sw-editor-injection-position" style="
+              width: 100%;
+              padding: 10px 12px;
+              border: 2px solid #e1e5e9;
+              border-radius: 6px;
+              font-size: 14px;
+              background: white;
+            ">
+              <option value="0">相对位置</option>
+              <option value="1">绝对深度</option>
+            </select>
+            <small style="color: #666; font-size: 12px;">注入位置计算方式</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Content Editor -->
+      <div style="margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <label style="font-weight: 600; color: #333;">提示词内容：</label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" id="sw-editor-insert-placeholder" style="
+              background: #17a2b8;
+              color: white;
+              border: none;
+              padding: 4px 8px;
+              border-radius: 3px;
+              cursor: pointer;
+              font-size: 12px;
+            ">插入占位符</button>
+            <button type="button" id="sw-editor-preview-content" style="
+              background: #6f42c1;
+              color: white;
+              border: none;
+              padding: 4px 8px;
+              border-radius: 3px;
+              cursor: pointer;
+              font-size: 12px;
+            ">预览</button>
+          </div>
+        </div>
+
         <textarea id="sw-editor-content" style="
           width: 100%;
-          height: 200px;
-          padding: 12px;
-          border: 1px solid #ddd;
-          border-radius: 5px;
+          height: 250px;
+          padding: 15px;
+          border: 2px solid #e1e5e9;
+          border-radius: 6px;
           resize: vertical;
-          font-family: 'Courier New', monospace;
-        " placeholder="请输入提示词内容..."></textarea>
+          font-family: 'Courier New', 'Monaco', monospace;
+          font-size: 13px;
+          line-height: 1.5;
+          transition: border-color 0.2s;
+        " placeholder="请输入提示词内容...
+
+可用占位符：
+{{STORY_CONTEXT}} - 故事上下文信息
+{{USER_INPUT}} - 用户输入内容
+{{CHARACTER_NAME}} - 角色名称"></textarea>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
+          <small style="color: #666;">
+            💡 支持占位符变量，在使用时会自动替换为实际内容
+          </small>
+          <small id="sw-editor-char-count" style="color: #999;">
+            字符数: 0
+          </small>
+        </div>
       </div>
 
-      <div style="text-align: right;">
-        <button id="sw-editor-cancel-btn" style="
-          background: #6c757d;
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 5px;
-          cursor: pointer;
-          margin-right: 10px;
-        ">取消</button>
-        <button id="sw-editor-save-btn" style="
-          background: #28a745;
-          color: white;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 5px;
-          cursor: pointer;
-        ">保存</button>
+      <!-- Action Buttons -->
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 15px; border-top: 1px solid #eee;">
+        <div>
+          <button id="sw-editor-test-btn" style="
+            background: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+          ">🧪 测试</button>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button id="sw-editor-cancel-btn" style="
+            background: #6c757d;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+          ">取消</button>
+          <button id="sw-editor-save-btn" style="
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+          ">💾 保存</button>
+        </div>
       </div>
     </div>
+
+    <style>
+      #sw-editor-name:focus,
+      #sw-editor-description:focus,
+      #sw-editor-role:focus,
+      #sw-editor-injection-order:focus,
+      #sw-editor-injection-depth:focus,
+      #sw-editor-injection-position:focus,
+      #sw-editor-content:focus {
+        outline: none;
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+    </style>
   `;
 }
 
 function savePromptEditor(originalIdentifier, isNew) {
   const name = $('#sw-editor-name').val().trim();
+  const description = $('#sw-editor-description').val().trim();
   const role = $('#sw-editor-role').val();
   const content = $('#sw-editor-content').val().trim();
+  const enabled = $('#sw-editor-enabled').prop('checked');
   const injectionOrder = parseInt($('#sw-editor-injection-order').val()) || 1;
   const injectionDepth = parseInt($('#sw-editor-injection-depth').val()) || 0;
   const injectionPosition = parseInt($('#sw-editor-injection-position').val()) || 0;
@@ -1817,13 +2185,14 @@ function savePromptEditor(originalIdentifier, isNew) {
   const promptData = {
     identifier: originalIdentifier,
     name: name,
+    description: description,
     role: role,
     content: content,
-    enabled: true,
+    enabled: enabled,
     system_prompt: false,
     injection_order: injectionOrder,
     injection_depth: injectionDepth,
-    injection_position: injectionPosition
+    injection_position: injectionPosition,
   };
 
   if (isNew) {
@@ -1839,15 +2208,128 @@ function savePromptEditor(originalIdentifier, isNew) {
   showNotification(isNew ? '提示词已添加' : '提示词已更新', 'success');
 }
 
+// Enhanced editor functions
+function showPlaceholderMenu() {
+  const placeholders = [
+    { key: '{{STORY_CONTEXT}}', desc: '故事上下文信息' },
+    { key: '{{USER_INPUT}}', desc: '用户输入内容' },
+    { key: '{{CHARACTER_NAME}}', desc: '角色名称' },
+    { key: '{{STORY_TYPE}}', desc: '故事类型' },
+    { key: '{{STORY_THEME}}', desc: '故事主题' },
+    { key: '{{CHAPTER_COUNT}}', desc: '章节数量' }
+  ];
+
+  const menu = $(`
+    <div style="
+      position: absolute;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      z-index: 10006;
+      min-width: 200px;
+    ">
+      ${placeholders.map(p => `
+        <div class="placeholder-item" data-placeholder="${p.key}" style="
+          padding: 8px 12px;
+          cursor: pointer;
+          border-bottom: 1px solid #eee;
+          transition: background 0.2s;
+        ">
+          <div style="font-weight: 600; font-size: 12px; font-family: monospace;">${p.key}</div>
+          <div style="font-size: 11px; color: #666;">${p.desc}</div>
+        </div>
+      `).join('')}
+    </div>
+  `);
+
+  // Position menu near the button
+  const button = $('#sw-editor-insert-placeholder');
+  const offset = button.offset();
+  menu.css({
+    position: 'absolute',
+    top: offset.top + button.outerHeight() + 5,
+    left: offset.left
+  });
+
+  $('body').append(menu);
+
+  // Handle clicks
+  menu.find('.placeholder-item').click(function() {
+    const placeholder = $(this).data('placeholder');
+    const textarea = $('#sw-editor-content')[0];
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+
+    textarea.value = text.substring(0, start) + placeholder + text.substring(end);
+    textarea.focus();
+    textarea.setSelectionRange(start + placeholder.length, start + placeholder.length);
+
+    menu.remove();
+  });
+
+  // Style hover effects
+  menu.find('.placeholder-item').hover(
+    function() { $(this).css('background', '#f5f5f5'); },
+    function() { $(this).css('background', 'white'); }
+  );
+
+  // Close on outside click
+  setTimeout(() => {
+    $(document).one('click', () => menu.remove());
+  }, 100);
+}
+
+function previewPromptContent() {
+  const content = $('#sw-editor-content').val();
+  if (!content.trim()) {
+    alert('请先输入提示词内容');
+    return;
+  }
+
+  // Create preview with sample data
+  const sampleData = {
+    STORY_CONTEXT: '一个年轻的探险家寻找失落的古代宝藏...',
+    USER_INPUT: '用户的输入内容',
+    CHARACTER_NAME: '艾丽克斯',
+    STORY_TYPE: '冒险故事',
+    STORY_THEME: '探险与成长',
+    CHAPTER_COUNT: '5'
+  };
+
+  let previewContent = content;
+  Object.entries(sampleData).forEach(([key, value]) => {
+    previewContent = previewContent.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value);
+  });
+
+  alert(`预览效果：\n\n${previewContent}`);
+}
+
+function testPrompt() {
+  const name = $('#sw-editor-name').val().trim();
+  const content = $('#sw-editor-content').val().trim();
+
+  if (!name || !content) {
+    alert('请先填写名称和内容');
+    return;
+  }
+
+  alert(`测试功能：\n\n提示词名称: ${name}\n内容长度: ${content.length} 字符\n\n✅ 基本验证通过`);
+}
+
 function copyPromptToClipboard(identifier) {
   const prompt = storyWeaverPrompts.get(identifier);
   if (!prompt) return;
 
-  navigator.clipboard.writeText(prompt.content).then(() => {
-    showNotification('提示词内容已复制到剪贴板', 'success');
-  }).catch(() => {
-    showNotification('复制失败', 'error');
-  });
+  navigator.clipboard
+    .writeText(prompt.content)
+    .then(() => {
+      showNotification('提示词内容已复制到剪贴板', 'success');
+    })
+    .catch(() => {
+      showNotification('复制失败', 'error');
+    });
 }
 
 function deletePrompt(identifier) {
@@ -1887,7 +2369,7 @@ function savePromptSettings() {
   try {
     const promptsData = {
       prompts: Array.from(storyWeaverPrompts.values()),
-      order: storyWeaverPromptOrder
+      order: storyWeaverPromptOrder,
     };
     localStorage.setItem('storyWeaverPrompts', JSON.stringify(promptsData));
   } catch (error) {
@@ -1920,6 +2402,582 @@ function loadPromptSettings() {
   }
   return false;
 }
+
+// ========================= IMPORT/EXPORT =========================
+
+function exportPrompts() {
+  try {
+    // Create export data
+    const exportData = {
+      version: '2.0',
+      type: 'story_weaver_prompts',
+      timestamp: new Date().toISOString(),
+      prompts: Array.from(storyWeaverPrompts.values()),
+      order: storyWeaverPromptOrder,
+      metadata: {
+        count: storyWeaverPrompts.size,
+        exported_by: 'Story Weaver Enhanced v2.0'
+      }
+    };
+
+    // Generate filename
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/[:.]/g, '-');
+    const filename = `SW_Prompts_Export_${timestamp}.json`;
+
+    // Create and download file
+    const jsonContent = JSON.stringify(exportData, null, 2);
+    downloadFile(jsonContent, filename, 'application/json');
+
+    showNotification(`提示词已导出: ${filename}`, 'success');
+    console.log('[SW] Prompts exported:', filename);
+
+  } catch (error) {
+    console.error('[SW] Export failed:', error);
+    showNotification('导出失败: ' + error.message, 'error');
+  }
+}
+
+function importPrompts() {
+  // Create file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json';
+  fileInput.style.display = 'none';
+
+  fileInput.onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        const importData = JSON.parse(e.target.result);
+        processImportData(importData);
+      } catch (error) {
+        console.error('[SW] Import failed:', error);
+        showNotification('导入失败: 文件格式错误', 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  document.body.appendChild(fileInput);
+  fileInput.click();
+  document.body.removeChild(fileInput);
+}
+
+function processImportData(data) {
+  try {
+    // Validate import data
+    if (!data || typeof data !== 'object') {
+      throw new Error('无效的文件格式');
+    }
+
+    let prompts = [];
+    let order = [];
+
+    // Handle different import formats
+    if (data.type === 'story_weaver_prompts') {
+      // Native SW format
+      prompts = data.prompts || [];
+      order = data.order || [];
+    } else if (Array.isArray(data.prompts)) {
+      // Generic prompts array
+      prompts = data.prompts;
+    } else if (Array.isArray(data)) {
+      // Direct array of prompts
+      prompts = data;
+    } else {
+      throw new Error('不支持的文件格式');
+    }
+
+    if (!Array.isArray(prompts) || prompts.length === 0) {
+      throw new Error('文件中没有找到有效的提示词');
+    }
+
+    // Show import confirmation dialog
+    showImportConfirmationDialog(prompts, order);
+
+  } catch (error) {
+    console.error('[SW] Import processing failed:', error);
+    showNotification('导入失败: ' + error.message, 'error');
+  }
+}
+
+function showImportConfirmationDialog(prompts, order) {
+  // Remove existing dialog
+  $('#sw-import-dialog').remove();
+
+  const dialog = $(`
+    <div id="sw-import-dialog" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10004;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 90vw;
+        max-height: 90vh;
+        width: 600px;
+        overflow: hidden;
+      ">
+        <div style="
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 15px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+        ">
+          <span>📥 导入提示词确认</span>
+          <button id="sw-import-close-btn" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+          ">✕</button>
+        </div>
+        <div style="padding: 20px;">
+          <div style="margin-bottom: 15px;">
+            <p style="margin: 0 0 10px 0; color: #333;">
+              找到 <strong>${prompts.length}</strong> 个提示词，确定要导入吗？
+            </p>
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa;">
+              ${prompts.map(p => `<div style="margin-bottom: 5px;">• ${p.name || p.identifier || 'Unnamed'} (${p.role || 'unknown'})</div>`).join('')}
+            </div>
+          </div>
+
+          <div style="margin-bottom: 20px;">
+            <label style="display: flex; align-items: center; gap: 8px;">
+              <input type="radio" name="import-mode" value="replace" checked>
+              <span>替换所有现有提示词</span>
+            </label>
+            <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px;">
+              <input type="radio" name="import-mode" value="merge">
+              <span>合并到现有提示词（保留现有的）</span>
+            </label>
+          </div>
+
+          <div style="text-align: right;">
+            <button id="sw-import-cancel-btn" style="
+              background: #6c757d;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 5px;
+              cursor: pointer;
+              margin-right: 10px;
+            ">取消</button>
+            <button id="sw-import-confirm-btn" style="
+              background: #28a745;
+              color: white;
+              border: none;
+              padding: 10px 20px;
+              border-radius: 5px;
+              cursor: pointer;
+            ">确定导入</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  $('body').append(dialog);
+
+  // Event handlers
+  $('#sw-import-close-btn, #sw-import-cancel-btn').click(() => {
+    $('#sw-import-dialog').remove();
+  });
+
+  $('#sw-import-confirm-btn').click(() => {
+    const mode = $('input[name="import-mode"]:checked').val();
+    performImport(prompts, order, mode);
+    $('#sw-import-dialog').remove();
+  });
+}
+
+function performImport(prompts, order, mode) {
+  try {
+    let importedCount = 0;
+
+    if (mode === 'replace') {
+      // Clear existing prompts
+      storyWeaverPrompts.clear();
+      storyWeaverPromptOrder = [];
+    }
+
+    // Import prompts
+    prompts.forEach((promptData, index) => {
+      // Ensure required fields
+      if (!promptData.identifier) {
+        promptData.identifier = `imported_${Date.now()}_${index}`;
+      }
+      if (!promptData.name) {
+        promptData.name = `导入的提示词 ${index + 1}`;
+      }
+      if (!promptData.role) {
+        promptData.role = 'user';
+      }
+      if (typeof promptData.injection_order !== 'number') {
+        promptData.injection_order = storyWeaverPrompts.size + 1;
+      }
+      if (typeof promptData.injection_depth !== 'number') {
+        promptData.injection_depth = 0;
+      }
+      if (typeof promptData.injection_position !== 'number') {
+        promptData.injection_position = 0;
+      }
+      if (typeof promptData.enabled !== 'boolean') {
+        promptData.enabled = true;
+      }
+      if (typeof promptData.system_prompt !== 'boolean') {
+        promptData.system_prompt = false;
+      }
+
+      // Check for duplicates in merge mode
+      if (mode === 'merge' && storyWeaverPrompts.has(promptData.identifier)) {
+        // Generate new identifier for duplicates
+        let counter = 1;
+        let newIdentifier = `${promptData.identifier}_copy_${counter}`;
+        while (storyWeaverPrompts.has(newIdentifier)) {
+          counter++;
+          newIdentifier = `${promptData.identifier}_copy_${counter}`;
+        }
+        promptData.identifier = newIdentifier;
+        promptData.name += ` (副本)`;
+      }
+
+      storyWeaverPrompts.set(promptData.identifier, promptData);
+      storyWeaverPromptOrder.push(promptData.identifier);
+      importedCount++;
+    });
+
+    // Use imported order if available and in replace mode
+    if (mode === 'replace' && order && Array.isArray(order) && order.length > 0) {
+      // Filter order to only include imported prompts
+      const validOrder = order.filter(id => storyWeaverPrompts.has(id));
+      if (validOrder.length > 0) {
+        storyWeaverPromptOrder = validOrder;
+      }
+    }
+
+    // Save and refresh
+    savePromptSettings();
+    refreshPromptManager();
+
+    showNotification(`成功导入 ${importedCount} 个提示词`, 'success');
+    console.log(`[SW] Imported ${importedCount} prompts in ${mode} mode`);
+
+  } catch (error) {
+    console.error('[SW] Import execution failed:', error);
+    showNotification('导入失败: ' + error.message, 'error');
+  }
+}
+
+function downloadFile(content, filename, mimeType) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function previewFinalPrompt() {
+  try {
+    // Build a sample context for preview
+    const sampleSettings = {
+      storyType: 'adventure',
+      storyTheme: '一个年轻的探险家寻找失落的古代宝藏',
+      chapterCount: 5,
+      storyStyle: 'narrative',
+      detailLevel: 'medium',
+      specialRequirements: '包含神秘元素和友情主题',
+      includeSummary: true,
+      includeCharacters: true,
+      includeThemes: false
+    };
+
+    // Build final prompt using current settings
+    const finalPrompt = buildPromptForPreview(sampleSettings);
+
+    // Show preview dialog
+    showPromptPreviewDialog(finalPrompt, sampleSettings);
+
+  } catch (error) {
+    console.error('[SW] Preview failed:', error);
+    showNotification('预览失败: ' + error.message, 'error');
+  }
+}
+
+function buildPromptForPreview(settings) {
+  // Build context data first (reuse existing function)
+  const contextData = buildStoryContextForNative(settings);
+
+  // Build final prompt from enabled prompts using prompt manager
+  let finalPrompt = '';
+  let promptSections = [];
+
+  // Get enabled prompts in order
+  const enabledPrompts = storyWeaverPromptOrder
+    .map(identifier => storyWeaverPrompts.get(identifier))
+    .filter(prompt => prompt && prompt.enabled !== false)
+    .sort((a, b) => a.injection_order - b.injection_order);
+
+  // Process each prompt and collect them
+  enabledPrompts.forEach((prompt, index) => {
+    let processedContent = prompt.content;
+
+    // Replace placeholders
+    processedContent = processedContent.replace(/\{\{STORY_CONTEXT\}\}/g, contextData);
+
+    promptSections.push({
+      name: prompt.name,
+      role: prompt.role,
+      content: processedContent,
+      order: prompt.injection_order
+    });
+
+    // Build final prompt
+    if (prompt.role === 'user') {
+      finalPrompt += processedContent + '\n\n';
+    } else if (prompt.role === 'system') {
+      finalPrompt = processedContent + '\n\n' + finalPrompt;
+    } else if (prompt.role === 'assistant') {
+      finalPrompt += '[Assistant]: ' + processedContent + '\n\n';
+    }
+  });
+
+  return {
+    final: finalPrompt.trim(),
+    sections: promptSections,
+    context: contextData
+  };
+}
+
+function showPromptPreviewDialog(promptData, sampleSettings) {
+  // Remove existing dialog
+  $('#sw-preview-dialog').remove();
+
+  const dialog = $(`
+    <div id="sw-preview-dialog" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10005;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 95vw;
+        max-height: 95vh;
+        width: 1000px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      ">
+        <div style="
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 15px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+          flex-shrink: 0;
+        ">
+          <span>👁️ 最终提示词预览</span>
+          <button id="sw-preview-close-btn" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+          ">✕</button>
+        </div>
+
+        <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column;">
+          <!-- Tabs -->
+          <div style="border-bottom: 1px solid #ddd; display: flex; background: #f8f9fa;">
+            <button class="preview-tab active" data-tab="final" style="
+              padding: 12px 20px;
+              border: none;
+              background: white;
+              cursor: pointer;
+              border-bottom: 2px solid #667eea;
+              font-weight: 600;
+            ">最终提示词</button>
+            <button class="preview-tab" data-tab="sections" style="
+              padding: 12px 20px;
+              border: none;
+              background: transparent;
+              cursor: pointer;
+              border-bottom: 2px solid transparent;
+            ">分段预览</button>
+            <button class="preview-tab" data-tab="settings" style="
+              padding: 12px 20px;
+              border: none;
+              background: transparent;
+              cursor: pointer;
+              border-bottom: 2px solid transparent;
+            ">示例设置</button>
+          </div>
+
+          <!-- Tab Contents -->
+          <div style="flex: 1; overflow: auto; padding: 20px;">
+            <!-- Final Prompt Tab -->
+            <div class="preview-content" data-content="final">
+              <div style="margin-bottom: 15px;">
+                <h4 style="margin: 0 0 10px 0; color: #333;">组装后的完整提示词：</h4>
+                <div style="
+                  background: #f8f9fa;
+                  border: 1px solid #ddd;
+                  border-radius: 5px;
+                  padding: 15px;
+                  font-family: 'Courier New', monospace;
+                  font-size: 13px;
+                  line-height: 1.5;
+                  white-space: pre-wrap;
+                  max-height: 400px;
+                  overflow-y: auto;
+                ">${promptData.final}</div>
+              </div>
+              <div style="display: flex; gap: 10px;">
+                <button onclick="copyPreviewContent('${promptData.final.replace(/'/g, "\\'")}', 'final')" style="
+                  background: #28a745;
+                  color: white;
+                  border: none;
+                  padding: 8px 16px;
+                  border-radius: 5px;
+                  cursor: pointer;
+                ">📋 复制完整提示词</button>
+                <span style="color: #666; font-size: 12px; align-self: center;">
+                  字符数: ${promptData.final.length} | 启用的提示词: ${promptData.sections.length}
+                </span>
+              </div>
+            </div>
+
+            <!-- Sections Tab -->
+            <div class="preview-content" data-content="sections" style="display: none;">
+              <h4 style="margin: 0 0 15px 0; color: #333;">提示词分段详情：</h4>
+              ${promptData.sections.map((section, index) => `
+                <div style="
+                  border: 1px solid #ddd;
+                  border-radius: 5px;
+                  margin-bottom: 15px;
+                  overflow: hidden;
+                ">
+                  <div style="
+                    background: #f8f9fa;
+                    padding: 10px 15px;
+                    border-bottom: 1px solid #ddd;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                  ">
+                    <span style="font-weight: 600;">${section.name}</span>
+                    <div style="display: flex; gap: 10px; font-size: 12px; color: #666;">
+                      <span>角色: ${section.role}</span>
+                      <span>顺序: ${section.order}</span>
+                    </div>
+                  </div>
+                  <div style="
+                    padding: 15px;
+                    font-family: 'Courier New', monospace;
+                    font-size: 13px;
+                    line-height: 1.4;
+                    white-space: pre-wrap;
+                    max-height: 200px;
+                    overflow-y: auto;
+                  ">${section.content}</div>
+                </div>
+              `).join('')}
+            </div>
+
+            <!-- Settings Tab -->
+            <div class="preview-content" data-content="settings" style="display: none;">
+              <h4 style="margin: 0 0 15px 0; color: #333;">用于预览的示例设置：</h4>
+              <div style="
+                background: #f8f9fa;
+                border: 1px solid #ddd;
+                border-radius: 5px;
+                padding: 15px;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+                line-height: 1.5;
+              ">${JSON.stringify(sampleSettings, null, 2)}</div>
+              <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                💡 这是用于预览的示例设置。实际使用时，提示词会根据你在主界面中的具体设置进行动态替换。
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `);
+
+  $('body').append(dialog);
+
+  // Tab switching
+  $('.preview-tab').click(function() {
+    const tab = $(this).data('tab');
+
+    // Update tab styles
+    $('.preview-tab').css({
+      background: 'transparent',
+      borderBottom: '2px solid transparent',
+      fontWeight: 'normal'
+    });
+    $(this).css({
+      background: 'white',
+      borderBottom: '2px solid #667eea',
+      fontWeight: '600'
+    });
+
+    // Show/hide content
+    $('.preview-content').hide();
+    $(`.preview-content[data-content="${tab}"]`).show();
+  });
+
+  // Close handler
+  $('#sw-preview-close-btn').click(() => {
+    $('#sw-preview-dialog').remove();
+  });
+}
+
+// Global function for copying preview content
+window.copyPreviewContent = function(content, type) {
+  navigator.clipboard.writeText(content).then(() => {
+    showNotification('内容已复制到剪贴板', 'success');
+  }).catch(() => {
+    showNotification('复制失败', 'error');
+  });
+};
 
 // ========================= SETTINGS MENU =========================
 
@@ -1986,7 +3044,7 @@ function setupSettingsMenu() {
   $('#sw-settings-btn').parent().css('position', 'relative').append(settingsDropdown);
 
   // Settings button click handler
-  $('#sw-settings-btn').click(function(e) {
+  $('#sw-settings-btn').click(function (e) {
     e.stopPropagation();
     const dropdown = $('#sw-settings-dropdown');
     if (dropdown.is(':visible')) {
@@ -1997,26 +3055,26 @@ function setupSettingsMenu() {
   });
 
   // Menu item handlers
-  $('#sw-menu-prompt-manager').click(function(e) {
+  $('#sw-menu-prompt-manager').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown').hide();
     openPromptManager();
   });
 
-  $('#sw-menu-settings').click(function(e) {
+  $('#sw-menu-settings').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown').hide();
     alert('系统设置功能即将推出');
   });
 
-  $('#sw-menu-about').click(function(e) {
+  $('#sw-menu-about').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown').hide();
     showAboutDialog();
   });
 
   // Close dropdown when clicking outside
-  $(document).click(function() {
+  $(document).click(function () {
     $('#sw-settings-dropdown').hide();
   });
 }
@@ -2075,7 +3133,7 @@ function setupSettingsMenuTH() {
   $('#sw-settings-btn-th').parent().css('position', 'relative').append(settingsDropdown);
 
   // Event handlers
-  $('#sw-settings-btn-th').click(function(e) {
+  $('#sw-settings-btn-th').click(function (e) {
     e.stopPropagation();
     const dropdown = $('#sw-settings-dropdown-th');
     if (dropdown.is(':visible')) {
@@ -2085,25 +3143,25 @@ function setupSettingsMenuTH() {
     }
   });
 
-  $('#sw-menu-prompt-manager-th').click(function(e) {
+  $('#sw-menu-prompt-manager-th').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown-th').hide();
     openPromptManagerTH();
   });
 
-  $('#sw-menu-settings-th').click(function(e) {
+  $('#sw-menu-settings-th').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown-th').hide();
     alert('系统设置功能即将推出');
   });
 
-  $('#sw-menu-about-th').click(function(e) {
+  $('#sw-menu-about-th').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown-th').hide();
     showAboutDialogTH();
   });
 
-  $(document).click(function() {
+  $(document).click(function () {
     $('#sw-settings-dropdown-th').hide();
   });
 }
