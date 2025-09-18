@@ -8,6 +8,46 @@ console.log('[SW] 📖 Loading Story Weaver Enhanced v2.0...');
 
 // ========================= CONSTANTS =========================
 
+// Prompt Management
+let storyWeaverPrompts = new Map();
+let storyWeaverPromptOrder = [];
+
+const DEFAULT_PROMPTS = [
+  {
+    identifier: 'sw_system_core',
+    name: '核心系统提示',
+    role: 'system',
+    content: '你是一个专业的故事创作助手。请根据用户的要求创作精彩的故事大纲。',
+    enabled: true,
+    system_prompt: true,
+    injection_order: 1,
+    injection_depth: 0,
+    injection_position: 0
+  },
+  {
+    identifier: 'sw_user_context',
+    name: '用户上下文',
+    role: 'user',
+    content: '请基于以下信息创作故事大纲：\n{{STORY_CONTEXT}}',
+    enabled: true,
+    system_prompt: false,
+    injection_order: 2,
+    injection_depth: 1,
+    injection_position: 0
+  },
+  {
+    identifier: 'sw_format_guide',
+    name: '格式指导',
+    role: 'system',
+    content: '请按照以下格式输出故事大纲：\n1. 故事摘要\n2. 主要角色\n3. 章节大纲\n4. 主题探讨',
+    enabled: true,
+    system_prompt: false,
+    injection_order: 3,
+    injection_depth: 0,
+    injection_position: 0
+  }
+];
+
 const STORY_TYPES = {
   adventure: '冒险故事',
   romance: '爱情故事',
@@ -320,15 +360,27 @@ function createNativePopup() {
           font-weight: 600;
         ">
           <span>📖 Story Weaver Enhanced - 故事大纲生成器</span>
-          <button id="sw-close-btn" style="
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-          ">✕</button>
+          <div style="display: flex; align-items: center; gap: 10px;">
+            <button id="sw-settings-btn" style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              color: white;
+              padding: 5px 10px;
+              border-radius: 5px;
+              cursor: pointer;
+              font-size: 16px;
+              position: relative;
+            " title="设置">⚙</button>
+            <button id="sw-close-btn" style="
+              background: rgba(255, 255, 255, 0.2);
+              border: none;
+              color: white;
+              padding: 5px 10px;
+              border-radius: 5px;
+              cursor: pointer;
+              font-size: 16px;
+            ">✕</button>
+          </div>
         </div>
         <div id="sw-popup-content" style="
           height: calc(100% - 60px);
@@ -363,6 +415,9 @@ function createNativePopup() {
       $(this).remove();
     });
   });
+
+  // Settings button handler
+  setupSettingsMenu();
 
   // Click outside to close
   $('#sw-popup-overlay').click(e => {
@@ -543,38 +598,84 @@ function buildSimpleInterface(settings) {
       }
       
       function buildNativePrompt(settings) {
-        let prompt = \`请为我生成一个\${STORY_TYPES[settings.storyType\] || settings.storyType\}类型的故事大纲。\`;
-        
-        if (settings.storyTheme) {
-          prompt += \`\\n\\n故事主题: \${settings.storyTheme\}\`;
+        // Use the same prompt building logic as TavernHelper version
+        return buildPromptForNative(settings);
+      }
+
+      function buildPromptForNative(settings) {
+        // Build context data first
+        const contextData = buildStoryContextForNative(settings);
+
+        // Build final prompt from enabled prompts using prompt manager
+        let finalPrompt = '';
+
+        // Get enabled prompts in order
+        const enabledPrompts = storyWeaverPromptOrder
+          .map(identifier => storyWeaverPrompts.get(identifier))
+          .filter(prompt => prompt && prompt.enabled !== false)
+          .sort((a, b) => a.injection_order - b.injection_order);
+
+        // Process each prompt
+        enabledPrompts.forEach(prompt => {
+          let processedContent = prompt.content;
+
+          // Replace placeholders
+          processedContent = processedContent.replace(/\{\{STORY_CONTEXT\}\}/g, contextData);
+
+          // Add role prefix for non-system prompts
+          if (prompt.role === 'user') {
+            finalPrompt += processedContent + '\\n\\n';
+          } else if (prompt.role === 'system') {
+            finalPrompt = processedContent + '\\n\\n' + finalPrompt;
+          } else if (prompt.role === 'assistant') {
+            finalPrompt += '[Assistant]: ' + processedContent + '\\n\\n';
+          }
+        });
+
+        // Fallback: if no prompts are enabled, use basic prompt
+        if (!finalPrompt.trim()) {
+          finalPrompt = buildBasicNativePrompt(settings);
         }
-        
-        prompt += \`\\n\\n要求:
+
+        return finalPrompt.trim();
+      }
+
+      function buildStoryContextForNative(settings) {
+        let context = \`请为我生成一个\${STORY_TYPES[settings.storyType] || settings.storyType\}类型的故事大纲。\`;
+
+        if (settings.storyTheme) {
+          context += \`\\n\\n故事主题: \${settings.storyTheme\}\`;
+        }
+
+        context += \`\\n\\n要求:
 1. 包含\${settings.chapterCount\}个章节
 2. 每章有明确的情节发展和冲突
 3. 结构完整，逻辑清晰
-4. 符合\${STORY_STYLES[settings.storyStyle\] || settings.storyStyle\}的叙述风格
-5. 详细程度: \${DETAIL_LEVELS[settings.detailLevel\] || settings.detailLevel\}\`;
+4. 符合\${STORY_STYLES[settings.storyStyle] || settings.storyStyle\}的叙述风格
+5. 详细程度: \${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel\}\`;
 
         if (settings.specialRequirements) {
-          prompt += \`\\n6. 特殊要求: \${settings.specialRequirements\}\`;
+          context += \`\\n6. 特殊要求: \${settings.specialRequirements\}\`;
         }
-        
+
         if (settings.includeSummary) {
-          prompt += \`\\n\\n请在大纲前提供故事摘要。\`;
+          context += \`\\n\\n请在大纲前提供故事摘要。\`;
         }
-        
+
         if (settings.includeCharacters) {
-          prompt += \`\\n\\n请包含主要角色的性格特点和发展弧线。\`;
+          context += \`\\n\\n请包含主要角色的性格特点和发展弧线。\`;
         }
-        
+
         if (settings.includeThemes) {
-          prompt += \`\\n\\n请说明故事要探讨的核心主题。\`;
+          context += \`\\n\\n请说明故事要探讨的核心主题。\`;
         }
-        
-        prompt += \`\\n\\n请生成结构完整、逻辑清晰的故事大纲。\`;
-        
-        return prompt;
+
+        return context;
+      }
+
+      function buildBasicNativePrompt(settings) {
+        const context = buildStoryContextForNative(settings);
+        return context + '\\n\\n请生成结构完整、逻辑清晰的故事大纲。';
       }
       
       function copyNativeResult() {
@@ -803,8 +904,22 @@ function buildCompleteInterface(settings) {
 <body>
   <div class="container">
     <div class="header">
-      <h1 class="title">📖 Story Weaver Enhanced</h1>
-      <p class="subtitle">AI驱动的故事大纲生成器 - 让创意无限延展</p>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <div>
+          <h1 class="title">📖 Story Weaver Enhanced</h1>
+          <p class="subtitle">AI驱动的故事大纲生成器 - 让创意无限延展</p>
+        </div>
+        <button id="sw-settings-btn-th" style="
+          background: rgba(102, 126, 234, 0.1);
+          border: 2px solid #667eea;
+          color: #667eea;
+          padding: 10px 15px;
+          border-radius: 8px;
+          cursor: pointer;
+          font-size: 18px;
+          position: relative;
+        " title="设置">⚙</button>
+      </div>
     </div>
     
     <div class="row">
@@ -1005,36 +1120,74 @@ function buildCompleteInterface(settings) {
     }
     
     function buildPrompt(settings) {
-      let prompt = \`请为我生成一个\${STORY_TYPES[settings.storyType\] || settings.storyType\}类型的故事大纲。\`;
-      
-      if (settings.storyTheme) {
-        prompt += \`\\n\\n故事主题: \${settings.storyTheme\}\`;
+      // Build context data first
+      const contextData = buildStoryContext(settings);
+
+      // Build final prompt from enabled prompts using prompt manager
+      let finalPrompt = '';
+
+      // Get enabled prompts in order
+      const enabledPrompts = storyWeaverPromptOrder
+        .map(identifier => storyWeaverPrompts.get(identifier))
+        .filter(prompt => prompt && prompt.enabled !== false)
+        .sort((a, b) => a.injection_order - b.injection_order);
+
+      // Process each prompt
+      enabledPrompts.forEach(prompt => {
+        let processedContent = prompt.content;
+
+        // Replace placeholders
+        processedContent = processedContent.replace(/\{\{STORY_CONTEXT\}\}/g, contextData);
+
+        // Add role prefix for non-system prompts
+        if (prompt.role === 'user') {
+          finalPrompt += processedContent + '\\n\\n';
+        } else if (prompt.role === 'system') {
+          finalPrompt = processedContent + '\\n\\n' + finalPrompt;
+        } else if (prompt.role === 'assistant') {
+          finalPrompt += '[Assistant]: ' + processedContent + '\\n\\n';
+        }
+      });
+
+      // Fallback: if no prompts are enabled, use basic prompt
+      if (!finalPrompt.trim()) {
+        finalPrompt = buildBasicPrompt(settings);
       }
-      
-      prompt += \`\\n\\n要求:
+
+      return finalPrompt.trim();
+    }
+
+    function buildStoryContext(settings) {
+      let context = \`请为我生成一个\${STORY_TYPES[settings.storyType] || settings.storyType\}类型的故事大纲。\`;
+
+      if (settings.storyTheme) {
+        context += \`\\n\\n故事主题: \${settings.storyTheme\}\`;
+      }
+
+      context += \`\\n\\n要求:
 1. 包含\${settings.chapterCount\}个章节
 2. 每章有明确的情节发展和冲突
 3. 结构完整，逻辑清晰
-4. 符合\${STORY_STYLES[settings.storyStyle\] || settings.storyStyle\}的叙述风格
-5. 详细程度: \${DETAIL_LEVELS[settings.detailLevel\] || settings.detailLevel\}\`;
+4. 符合\${STORY_STYLES[settings.storyStyle] || settings.storyStyle\}的叙述风格
+5. 详细程度: \${DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel\}\`;
 
       if (settings.specialRequirements) {
-        prompt += \`\\n6. 特殊要求: \${settings.specialRequirements\}\`;
+        context += \`\\n6. 特殊要求: \${settings.specialRequirements\}\`;
       }
-      
+
       if (settings.includeSummary) {
-        prompt += \`\\n\\n请在大纲前提供故事摘要。\`;
+        context += \`\\n\\n请在大纲前提供故事摘要。\`;
       }
-      
+
       if (settings.includeCharacters) {
-        prompt += \`\\n\\n请包含主要角色的性格特点和发展弧线。\`;
+        context += \`\\n\\n请包含主要角色的性格特点和发展弧线。\`;
       }
-      
+
       if (settings.includeThemes) {
-        prompt += \`\\n\\n请说明故事要探讨的核心主题。\`;
+        context += \`\\n\\n请说明故事要探讨的核心主题。\`;
       }
-      
-      // Add context if available
+
+      // Add TavernHelper context if available
       try {
         if (typeof window.TavernHelper !== 'undefined') {
           const contextLength = parseInt(settings.contextLength) || 0;
@@ -1042,32 +1195,32 @@ function buildCompleteInterface(settings) {
             const chatHistory = window.TavernHelper.getChatHistory(contextLength);
             const characterData = window.TavernHelper.getCharacterData();
             const worldbookEntries = window.TavernHelper.getWorldbookEntries();
-            
+
             if (characterData && characterData.name) {
-              prompt += \`\\n\\n当前角色: \${characterData.name\}\`;
+              context += \`\\n\\n当前角色: \${characterData.name\}\`;
               if (characterData.personality) {
-                prompt += \`\\n角色性格: \${characterData.personality\}\`;
+                context += \`\\n角色性格: \${characterData.personality\}\`;
               }
             }
-            
+
             if (worldbookEntries && worldbookEntries.length > 0) {
-              prompt += \`\\n\\n世界设定:\`;
+              context += \`\\n\\n世界设定:\`;
               worldbookEntries.slice(0, 5).forEach(entry => {
                 const key = entry.key || (entry.keys && entry.keys[0]) || '';
                 const content = entry.content || entry.description || '';
                 if (key && content) {
-                  prompt += \`\\n- \${key\}: \${content.substring(0, 100\)\}...\`;
+                  context += \`\\n- \${key\}: \${content.substring(0, 100)\}...\`;
                 }
               });
             }
-            
+
             if (chatHistory && chatHistory.length > 0) {
-              prompt += \`\\n\\n最近对话:\`;
+              context += \`\\n\\n最近对话:\`;
               chatHistory.slice(-3).forEach(msg => {
                 const name = msg.name || msg.user || '';
                 const content = (msg.mes || msg.message || '').substring(0, 100);
                 if (name && content) {
-                  prompt += \`\\n[\${name\}]: \${content\}...\`;
+                  context += \`\\n[\${name\}]: \${content\}...\`;
                 }
               });
             }
@@ -1076,10 +1229,13 @@ function buildCompleteInterface(settings) {
       } catch (e) {
         console.log('[SW] Context integration failed:', e);
       }
-      
-      prompt += \`\\n\\n请生成结构完整、逻辑清晰的故事大纲。\`;
-      
-      return prompt;
+
+      return context;
+    }
+
+    function buildBasicPrompt(settings) {
+      const context = buildStoryContext(settings);
+      return context + '\\n\\n请生成结构完整、逻辑清晰的故事大纲。';
     }
     
     function updateStats(result, generationTime) {
@@ -1154,6 +1310,9 @@ function buildCompleteInterface(settings) {
       console.log('[SW] Refreshing data...');
       alert('数据已刷新！');
     }
+
+    // Setup settings menu for TavernHelper interface
+    setupSettingsMenuTH();
   </script>
 </body>
 </html>
@@ -1193,6 +1352,768 @@ function saveSettings(settings) {
   } catch (error) {
     console.error('[SW] Failed to save settings:', error);
   }
+}
+
+// ========================= PROMPT MANAGEMENT =========================
+
+function initializePrompts() {
+  // Load default prompts if none exist
+  if (storyWeaverPrompts.size === 0) {
+    DEFAULT_PROMPTS.forEach(prompt => {
+      storyWeaverPrompts.set(prompt.identifier, { ...prompt });
+      storyWeaverPromptOrder.push(prompt.identifier);
+    });
+  }
+}
+
+function openPromptManager() {
+  // Remove existing modal
+  $('#sw-prompt-manager-modal').remove();
+
+  const modal = $(`
+    <div id="sw-prompt-manager-modal" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10002;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(5px);
+    ">
+      <div style="
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 90vw;
+        max-height: 90vh;
+        width: 900px;
+        height: 600px;
+        overflow: hidden;
+        position: relative;
+      ">
+        <div style="
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 15px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+        ">
+          <span>📝 提示词管理器</span>
+          <button id="sw-prompt-close-btn" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+          ">✕</button>
+        </div>
+        <div style="
+          height: calc(100% - 60px);
+          overflow: auto;
+          padding: 20px;
+        ">
+          ${buildPromptManagerContent()}
+        </div>
+      </div>
+    </div>
+  `);
+
+  $('body').append(modal);
+
+  // Event handlers
+  $('#sw-prompt-close-btn').click(() => {
+    $('#sw-prompt-manager-modal').remove();
+  });
+
+  $('#sw-prompt-manager-modal').click(e => {
+    if (e.target.id === 'sw-prompt-manager-modal') {
+      $('#sw-prompt-manager-modal').remove();
+    }
+  });
+
+  setupPromptManagerEvents();
+}
+
+function openPromptManagerTH() {
+  // For TavernHelper interface, create similar modal but adapted
+  openPromptManager(); // For now, use the same implementation
+}
+
+function buildPromptManagerContent() {
+  const prompts = Array.from(storyWeaverPrompts.values()).sort((a, b) => a.injection_order - b.injection_order);
+
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="margin: 0; color: #333;">提示词列表</h3>
+        <div>
+          <button id="sw-add-prompt-btn" style="
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+          ">➕ 添加提示词</button>
+          <button id="sw-reset-prompts-btn" style="
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 5px;
+            cursor: pointer;
+          ">🔄 重置默认</button>
+        </div>
+      </div>
+
+      <div id="sw-prompt-list" style="
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        overflow: hidden;
+      ">
+        ${prompts.map(prompt => buildPromptItem(prompt)).join('')}
+      </div>
+    </div>
+  `;
+}
+
+function buildPromptItem(prompt) {
+  const isEnabled = prompt.enabled !== false;
+  return `
+    <div class="sw-prompt-item" data-identifier="${prompt.identifier}" style="
+      border-bottom: 1px solid #eee;
+      padding: 15px;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      background: ${isEnabled ? 'white' : '#f8f9fa'};
+    ">
+      <div style="
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        background: ${isEnabled ? '#28a745' : '#6c757d'};
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 12px;
+      " class="sw-prompt-toggle" data-identifier="${prompt.identifier}">
+        ${isEnabled ? '✓' : '✕'}
+      </div>
+
+      <div style="flex: 1;">
+        <div style="font-weight: 600; margin-bottom: 5px;">${prompt.name}</div>
+        <div style="font-size: 12px; color: #666;">
+          角色: ${prompt.role} | 顺序: ${prompt.injection_order} | 深度: ${prompt.injection_depth}
+        </div>
+        <div style="font-size: 12px; color: #888; margin-top: 5px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+          ${prompt.content}
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 5px;">
+        <button class="sw-prompt-edit" data-identifier="${prompt.identifier}" style="
+          background: #17a2b8;
+          color: white;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 12px;
+        ">编辑</button>
+        <button class="sw-prompt-copy" data-identifier="${prompt.identifier}" style="
+          background: #28a745;
+          color: white;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 12px;
+        ">复制</button>
+        ${!prompt.system_prompt ? `
+        <button class="sw-prompt-delete" data-identifier="${prompt.identifier}" style="
+          background: #dc3545;
+          color: white;
+          border: none;
+          padding: 5px 10px;
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 12px;
+        ">删除</button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function setupPromptManagerEvents() {
+  // Toggle prompt enabled/disabled
+  $(document).off('click', '.sw-prompt-toggle').on('click', '.sw-prompt-toggle', function() {
+    const identifier = $(this).data('identifier');
+    const prompt = storyWeaverPrompts.get(identifier);
+    if (prompt) {
+      prompt.enabled = !prompt.enabled;
+      savePromptSettings();
+      refreshPromptManager();
+      showNotification(prompt.enabled ? '提示词已启用' : '提示词已禁用', 'info');
+    }
+  });
+
+  // Edit prompt
+  $(document).off('click', '.sw-prompt-edit').on('click', '.sw-prompt-edit', function() {
+    const identifier = $(this).data('identifier');
+    showPromptEditor(identifier);
+  });
+
+  // Copy prompt
+  $(document).off('click', '.sw-prompt-copy').on('click', '.sw-prompt-copy', function() {
+    const identifier = $(this).data('identifier');
+    copyPromptToClipboard(identifier);
+  });
+
+  // Delete prompt
+  $(document).off('click', '.sw-prompt-delete').on('click', '.sw-prompt-delete', function() {
+    const identifier = $(this).data('identifier');
+    deletePrompt(identifier);
+  });
+
+  // Add new prompt
+  $(document).off('click', '#sw-add-prompt-btn').on('click', '#sw-add-prompt-btn', function() {
+    showPromptEditor('new');
+  });
+
+  // Reset prompts
+  $(document).off('click', '#sw-reset-prompts-btn').on('click', '#sw-reset-prompts-btn', function() {
+    if (confirm('确定要重置所有提示词为默认设置吗？此操作不可撤销。')) {
+      resetToDefaultPrompts();
+    }
+  });
+}
+
+function showPromptEditor(identifier) {
+  let prompt = null;
+  let isNew = false;
+
+  if (identifier === 'new') {
+    isNew = true;
+    prompt = {
+      identifier: `sw_custom_${Date.now()}`,
+      name: '新建提示词',
+      role: 'user',
+      content: '',
+      enabled: true,
+      system_prompt: false,
+      injection_order: storyWeaverPrompts.size + 1,
+      injection_depth: 0,
+      injection_position: 0
+    };
+  } else {
+    prompt = storyWeaverPrompts.get(identifier);
+    if (!prompt) {
+      showNotification('找不到指定的提示词', 'error');
+      return;
+    }
+    prompt = { ...prompt }; // Create a copy for editing
+  }
+
+  // Remove existing editor
+  $('#sw-prompt-editor-modal').remove();
+
+  const editorModal = $(`
+    <div id="sw-prompt-editor-modal" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 10003;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        background: white;
+        border-radius: 12px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        max-width: 90vw;
+        max-height: 90vh;
+        width: 700px;
+        overflow: hidden;
+      ">
+        <div style="
+          background: linear-gradient(135deg, #667eea, #764ba2);
+          color: white;
+          padding: 15px 20px;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          font-weight: 600;
+        ">
+          <span>${isNew ? '✨ 新建提示词' : '✏️ 编辑提示词'}</span>
+          <button id="sw-editor-close-btn" style="
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+          ">✕</button>
+        </div>
+        <div style="padding: 20px;">
+          ${buildPromptEditorForm(prompt)}
+        </div>
+      </div>
+    </div>
+  `);
+
+  $('body').append(editorModal);
+
+  // Set up form values
+  $('#sw-editor-name').val(prompt.name);
+  $('#sw-editor-role').val(prompt.role);
+  $('#sw-editor-content').val(prompt.content);
+  $('#sw-editor-injection-order').val(prompt.injection_order);
+  $('#sw-editor-injection-depth').val(prompt.injection_depth);
+  $('#sw-editor-injection-position').val(prompt.injection_position);
+
+  // Event handlers
+  $('#sw-editor-close-btn').click(() => {
+    $('#sw-prompt-editor-modal').remove();
+  });
+
+  $('#sw-editor-save-btn').click(() => {
+    savePromptEditor(prompt.identifier, isNew);
+  });
+
+  $('#sw-editor-cancel-btn').click(() => {
+    $('#sw-prompt-editor-modal').remove();
+  });
+}
+
+function buildPromptEditorForm(prompt) {
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+      <div style="margin-bottom: 15px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: 600;">名称：</label>
+        <input type="text" id="sw-editor-name" style="
+          width: 100%;
+          padding: 8px 12px;
+          border: 1px solid #ddd;
+          border-radius: 5px;
+        ">
+      </div>
+
+      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">角色：</label>
+          <select id="sw-editor-role" style="
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+          ">
+            <option value="system">System</option>
+            <option value="user">User</option>
+            <option value="assistant">Assistant</option>
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">注入顺序：</label>
+          <input type="number" id="sw-editor-injection-order" min="1" max="999" style="
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+          ">
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">注入深度：</label>
+          <input type="number" id="sw-editor-injection-depth" min="0" max="999" style="
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+          ">
+        </div>
+        <div style="flex: 1;">
+          <label style="display: block; margin-bottom: 5px; font-weight: 600;">位置模式：</label>
+          <select id="sw-editor-injection-position" style="
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+          ">
+            <option value="0">相对位置</option>
+            <option value="1">绝对深度</option>
+          </select>
+        </div>
+      </div>
+
+      <div style="margin-bottom: 20px;">
+        <label style="display: block; margin-bottom: 5px; font-weight: 600;">内容：</label>
+        <textarea id="sw-editor-content" style="
+          width: 100%;
+          height: 200px;
+          padding: 12px;
+          border: 1px solid #ddd;
+          border-radius: 5px;
+          resize: vertical;
+          font-family: 'Courier New', monospace;
+        " placeholder="请输入提示词内容..."></textarea>
+      </div>
+
+      <div style="text-align: right;">
+        <button id="sw-editor-cancel-btn" style="
+          background: #6c757d;
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 5px;
+          cursor: pointer;
+          margin-right: 10px;
+        ">取消</button>
+        <button id="sw-editor-save-btn" style="
+          background: #28a745;
+          color: white;
+          border: none;
+          padding: 10px 20px;
+          border-radius: 5px;
+          cursor: pointer;
+        ">保存</button>
+      </div>
+    </div>
+  `;
+}
+
+function savePromptEditor(originalIdentifier, isNew) {
+  const name = $('#sw-editor-name').val().trim();
+  const role = $('#sw-editor-role').val();
+  const content = $('#sw-editor-content').val().trim();
+  const injectionOrder = parseInt($('#sw-editor-injection-order').val()) || 1;
+  const injectionDepth = parseInt($('#sw-editor-injection-depth').val()) || 0;
+  const injectionPosition = parseInt($('#sw-editor-injection-position').val()) || 0;
+
+  if (!name || !content) {
+    alert('请填写名称和内容');
+    return;
+  }
+
+  const promptData = {
+    identifier: originalIdentifier,
+    name: name,
+    role: role,
+    content: content,
+    enabled: true,
+    system_prompt: false,
+    injection_order: injectionOrder,
+    injection_depth: injectionDepth,
+    injection_position: injectionPosition
+  };
+
+  if (isNew) {
+    storyWeaverPrompts.set(promptData.identifier, promptData);
+    storyWeaverPromptOrder.push(promptData.identifier);
+  } else {
+    storyWeaverPrompts.set(originalIdentifier, promptData);
+  }
+
+  savePromptSettings();
+  refreshPromptManager();
+  $('#sw-prompt-editor-modal').remove();
+  showNotification(isNew ? '提示词已添加' : '提示词已更新', 'success');
+}
+
+function copyPromptToClipboard(identifier) {
+  const prompt = storyWeaverPrompts.get(identifier);
+  if (!prompt) return;
+
+  navigator.clipboard.writeText(prompt.content).then(() => {
+    showNotification('提示词内容已复制到剪贴板', 'success');
+  }).catch(() => {
+    showNotification('复制失败', 'error');
+  });
+}
+
+function deletePrompt(identifier) {
+  const prompt = storyWeaverPrompts.get(identifier);
+  if (!prompt || prompt.system_prompt) return;
+
+  if (confirm(`确定要删除提示词"${prompt.name}"吗？`)) {
+    storyWeaverPrompts.delete(identifier);
+    storyWeaverPromptOrder = storyWeaverPromptOrder.filter(id => id !== identifier);
+    savePromptSettings();
+    refreshPromptManager();
+    showNotification('提示词已删除', 'success');
+  }
+}
+
+function resetToDefaultPrompts() {
+  storyWeaverPrompts.clear();
+  storyWeaverPromptOrder = [];
+
+  DEFAULT_PROMPTS.forEach(prompt => {
+    storyWeaverPrompts.set(prompt.identifier, { ...prompt });
+    storyWeaverPromptOrder.push(prompt.identifier);
+  });
+
+  savePromptSettings();
+  refreshPromptManager();
+  showNotification('提示词已重置为默认设置', 'success');
+}
+
+function refreshPromptManager() {
+  const content = buildPromptManagerContent();
+  $('#sw-prompt-manager-modal').find('[style*="padding: 20px"]').html(content);
+  setupPromptManagerEvents();
+}
+
+function savePromptSettings() {
+  try {
+    const promptsData = {
+      prompts: Array.from(storyWeaverPrompts.values()),
+      order: storyWeaverPromptOrder
+    };
+    localStorage.setItem('storyWeaverPrompts', JSON.stringify(promptsData));
+  } catch (error) {
+    console.error('[SW] Failed to save prompt settings:', error);
+  }
+}
+
+function loadPromptSettings() {
+  try {
+    const saved = localStorage.getItem('storyWeaverPrompts');
+    if (saved) {
+      const data = JSON.parse(saved);
+      storyWeaverPrompts.clear();
+      storyWeaverPromptOrder = [];
+
+      if (data.prompts && Array.isArray(data.prompts)) {
+        data.prompts.forEach(prompt => {
+          storyWeaverPrompts.set(prompt.identifier, prompt);
+        });
+      }
+
+      if (data.order && Array.isArray(data.order)) {
+        storyWeaverPromptOrder = data.order;
+      }
+
+      return true;
+    }
+  } catch (error) {
+    console.error('[SW] Failed to load prompt settings:', error);
+  }
+  return false;
+}
+
+// ========================= SETTINGS MENU =========================
+
+function setupSettingsMenu() {
+  // Create settings dropdown HTML
+  const settingsDropdown = `
+    <div id="sw-settings-dropdown" style="
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      min-width: 200px;
+      z-index: 10001;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    ">
+      <div style="padding: 8px 0;">
+        <a href="#" id="sw-menu-prompt-manager" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          border-bottom: 1px solid #eee;
+          transition: background 0.2s;
+        ">
+          📝 提示词管理器
+        </a>
+        <a href="#" id="sw-menu-settings" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          border-bottom: 1px solid #eee;
+          transition: background 0.2s;
+        ">
+          ⚙️ 系统设置
+        </a>
+        <a href="#" id="sw-menu-about" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          transition: background 0.2s;
+        ">
+          ℹ️ 关于
+        </a>
+      </div>
+    </div>
+    <style>
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(-10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      #sw-settings-dropdown a:hover {
+        background: #f5f5f5 !important;
+      }
+    </style>
+  `;
+
+  // Add dropdown to settings button container
+  $('#sw-settings-btn').parent().css('position', 'relative').append(settingsDropdown);
+
+  // Settings button click handler
+  $('#sw-settings-btn').click(function(e) {
+    e.stopPropagation();
+    const dropdown = $('#sw-settings-dropdown');
+    if (dropdown.is(':visible')) {
+      dropdown.hide();
+    } else {
+      dropdown.show();
+    }
+  });
+
+  // Menu item handlers
+  $('#sw-menu-prompt-manager').click(function(e) {
+    e.preventDefault();
+    $('#sw-settings-dropdown').hide();
+    openPromptManager();
+  });
+
+  $('#sw-menu-settings').click(function(e) {
+    e.preventDefault();
+    $('#sw-settings-dropdown').hide();
+    alert('系统设置功能即将推出');
+  });
+
+  $('#sw-menu-about').click(function(e) {
+    e.preventDefault();
+    $('#sw-settings-dropdown').hide();
+    showAboutDialog();
+  });
+
+  // Close dropdown when clicking outside
+  $(document).click(function() {
+    $('#sw-settings-dropdown').hide();
+  });
+}
+
+function setupSettingsMenuTH() {
+  // Create settings dropdown HTML for TavernHelper interface
+  const settingsDropdown = `
+    <div id="sw-settings-dropdown-th" style="
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      min-width: 200px;
+      z-index: 10001;
+      display: none;
+      animation: fadeIn 0.2s ease;
+    ">
+      <div style="padding: 8px 0;">
+        <a href="#" id="sw-menu-prompt-manager-th" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          border-bottom: 1px solid #eee;
+          transition: background 0.2s;
+        ">
+          📝 提示词管理器
+        </a>
+        <a href="#" id="sw-menu-settings-th" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          border-bottom: 1px solid #eee;
+          transition: background 0.2s;
+        ">
+          ⚙️ 系统设置
+        </a>
+        <a href="#" id="sw-menu-about-th" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          transition: background 0.2s;
+        ">
+          ℹ️ 关于
+        </a>
+      </div>
+    </div>
+  `;
+
+  // Add dropdown to settings button container
+  $('#sw-settings-btn-th').parent().css('position', 'relative').append(settingsDropdown);
+
+  // Event handlers
+  $('#sw-settings-btn-th').click(function(e) {
+    e.stopPropagation();
+    const dropdown = $('#sw-settings-dropdown-th');
+    if (dropdown.is(':visible')) {
+      dropdown.hide();
+    } else {
+      dropdown.show();
+    }
+  });
+
+  $('#sw-menu-prompt-manager-th').click(function(e) {
+    e.preventDefault();
+    $('#sw-settings-dropdown-th').hide();
+    openPromptManagerTH();
+  });
+
+  $('#sw-menu-settings-th').click(function(e) {
+    e.preventDefault();
+    $('#sw-settings-dropdown-th').hide();
+    alert('系统设置功能即将推出');
+  });
+
+  $('#sw-menu-about-th').click(function(e) {
+    e.preventDefault();
+    $('#sw-settings-dropdown-th').hide();
+    showAboutDialogTH();
+  });
+
+  $(document).click(function() {
+    $('#sw-settings-dropdown-th').hide();
+  });
+}
+
+function showAboutDialog() {
+  alert('Story Weaver Enhanced v2.0\n\n一个强大的AI故事大纲生成器\n支持多种故事类型和风格\n\n作者：Story Weaver Team');
+}
+
+function showAboutDialogTH() {
+  alert('Story Weaver Enhanced v2.0\n\n一个强大的AI故事大纲生成器\n支持多种故事类型和风格\n\n作者：Story Weaver Team');
 }
 
 // ========================= UTILITIES =========================
@@ -1314,6 +2235,11 @@ function forceCreateSpiritBall() {
 
 function init() {
   console.log('[SW] Initializing Story Weaver Enhanced...');
+
+  // Load prompt settings or initialize with defaults
+  if (!loadPromptSettings()) {
+    initializePrompts();
+  }
 
   // Register slash commands if available
   if (typeof SlashCommandsAPI !== 'undefined') {
