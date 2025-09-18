@@ -491,6 +491,10 @@ function createNativePopup() {
   // Make main window draggable
   makeElementDraggable('#sw-popup-window', '.sw-window-header');
 
+  // Normalize starting position for dragging
+  const wndRect = $('#sw-popup-window')[0].getBoundingClientRect();
+  $('#sw-popup-window').css({ position: 'fixed', right: 'auto', left: wndRect.left + 'px', top: wndRect.top + 'px' });
+
   console.log('[SW] ✅ Native popup opened');
 }
 
@@ -1556,6 +1560,10 @@ function createPromptManagerPanel() {
   // Make panel draggable
   makeElementDraggable('#sw-prompt-panel', '.sw-panel-header');
 
+  // Ensure starting position uses left/top so dragging works even if initially right-anchored
+  const rect = $('#sw-prompt-panel')[0].getBoundingClientRect();
+  $('#sw-prompt-panel').css({ position: 'fixed', right: 'auto', left: rect.left + 'px', top: rect.top + 'px' });
+
   // Ensure events are bound immediately after panel creation
   setTimeout(() => {
     setupPromptManagerEvents();
@@ -2183,6 +2191,13 @@ function showPromptEditor(identifier) {
 
   // Make editor dialog draggable via its header
   makeElementDraggable('#sw-prompt-editor-dialog', '.sw-editor-header');
+  const edRect = $('#sw-prompt-editor-dialog')[0].getBoundingClientRect();
+  $('#sw-prompt-editor-dialog').css({
+    position: 'fixed',
+    right: 'auto',
+    left: edRect.left + 'px',
+    top: edRect.top + 'px',
+  });
 
   // Set up form values
   $('#sw-editor-name').val(prompt.name || '');
@@ -3028,24 +3043,27 @@ function buildPromptForPreview(settings) {
 
   // Process each prompt and collect them
   enabledPrompts.forEach((prompt, index) => {
-    let processedContent = prompt.content;
+    const safeContent = prompt && typeof prompt.content === 'string' ? prompt.content : '';
+    const safeRole = prompt && prompt.role ? prompt.role : 'user';
+    const safeOrder = prompt && typeof prompt.injection_order === 'number' ? prompt.injection_order : index + 1;
+    let processedContent = safeContent;
 
     // Replace placeholders
     processedContent = processedContent.replace(/\{\{STORY_CONTEXT\}\}/g, contextData);
 
     promptSections.push({
-      name: prompt.name,
-      role: prompt.role,
+      name: prompt && prompt.name ? prompt.name : `未命名提示词 ${index + 1}`,
+      role: safeRole,
       content: processedContent,
-      order: prompt.injection_order,
+      order: safeOrder,
     });
 
     // Build final prompt
-    if (prompt.role === 'user') {
+    if (safeRole === 'user') {
       finalPrompt += processedContent + '\n\n';
-    } else if (prompt.role === 'system') {
+    } else if (safeRole === 'system') {
       finalPrompt = processedContent + '\n\n' + finalPrompt;
-    } else if (prompt.role === 'assistant') {
+    } else if (safeRole === 'assistant') {
       finalPrompt += '[Assistant]: ' + processedContent + '\n\n';
     }
   });
@@ -3259,6 +3277,16 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
   // Close handler
   $('#sw-preview-close-btn').click(() => {
     $('#sw-preview-dialog').remove();
+  });
+
+  // Make preview window draggable
+  makeElementDraggable('#sw-preview-dialog-window', '.sw-preview-header');
+  const pvRect = $('#sw-preview-dialog-window')[0].getBoundingClientRect();
+  $('#sw-preview-dialog-window').css({
+    position: 'fixed',
+    right: 'auto',
+    left: pvRect.left + 'px',
+    top: pvRect.top + 'px',
   });
 }
 
