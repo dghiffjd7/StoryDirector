@@ -46,7 +46,7 @@ const StoryWeaverErrorHandler = {
       context,
       timestamp: new Date().toISOString(),
       allowRetry,
-      retryAction
+      retryAction,
     };
 
     return errorInfo;
@@ -63,7 +63,7 @@ const StoryWeaverErrorHandler = {
     if (typeof TavernHelper !== 'undefined' && TavernHelper.showNotification) {
       TavernHelper.showNotification(message, {
         type: type,
-        timeout: duration
+        timeout: duration,
       });
       return;
     }
@@ -91,7 +91,7 @@ const StoryWeaverErrorHandler = {
       error: '#dc3545',
       warning: '#ffc107',
       success: '#28a745',
-      info: '#17a2b8'
+      info: '#17a2b8',
     };
     notification.style.backgroundColor = colors[type] || colors.error;
 
@@ -142,10 +142,10 @@ const StoryWeaverErrorHandler = {
       error: '❌',
       warning: '⚠️',
       success: '✅',
-      info: 'ℹ️'
+      info: 'ℹ️',
     };
     return icons[type] || icons.info;
-  }
+  },
 };
 
 // 为向后兼容，创建全局别名
@@ -155,7 +155,7 @@ const ErrorHandler = StoryWeaverErrorHandler;
 
 const STORY_TYPES = {
   adventure: '冒险故事',
-  romance: '爱情故事', 
+  romance: '爱情故事',
   mystery: '悬疑推理',
   fantasy: '奇幻幻想',
   scifi: '科幻故事',
@@ -163,7 +163,7 @@ const STORY_TYPES = {
   slice_of_life: '日常生活',
   comedy: '喜剧轻松',
   drama: '剧情情感',
-  action: '动作战斗'
+  action: '动作战斗',
 };
 
 const STORY_STYLES = {
@@ -171,24 +171,24 @@ const STORY_STYLES = {
   dialogue: '对话性',
   descriptive: '描述性',
   stream_of_consciousness: '意识流',
-  epistolary: '书信体'
+  epistolary: '书信体',
 };
 
 const DETAIL_LEVELS = {
   brief: '简洁大纲',
-  medium: '中等详细', 
-  detailed: '详细描述'
+  medium: '中等详细',
+  detailed: '详细描述',
 };
 
 // ========================= SPIRIT BALL =========================
 
 function createSpiritBall() {
   console.log('[SW] Creating floating spirit ball...');
-  
+
   // Remove existing elements
   $('.sw-spirit-ball').remove();
   $('#sw-spirit-styles').remove();
-  
+
   // Inject styles
   const styles = `
     <style id="sw-spirit-styles">
@@ -268,23 +268,23 @@ function createSpiritBall() {
       }
     </style>
   `;
-  
+
   // Spirit ball HTML
   const spiritHtml = `
     <div id="sw-spirit-ball" class="sw-spirit-ball">
       <div class="sw-spirit-inner">📖</div>
     </div>
   `;
-  
+
   // Inject into page using jQuery (same method as working examples)
   if (typeof $ !== 'undefined') {
     $('head').append(styles);
     $('body').append(spiritHtml);
-    
+
     // Make interactive
     setTimeout(() => {
       makeSpiritBallInteractive();
-      
+
       // Show with animation
       setTimeout(() => {
         $('#sw-spirit-ball').addClass('visible');
@@ -306,7 +306,7 @@ function makeSpiritBallInteractive() {
   let startPos = { x: 0, y: 0 };
 
   // Click handler
-  $spiritBall.on('click', function(e) {
+  $spiritBall.on('click', function (e) {
     if (!hasMoved) {
       console.log('[SW] Spirit ball clicked!');
       openStoryWeaverInterface();
@@ -314,7 +314,7 @@ function makeSpiritBallInteractive() {
   });
 
   // Dragging functionality
-  $spiritBall.on('mousedown', function(e) {
+  $spiritBall.on('mousedown', function (e) {
     isDragging = true;
     hasMoved = false;
     startPos = { x: e.clientX, y: e.clientY };
@@ -322,7 +322,7 @@ function makeSpiritBallInteractive() {
     e.preventDefault();
   });
 
-  $(document).on('mousemove', function(e) {
+  $(document).on('mousemove', function (e) {
     if (!isDragging) return;
 
     const deltaX = Math.abs(e.clientX - startPos.x);
@@ -330,7 +330,7 @@ function makeSpiritBallInteractive() {
 
     if (deltaX > 5 || deltaY > 5) {
       hasMoved = true;
-      
+
       const newX = Math.max(0, Math.min(window.innerWidth - 60, e.clientX - 30));
       const newY = Math.max(0, Math.min(window.innerHeight - 60, e.clientY - 30));
 
@@ -338,16 +338,16 @@ function makeSpiritBallInteractive() {
         left: newX + 'px',
         top: newY + 'px',
         right: 'auto',
-        bottom: 'auto'
+        bottom: 'auto',
       });
     }
   });
 
-  $(document).on('mouseup', function() {
+  $(document).on('mouseup', function () {
     if (isDragging) {
       isDragging = false;
       $spiritBall.removeClass('dragging');
-      
+
       setTimeout(() => {
         hasMoved = false;
       }, 100);
@@ -400,20 +400,20 @@ function showWelcomeNotification() {
 
 function openStoryWeaverInterface() {
   console.log('[SW] Opening Story Weaver interface...');
-  
+
   // Try TavernHelper first (if in TavernHelper iframe)
   if (typeof TavernHelper !== 'undefined' && TavernHelper.showWindow) {
     const settings = loadSettings();
     const interfaceHTML = buildCompleteInterface(settings);
-    
+
     TavernHelper.showWindow({
       title: 'Story Weaver Enhanced - 故事大纲生成器',
       content: interfaceHTML,
       width: 800,
       height: 700,
-      resizable: true
+      resizable: true,
     });
-    
+
     showNotification('Story Weaver Enhanced 已打开', 'success');
   } else {
     // Fallback: Create native popup on main ST page
@@ -425,9 +425,9 @@ function openStoryWeaverInterface() {
 function createNativePopup() {
   // Remove existing popup
   $('#sw-popup-overlay').remove();
-  
+
   const settings = loadSettings();
-  
+
   // Create overlay and popup
   const popupHTML = `
     <div id="sw-popup-overlay" style="
@@ -498,10 +498,10 @@ function createNativePopup() {
       }
     </style>
   `;
-  
+
   // Inject popup
   $('body').append(popupHTML);
-  
+
   // Initialize preset and import functionality
   setTimeout(() => {
     loadPresetList();
@@ -510,20 +510,20 @@ function createNativePopup() {
 
   // Close button handler
   $('#sw-close-btn').click(() => {
-    $('#sw-popup-overlay').fadeOut(300, function() {
+    $('#sw-popup-overlay').fadeOut(300, function () {
       $(this).remove();
     });
   });
-  
+
   // Click outside to close
-  $('#sw-popup-overlay').click((e) => {
+  $('#sw-popup-overlay').click(e => {
     if (e.target.id === 'sw-popup-overlay') {
-      $('#sw-popup-overlay').fadeOut(300, function() {
+      $('#sw-popup-overlay').fadeOut(300, function () {
         $(this).remove();
       });
     }
   });
-  
+
   console.log('[SW] ✅ Native popup opened');
 }
 
@@ -843,22 +843,26 @@ function buildSimpleInterface(settings) {
 
         <div class="sw-form-group">
           <label class="sw-label">故事主题 / 核心冲突：</label>
-          <textarea id="sw-theme" class="sw-textarea" placeholder="例如：主角需要拯救被诅咒的王国，同时面对内心的恐惧与过去的阴霾...">${settings.storyTheme || ''}</textarea>
+          <textarea id="sw-theme" class="sw-textarea" placeholder="例如：主角需要拯救被诅咒的王国，同时面对内心的恐惧与过去的阴霾...">${
+            settings.storyTheme || ''
+          }</textarea>
         </div>
 
         <div class="sw-form-row">
           <div class="sw-form-group">
             <label class="sw-label">故事类型：</label>
             <select id="sw-type" class="sw-select">
-${Object.entries(STORY_TYPES).map(([k,v]) =>
-              `<option value="${k}" ${k === settings.storyType ? 'selected' : ''}>${v}</option>`).join('')}
+${Object.entries(STORY_TYPES)
+  .map(([k, v]) => `<option value="${k}" ${k === settings.storyType ? 'selected' : ''}>${v}</option>`)
+  .join('')}
             </select>
           </div>
           <div class="sw-form-group">
             <label class="sw-label">叙述风格：</label>
             <select id="sw-style" class="sw-select">
-${Object.entries(STORY_STYLES).map(([k,v]) =>
-              `<option value="${k}" ${k === settings.storyStyle ? 'selected' : ''}>${v}</option>`).join('')}
+${Object.entries(STORY_STYLES)
+  .map(([k, v]) => `<option value="${k}" ${k === settings.storyStyle ? 'selected' : ''}>${v}</option>`)
+  .join('')}
             </select>
           </div>
         </div>
@@ -866,20 +870,25 @@ ${Object.entries(STORY_STYLES).map(([k,v]) =>
         <div class="sw-form-row">
           <div class="sw-form-group">
             <label class="sw-label">章节数量：</label>
-            <input type="number" id="sw-chapters" class="sw-input" value="${settings.chapterCount || 5}" min="3" max="20">
+            <input type="number" id="sw-chapters" class="sw-input" value="${
+              settings.chapterCount || 5
+            }" min="3" max="20">
           </div>
           <div class="sw-form-group">
             <label class="sw-label">详细程度：</label>
             <select id="sw-detail" class="sw-select">
-${Object.entries(DETAIL_LEVELS).map(([k,v]) =>
-              `<option value="${k}" ${k === settings.detailLevel ? 'selected' : ''}>${v}</option>`).join('')}
+${Object.entries(DETAIL_LEVELS)
+  .map(([k, v]) => `<option value="${k}" ${k === settings.detailLevel ? 'selected' : ''}>${v}</option>`)
+  .join('')}
             </select>
           </div>
         </div>
 
         <div class="sw-form-group">
           <label class="sw-label">特殊要求：</label>
-          <textarea id="sw-requirements" class="sw-textarea" placeholder="任何特殊的剧情要求或风格偏好..." style="min-height: 60px;">${settings.specialRequirements || ''}</textarea>
+          <textarea id="sw-requirements" class="sw-textarea" placeholder="任何特殊的剧情要求或风格偏好..." style="min-height: 60px;">${
+            settings.specialRequirements || ''
+          }</textarea>
         </div>
 
         <div class="sw-form-group">
@@ -1379,7 +1388,6 @@ ${Object.entries(DETAIL_LEVELS).map(([k,v]) =>
   `;
 }
 
-
 // ========================= DATA INTEGRATION SYSTEM =========================
 
 /**
@@ -1388,7 +1396,7 @@ ${Object.entries(DETAIL_LEVELS).map(([k,v]) =>
 async function getWorldInfoData(chatHistory = '') {
   try {
     console.log('[SW] Starting world info access...');
-    
+
     // Method 1: TavernHelper API (if available)
     if (typeof TavernHelper !== 'undefined' && TavernHelper.getWorldbookEntries) {
       try {
@@ -1401,17 +1409,17 @@ async function getWorldInfoData(chatHistory = '') {
         console.log('[SW] TavernHelper worldbook access failed:', error);
       }
     }
-    
+
     // Method 2: Parent Window Context API
     if (window.parent && window.parent !== window) {
       try {
         const parentContext = window.parent.getContext && window.parent.getContext();
         if (parentContext && parentContext.loadWorldInfo) {
           console.log('[SW] Using parent context loadWorldInfo...');
-          
+
           const selectedWorlds = window.parent.selected_world_info || [];
           const allWorldData = [];
-          
+
           for (const worldName of selectedWorlds) {
             try {
               const worldData = await parentContext.loadWorldInfo(worldName);
@@ -1424,7 +1432,7 @@ async function getWorldInfoData(chatHistory = '') {
               console.log(`[SW] Failed to load world ${worldName}:`, worldError);
             }
           }
-          
+
           if (allWorldData.length > 0) {
             return formatWorldInfoEntries(allWorldData);
           }
@@ -1433,7 +1441,7 @@ async function getWorldInfoData(chatHistory = '') {
         console.log('[SW] Parent context access failed:', contextError);
       }
     }
-    
+
     // Method 3: Direct Global Variables Access
     try {
       if (window.world_info && window.world_info.globalSelect) {
@@ -1443,7 +1451,7 @@ async function getWorldInfoData(chatHistory = '') {
             worldEntries.push(entry);
           }
         });
-        
+
         if (worldEntries.length > 0) {
           console.log('[SW] Found ' + worldEntries.length + ' world info entries via global access');
           return formatWorldInfoEntries(worldEntries);
@@ -1452,7 +1460,7 @@ async function getWorldInfoData(chatHistory = '') {
     } catch (globalError) {
       console.log('[SW] Global world info access failed:', globalError);
     }
-    
+
     // Method 4: Main Window Direct Access
     try {
       if (window.top && window.top.world_info) {
@@ -1464,7 +1472,7 @@ async function getWorldInfoData(chatHistory = '') {
             }
           });
         }
-        
+
         if (worldEntries.length > 0) {
           console.log('[SW] Found ' + worldEntries.length + ' world info entries via top window');
           return formatWorldInfoEntries(worldEntries);
@@ -1473,10 +1481,9 @@ async function getWorldInfoData(chatHistory = '') {
     } catch (topError) {
       console.log('[SW] Top window world info access failed:', topError);
     }
-    
+
     console.log('[SW] No world info data found through any method');
     return '暂无世界观设定';
-    
   } catch (error) {
     console.error('[SW] World info access completely failed:', error);
     return '世界观数据访问失败';
@@ -1488,15 +1495,16 @@ async function getWorldInfoData(chatHistory = '') {
  */
 function formatWorldInfoEntries(entries) {
   if (!entries || entries.length === 0) return '暂无世界观条目';
-  
+
   return entries
     .filter(entry => !entry.disable && entry.content?.trim())
     .slice(0, 20) // Limit to 20 entries to avoid prompt bloat
     .map(entry => {
-      const title = entry.comment || 
-                   (Array.isArray(entry.key) ? entry.key[0] : entry.key) || 
-                   (Array.isArray(entry.keys) ? entry.keys[0] : entry.keys) || 
-                   'Entry';
+      const title =
+        entry.comment ||
+        (Array.isArray(entry.key) ? entry.key[0] : entry.key) ||
+        (Array.isArray(entry.keys) ? entry.keys[0] : entry.keys) ||
+        'Entry';
       const world = entry.world ? ` (${entry.world})` : '';
       return '**' + title + world + '**\n' + entry.content;
     })
@@ -1509,7 +1517,7 @@ function formatWorldInfoEntries(entries) {
 function getCharacterData() {
   try {
     console.log('[SW] Getting character data...');
-    
+
     // Method 1: TavernHelper API
     if (typeof TavernHelper !== 'undefined' && TavernHelper.getCharacterData) {
       try {
@@ -1522,12 +1530,12 @@ function getCharacterData() {
         console.log('[SW] TavernHelper character access failed:', error);
       }
     }
-    
+
     // Method 2: Direct global access
     try {
       const idx = window.this_chid || window.parent?.this_chid || window.top?.this_chid;
       const characters = window.characters || window.parent?.characters || window.top?.characters;
-      
+
       if (idx !== undefined && characters && characters[idx]) {
         const char = characters[idx];
         console.log('[SW] Got character data via global access');
@@ -1537,16 +1545,15 @@ function getCharacterData() {
           description: char.description || '',
           scenario: char.scenario || '',
           first_mes: char.first_mes || '',
-          mes_example: char.mes_example || ''
+          mes_example: char.mes_example || '',
         };
       }
     } catch (error) {
       console.log('[SW] Global character access failed:', error);
     }
-    
+
     console.log('[SW] No character data found');
     return { name: '未知角色', personality: '', description: '', scenario: '' };
-    
   } catch (error) {
     console.error('[SW] Character data access completely failed:', error);
     return { name: '角色数据访问失败', personality: '', description: '', scenario: '' };
@@ -1559,7 +1566,7 @@ function getCharacterData() {
 function getChatHistory(limit = 10) {
   try {
     console.log('[SW] Getting chat history...');
-    
+
     // Method 1: TavernHelper API
     if (typeof TavernHelper !== 'undefined' && TavernHelper.getChatHistory) {
       try {
@@ -1572,7 +1579,7 @@ function getChatHistory(limit = 10) {
         console.log('[SW] TavernHelper chat history access failed:', error);
       }
     }
-    
+
     // Method 2: Direct global access
     try {
       const chat = window.chat || window.parent?.chat || window.top?.chat;
@@ -1583,16 +1590,15 @@ function getChatHistory(limit = 10) {
           name: msg.name || msg.user || '未知',
           mes: msg.mes || msg.message || '',
           is_user: msg.is_user || false,
-          send_date: msg.send_date || Date.now()
+          send_date: msg.send_date || Date.now(),
         }));
       }
     } catch (error) {
       console.log('[SW] Global chat access failed:', error);
     }
-    
+
     console.log('[SW] No chat history found');
     return [];
-    
   } catch (error) {
     console.error('[SW] Chat history access completely failed:', error);
     return [];
@@ -1604,7 +1610,7 @@ function getChatHistory(limit = 10) {
  */
 function buildChatHistoryText(history, limit = 10) {
   if (!history || history.length === 0) return '暂无对话历史';
-  
+
   return history
     .slice(-limit)
     .map(msg => {
@@ -1628,9 +1634,9 @@ function resolveSystemPrompt() {
       () => window?.top?.power_user?.context?.story_string,
       () => window?.system_prompt,
       () => window?.parent?.system_prompt,
-      () => window?.top?.system_prompt
+      () => window?.top?.system_prompt,
     ];
-    
+
     for (const source of sources) {
       try {
         const result = source();
@@ -1642,7 +1648,7 @@ function resolveSystemPrompt() {
         continue;
       }
     }
-    
+
     return '';
   } catch (error) {
     console.log('[SW] System prompt resolution failed:', error);
@@ -1658,9 +1664,9 @@ function resolveMemorySummary() {
       () => window?.top?.memory?.summary,
       () => window?.chat_metadata?.summary,
       () => window?.parent?.chat_metadata?.summary,
-      () => window?.top?.chat_metadata?.summary
+      () => window?.top?.chat_metadata?.summary,
     ];
-    
+
     for (const source of sources) {
       try {
         const result = source();
@@ -1672,7 +1678,7 @@ function resolveMemorySummary() {
         continue;
       }
     }
-    
+
     return '';
   } catch (error) {
     console.log('[SW] Memory summary resolution failed:', error);
@@ -1688,9 +1694,9 @@ function resolveAuthorsNote() {
       () => window?.top?.power_user?.context?.authors_note,
       () => window?.authors_note,
       () => window?.parent?.authors_note,
-      () => window?.top?.authors_note
+      () => window?.top?.authors_note,
     ];
-    
+
     for (const source of sources) {
       try {
         const result = source();
@@ -1702,7 +1708,7 @@ function resolveAuthorsNote() {
         continue;
       }
     }
-    
+
     return '';
   } catch (error) {
     console.log('[SW] Authors note resolution failed:', error);
@@ -1718,9 +1724,9 @@ function resolveJailbreak() {
       () => window?.top?.power_user?.context?.jailbreak_prompt,
       () => window?.jailbreak_prompt,
       () => window?.parent?.jailbreak_prompt,
-      () => window?.top?.jailbreak_prompt
+      () => window?.top?.jailbreak_prompt,
     ];
-    
+
     for (const source of sources) {
       try {
         const result = source();
@@ -1732,7 +1738,7 @@ function resolveJailbreak() {
         continue;
       }
     }
-    
+
     return '';
   } catch (error) {
     console.log('[SW] Jailbreak resolution failed:', error);
@@ -1746,7 +1752,7 @@ function resolveJailbreak() {
 async function buildEnhancedPrompt(settings) {
   try {
     console.log('[SW] Building enhanced structured prompt...');
-    
+
     // Get all data
     const worldInfo = await getWorldInfoData();
     const characterData = getCharacterData();
@@ -1755,7 +1761,7 @@ async function buildEnhancedPrompt(settings) {
     const memorySummary = resolveMemorySummary();
     const authorsNote = resolveAuthorsNote();
     const jailbreak = resolveJailbreak();
-    
+
     // Build enhanced template
     let enhancedPrompt = `You are an expert storyteller and world-building assistant. Your task is to generate a compelling and structured story outline.
 
@@ -1794,11 +1800,11 @@ Based on the context above, generate a story outline that meets the following us
     if (settings.storyTheme) {
       enhancedPrompt += '\n**故事主题**: ' + settings.storyTheme;
     }
-    
+
     if (settings.specialRequirements) {
       enhancedPrompt += '\n**特殊要求**: ' + settings.specialRequirements;
     }
-    
+
     enhancedPrompt += `\n\n### GENERATION REQUIREMENTS ###
 请基于以上所有信息生成故事大纲，要求：
 1. 包含${settings.chapterCount}个章节
@@ -1810,20 +1816,19 @@ Based on the context above, generate a story outline that meets the following us
     if (settings.includeSummary) {
       enhancedPrompt += `\n\n请在大纲前提供故事摘要。`;
     }
-    
+
     if (settings.includeCharacters) {
       enhancedPrompt += `\n\n请包含主要角色的性格特点和发展弧线。`;
     }
-    
+
     if (settings.includeThemes) {
       enhancedPrompt += `\n\n请说明故事要探讨的核心主题。`;
     }
-    
+
     enhancedPrompt += `\n\n请生成结构完整、逻辑清晰的故事大纲。`;
-    
+
     console.log('[SW] Enhanced prompt built successfully');
     return enhancedPrompt;
-    
   } catch (error) {
     console.error('[SW] Enhanced prompt building failed:', error);
     // Fallback to simple prompt
@@ -1841,31 +1846,37 @@ function formatCharacterForPrompt(characterData) {
 function buildSimplePrompt(settings) {
   // Fallback simple prompt (current implementation)
   let prompt = `请为我生成一个${STORY_TYPES[settings.storyType] || settings.storyType}类型的故事大纲。`;
-  
+
   if (settings.storyTheme) {
     prompt += '\n\n故事主题: ' + settings.storyTheme;
   }
-  
-  prompt += '\n\n要求:\n1. 包含' + settings.chapterCount + '个章节\n2. 每章有明确的情节发展和冲突\n3. 结构完整，逻辑清晰\n4. 符合' + (STORY_STYLES[settings.storyStyle] || settings.storyStyle) + '的叙述风格\n5. 详细程度: ' + (DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel);
+
+  prompt +=
+    '\n\n要求:\n1. 包含' +
+    settings.chapterCount +
+    '个章节\n2. 每章有明确的情节发展和冲突\n3. 结构完整，逻辑清晰\n4. 符合' +
+    (STORY_STYLES[settings.storyStyle] || settings.storyStyle) +
+    '的叙述风格\n5. 详细程度: ' +
+    (DETAIL_LEVELS[settings.detailLevel] || settings.detailLevel);
 
   if (settings.specialRequirements) {
     prompt += '\n6. 特殊要求: ' + settings.specialRequirements;
   }
-  
+
   if (settings.includeSummary) {
     prompt += `\n\n请在大纲前提供故事摘要。`;
   }
-  
+
   if (settings.includeCharacters) {
     prompt += `\n\n请包含主要角色的性格特点和发展弧线。`;
   }
-  
+
   if (settings.includeThemes) {
     prompt += `\n\n请说明故事要探讨的核心主题。`;
   }
-  
+
   prompt += `\n\n请生成结构完整、逻辑清晰的故事大纲。`;
-  
+
   return prompt;
 }
 
@@ -1880,7 +1891,7 @@ function loadSettings() {
   } catch (error) {
     console.error('[SW] Failed to load settings:', error);
   }
-  
+
   return {
     storyType: 'adventure',
     storyStyle: 'narrative',
@@ -1891,7 +1902,7 @@ function loadSettings() {
     specialRequirements: '',
     includeSummary: true,
     includeCharacters: true,
-    includeThemes: false
+    includeThemes: false,
   };
 }
 
@@ -1910,7 +1921,6 @@ function saveSettings(settings) {
  * Preset Management System - 完整的预设管理功能
  */
 const PresetManager = {
-  
   /**
    * Get all saved presets
    */
@@ -1923,7 +1933,7 @@ const PresetManager = {
       return {};
     }
   },
-  
+
   /**
    * Save a preset
    */
@@ -1933,7 +1943,7 @@ const PresetManager = {
       presets[name] = {
         ...settings,
         savedAt: Date.now(),
-        version: '2.0'
+        version: '2.0',
       };
       localStorage.setItem('storyWeaverPresets', JSON.stringify(presets));
       console.log('[SW] Preset "' + name + '" saved successfully');
@@ -1943,7 +1953,7 @@ const PresetManager = {
       return false;
     }
   },
-  
+
   /**
    * Load a preset
    */
@@ -1960,7 +1970,7 @@ const PresetManager = {
       return null;
     }
   },
-  
+
   /**
    * Delete a preset
    */
@@ -1979,7 +1989,7 @@ const PresetManager = {
       return false;
     }
   },
-  
+
   /**
    * Export preset to JSON file
    */
@@ -1989,20 +1999,20 @@ const PresetManager = {
       if (!preset) {
         throw new Error(`Preset "${name}" not found`);
       }
-      
+
       const exportData = {
         name: name,
         preset: preset,
         exportedAt: Date.now(),
         version: '2.0',
-        type: 'StoryWeaverPreset'
+        type: 'StoryWeaverPreset',
       };
-      
-      const blob = new Blob([JSON.stringify(exportData, null, 2)], { 
-        type: 'application/json' 
+
+      const blob = new Blob([JSON.stringify(exportData, null, 2)], {
+        type: 'application/json',
       });
       const url = URL.createObjectURL(blob);
-      
+
       const a = document.createElement('a');
       a.href = url;
       a.download = `story-weaver-preset-${name}-${Date.now()}.json`;
@@ -2010,7 +2020,7 @@ const PresetManager = {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      
+
       console.log('[SW] Preset "' + name + '" exported successfully');
       return true;
     } catch (error) {
@@ -2018,29 +2028,29 @@ const PresetManager = {
       return false;
     }
   },
-  
+
   /**
    * Import preset from JSON file
    */
   importPreset(fileContent) {
     try {
       const importData = JSON.parse(fileContent);
-      
+
       // Validate import data
       if (importData.type !== 'StoryWeaverPreset' || !importData.name || !importData.preset) {
         throw new Error('Invalid preset file format');
       }
-      
+
       // Check if preset already exists
       const existingPresets = this.getAllPresets();
       let finalName = importData.name;
       let counter = 1;
-      
+
       while (existingPresets[finalName]) {
         finalName = importData.name + '_' + counter;
         counter++;
       }
-      
+
       // Save the preset
       const success = this.savePreset(finalName, importData.preset);
       if (success) {
@@ -2054,7 +2064,7 @@ const PresetManager = {
       return { success: false, error: error.message };
     }
   },
-  
+
   /**
    * Get preset list for UI
    */
@@ -2064,9 +2074,9 @@ const PresetManager = {
       name: name,
       savedAt: presets[name].savedAt,
       storyType: presets[name].storyType,
-      storyTheme: presets[name].storyTheme?.substring(0, 50) + '...'
+      storyTheme: presets[name].storyTheme?.substring(0, 50) + '...',
     }));
-  }
+  },
 };
 
 // ========================= UTILITIES =========================
@@ -2076,7 +2086,7 @@ function showNotification(message, type = 'info') {
     if (typeof TavernHelper !== 'undefined' && TavernHelper.showNotification) {
       TavernHelper.showNotification(message, {
         type: type,
-        duration: 3000
+        duration: 3000,
       });
     } else {
       console.log(`[SW] Notification (${type}):`, message);
@@ -2093,27 +2103,27 @@ function registerSlashCommands() {
     console.log('[SW] SlashCommandsAPI not available');
     return;
   }
-  
+
   try {
     SlashCommandsAPI.registerSlashCommand({
       name: 'sw',
       description: 'Open Story Weaver interface - 打开故事大纲生成器',
       callback: openStoryWeaverInterface,
-      helpString: 'Opens the Story Weaver Enhanced interface'
+      helpString: 'Opens the Story Weaver Enhanced interface',
     });
 
     SlashCommandsAPI.registerSlashCommand({
       name: 'storyweaver',
       description: 'Open Story Weaver interface (alias) - 打开故事大纲生成器',
       callback: openStoryWeaverInterface,
-      helpString: 'Alias for /sw command'
+      helpString: 'Alias for /sw command',
     });
 
     SlashCommandsAPI.registerSlashCommand({
       name: 'swquick',
       description: 'Quick story generation - 快速生成故事大纲',
       callback: handleQuickGeneration,
-      helpString: 'Usage: /swquick [type] [chapters]'
+      helpString: 'Usage: /swquick [type] [chapters]',
     });
 
     console.log('[SW] ✅ Slash commands registered');
@@ -2132,7 +2142,7 @@ async function handleQuickGeneration(args) {
     storyType: STORY_TYPES[storyType] ? storyType : 'adventure',
     chapterCount: chapterCount,
     storyTheme: '基于当前对话和世界观生成合适的故事主题',
-    detailLevel: 'medium'
+    detailLevel: 'medium',
   };
 
   try {
@@ -2174,7 +2184,7 @@ function debugEnvironment() {
 function forceCreateSpiritBall() {
   console.log('[SW] Force creating spirit ball...');
   createSpiritBall();
-  
+
   setTimeout(() => {
     if ($('#sw-spirit-ball').length > 0) {
       console.log('[SW] ✅ Spirit ball created successfully');
@@ -2188,17 +2198,17 @@ function forceCreateSpiritBall() {
 
 function init() {
   console.log('[SW] Initializing Story Weaver Enhanced...');
-  
+
   // Register slash commands if available
   if (typeof SlashCommandsAPI !== 'undefined') {
     registerSlashCommands();
   } else {
     console.log('[SW] Running on main page - slash commands not available');
   }
-  
+
   // Create spirit ball
   createSpiritBall();
-  
+
   console.log('[SW] ✅ Story Weaver Enhanced v2.0 initialized!');
 }
 
@@ -2226,7 +2236,7 @@ window.StoryWeaver = {
   resolveJailbreak,
   buildChatHistoryText,
   // Preset management
-  PresetManager
+  PresetManager,
 };
 
 // Try to expose to top window if possible
@@ -2359,7 +2369,6 @@ async function buildEnhancedPrompt(settings) {
 
     console.log('[SW] Enhanced prompt built successfully, length:', enhancedPrompt.length);
     return enhancedPrompt;
-
   } catch (error) {
     console.error('[SW] Error building enhanced prompt:', error);
     // 降级到简单提示词
@@ -2406,13 +2415,12 @@ async function gatherContextInformation(contextLength = 10) {
       if (chatHistory && chatHistory.length > 0) {
         contextInfo += '### 💬 最近对话\n\n';
         chatHistory.forEach(msg => {
-          const speaker = msg.is_user ? '用户' : (characterInfo?.name || '角色');
+          const speaker = msg.is_user ? '用户' : characterInfo?.name || '角色';
           contextInfo += `**${speaker}**: ${msg.mes.substring(0, 100)}\n`;
         });
         contextInfo += '\n';
       }
     }
-
   } catch (error) {
     console.warn('[SW] Error gathering context information:', error);
   }
@@ -2574,16 +2582,14 @@ async function handleStoryGeneration() {
     } else {
       throw new Error('生成结果为空');
     }
-
   } catch (error) {
     const errorInfo = StoryWeaverErrorHandler.handleError(error, 'story generation', {
       allowRetry: true,
-      retryAction: () => handleStoryGeneration()
+      retryAction: () => handleStoryGeneration(),
     });
 
     StoryWeaverErrorHandler.showNotification(errorInfo.userMessage, 'error');
     console.error('[SW] Generation failed:', error);
-
   } finally {
     updateGenerationUI(false);
   }
@@ -2604,7 +2610,7 @@ function getFormSettings() {
     contextLength: parseInt(document.getElementById('sw-context-length')?.value) || 10,
     includeSummary: document.getElementById('sw-summary')?.checked || false,
     includeCharacters: document.getElementById('sw-characters')?.checked || false,
-    includeThemes: document.getElementById('sw-themes')?.checked || false
+    includeThemes: document.getElementById('sw-themes')?.checked || false,
   };
 }
 
@@ -2678,7 +2684,7 @@ function saveGenerationToHistory(result, settings) {
       timestamp: new Date().toISOString(),
       result: result,
       settings: settings,
-      preview: result.substring(0, 100) + '...'
+      preview: result.substring(0, 100) + '...',
     };
 
     history.unshift(entry);
@@ -2689,7 +2695,6 @@ function saveGenerationToHistory(result, settings) {
     }
 
     localStorage.setItem('storyWeaverHistory', JSON.stringify(history));
-
   } catch (error) {
     console.warn('[SW] Failed to save to history:', error);
   }
@@ -2722,7 +2727,6 @@ async function refreshStoryWeaverContextData() {
     }
 
     StoryWeaverErrorHandler.showNotification('上下文数据已刷新', 'success', 3000);
-
   } catch (error) {
     console.error('[SW] Failed to refresh context data:', error);
     const statusElement = document.getElementById('sw-context-status');
@@ -2747,14 +2751,14 @@ async function previewStoryWeaverContextData() {
     let previewContent = '';
 
     if (!contextInfo || contextInfo.trim() === '') {
-      previewContent = '暂无可用的上下文数据。\n\n可能原因：\n- 当前没有活跃的角色对话\n- 世界书为空\n- 上下文长度设置为0';
+      previewContent =
+        '暂无可用的上下文数据。\n\n可能原因：\n- 当前没有活跃的角色对话\n- 世界书为空\n- 上下文长度设置为0';
     } else {
       previewContent = contextInfo;
     }
 
     // 创建预览窗口
     createContextPreviewModal(previewContent);
-
   } catch (error) {
     console.error('[SW] Failed to preview context data:', error);
     StoryWeaverErrorHandler.showNotification('预览失败: ' + error.message, 'error');
@@ -2811,7 +2815,7 @@ function createContextPreviewModal(content) {
   modal.appendChild(modalContent);
 
   // 点击外部关闭
-  modal.addEventListener('click', (e) => {
+  modal.addEventListener('click', e => {
     if (e.target === modal) {
       modal.remove();
     }
@@ -2826,7 +2830,7 @@ window.refreshContextData = refreshStoryWeaverContextData;
 window.previewContextData = previewStoryWeaverContextData;
 
 // 预设管理功能
-window.loadSelectedPreset = function() {
+window.loadSelectedPreset = function () {
   try {
     const presetSelect = document.getElementById('sw-preset-select');
     if (!presetSelect || !presetSelect.value) {
@@ -2848,7 +2852,7 @@ window.loadSelectedPreset = function() {
   }
 };
 
-window.showSavePresetDialog = function() {
+window.showSavePresetDialog = function () {
   try {
     const presetName = prompt('请输入预设名称:');
     if (presetName && presetName.trim()) {
@@ -2859,7 +2863,7 @@ window.showSavePresetDialog = function() {
   }
 };
 
-window.showPresetManager = function() {
+window.showPresetManager = function () {
   try {
     if (typeof showPresetManagerModal === 'function') {
       showPresetManagerModal();
@@ -2872,13 +2876,13 @@ window.showPresetManager = function() {
 };
 
 // 导出功能
-window.exportCurrentSettings = function() {
+window.exportCurrentSettings = function () {
   try {
     const settings = getCurrentSettings();
     const exportData = {
       version: '2.0',
       timestamp: new Date().toISOString(),
-      settings: settings
+      settings: settings,
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -2895,7 +2899,7 @@ window.exportCurrentSettings = function() {
   }
 };
 
-window.exportStoryOutline = function(format = 'txt') {
+window.exportStoryOutline = function (format = 'txt') {
   try {
     const result = document.getElementById('sw-result');
     if (!result || !result.textContent.trim()) {
@@ -2915,7 +2919,7 @@ window.exportStoryOutline = function(format = 'txt') {
         const jsonData = {
           title: '故事大纲',
           content: content,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
         };
         mimeType = 'application/json';
         filename = `story-outline-${new Date().toISOString().split('T')[0]}.json`;
@@ -2941,7 +2945,7 @@ window.exportStoryOutline = function(format = 'txt') {
 };
 
 // 结果管理功能
-window.copyNativeResult = function() {
+window.copyNativeResult = function () {
   try {
     const result = document.getElementById('sw-result');
     if (!result || !result.textContent.trim()) {
@@ -2949,23 +2953,26 @@ window.copyNativeResult = function() {
       return;
     }
 
-    navigator.clipboard.writeText(result.textContent).then(() => {
-      StoryWeaverErrorHandler.showNotification('内容已复制到剪贴板', 'success');
-    }).catch(() => {
-      const textarea = document.createElement('textarea');
-      textarea.value = result.textContent;
-      document.body.appendChild(textarea);
-      textarea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textarea);
-      StoryWeaverErrorHandler.showNotification('内容已复制到剪贴板', 'success');
-    });
+    navigator.clipboard
+      .writeText(result.textContent)
+      .then(() => {
+        StoryWeaverErrorHandler.showNotification('内容已复制到剪贴板', 'success');
+      })
+      .catch(() => {
+        const textarea = document.createElement('textarea');
+        textarea.value = result.textContent;
+        document.body.appendChild(textarea);
+        textarea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textarea);
+        StoryWeaverErrorHandler.showNotification('内容已复制到剪贴板', 'success');
+      });
   } catch (error) {
     StoryWeaverErrorHandler.handleError(error, 'copyNativeResult');
   }
 };
 
-window.saveNativeResult = function() {
+window.saveNativeResult = function () {
   try {
     const result = document.getElementById('sw-result');
     if (!result || !result.textContent.trim()) {
@@ -2978,7 +2985,7 @@ window.saveNativeResult = function() {
       id: Date.now(),
       content: result.textContent,
       timestamp: new Date().toISOString(),
-      title: `故事大纲 ${new Date().toLocaleString()}`
+      title: `故事大纲 ${new Date().toLocaleString()}`,
     };
 
     savedResults.unshift(newResult);
@@ -2991,11 +2998,12 @@ window.saveNativeResult = function() {
   }
 };
 
-window.showExportOptions = function() {
+window.showExportOptions = function () {
   try {
     const modal = document.createElement('div');
     modal.id = 'export-options-modal';
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+    modal.style.cssText =
+      'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
 
     modal.innerHTML = `
       <div style="background: white; padding: 20px; border-radius: 10px; max-width: 400px;">
@@ -3015,7 +3023,7 @@ window.showExportOptions = function() {
 };
 
 // 章节细纲功能
-window.generateChapterDetails = function() {
+window.generateChapterDetails = function () {
   try {
     const result = document.getElementById('sw-result');
     if (!result || !result.textContent.trim()) {
@@ -3033,7 +3041,7 @@ window.generateChapterDetails = function() {
   }
 };
 
-window.generateSelectedChapterDetail = function() {
+window.generateSelectedChapterDetail = function () {
   try {
     StoryWeaverErrorHandler.showNotification('生成选中章节细纲功能开发中', 'info');
   } catch (error) {
@@ -3041,7 +3049,7 @@ window.generateSelectedChapterDetail = function() {
   }
 };
 
-window.copyChapterDetail = function() {
+window.copyChapterDetail = function () {
   try {
     const chapterResult = document.querySelector('.chapter-detail-result');
     if (!chapterResult || !chapterResult.textContent.trim()) {
@@ -3057,7 +3065,7 @@ window.copyChapterDetail = function() {
   }
 };
 
-window.saveChapterDetail = function() {
+window.saveChapterDetail = function () {
   try {
     const chapterResult = document.querySelector('.chapter-detail-result');
     if (!chapterResult || !chapterResult.textContent.trim()) {
@@ -3070,7 +3078,7 @@ window.saveChapterDetail = function() {
       id: Date.now(),
       content: chapterResult.textContent,
       timestamp: new Date().toISOString(),
-      title: `章节细纲 ${new Date().toLocaleString()}`
+      title: `章节细纲 ${new Date().toLocaleString()}`,
     };
 
     savedDetails.unshift(newDetail);
@@ -3084,7 +3092,7 @@ window.saveChapterDetail = function() {
 };
 
 // 导入导出管理
-window.showImportExportManager = function() {
+window.showImportExportManager = function () {
   try {
     StoryWeaverErrorHandler.showNotification('导入导出管理中心开发中', 'info');
   } catch (error) {
@@ -3093,7 +3101,7 @@ window.showImportExportManager = function() {
 };
 
 // 预设导出功能
-window.exportAllPresets = function() {
+window.exportAllPresets = function () {
   try {
     const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
     if (Object.keys(savedPresets).length === 0) {
@@ -3104,7 +3112,7 @@ window.exportAllPresets = function() {
     const exportData = {
       version: '2.0',
       timestamp: new Date().toISOString(),
-      presets: savedPresets
+      presets: savedPresets,
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -3121,7 +3129,7 @@ window.exportAllPresets = function() {
   }
 };
 
-window.exportSinglePreset = function(presetName) {
+window.exportSinglePreset = function (presetName) {
   try {
     const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
     if (!savedPresets[presetName]) {
@@ -3134,8 +3142,8 @@ window.exportSinglePreset = function(presetName) {
       timestamp: new Date().toISOString(),
       preset: {
         name: presetName,
-        data: savedPresets[presetName]
-      }
+        data: savedPresets[presetName],
+      },
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -3152,7 +3160,7 @@ window.exportSinglePreset = function(presetName) {
   }
 };
 
-window.deleteSinglePreset = function(presetName) {
+window.deleteSinglePreset = function (presetName) {
   try {
     if (!confirm(`确定要删除预设 "${presetName}" 吗？此操作不可撤销。`)) {
       return;
@@ -3176,14 +3184,16 @@ window.deleteSinglePreset = function(presetName) {
 };
 
 // 帮助模态窗口
-window.showHelpModal = function() {
+window.showHelpModal = function () {
   try {
     const modal = document.createElement('div');
     modal.id = 'help-modal';
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000; animation: fadeIn 0.3s ease-out;';
+    modal.style.cssText =
+      'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000; animation: fadeIn 0.3s ease-out;';
 
     const modalContent = document.createElement('div');
-    modalContent.style.cssText = 'background: white; width: 90%; max-width: 800px; max-height: 90%; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out;';
+    modalContent.style.cssText =
+      'background: white; width: 90%; max-width: 800px; max-height: 90%; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: slideIn 0.3s ease-out;';
 
     modalContent.innerHTML = `
       <div style="padding: 20px; border-bottom: 1px solid #eee; background: #f8f9fa;">
@@ -3226,7 +3236,7 @@ window.showHelpModal = function() {
     modal.appendChild(modalContent);
     document.body.appendChild(modal);
 
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', e => {
       if (e.target === modal) {
         modal.remove();
       }
@@ -3277,7 +3287,7 @@ function saveCurrentPreset(presetName) {
     savedPresets[presetName] = {
       ...settings,
       timestamp: new Date().toISOString(),
-      version: '2.0'
+      version: '2.0',
     };
 
     localStorage.setItem('story_weaver_presets', JSON.stringify(savedPresets));
@@ -3410,12 +3420,12 @@ function initializeImportHandler() {
     const importInput = document.getElementById('sw-import-file');
     if (!importInput) return;
 
-    importInput.addEventListener('change', function(e) {
+    importInput.addEventListener('change', function (e) {
       const file = e.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
-      reader.onload = function(e) {
+      reader.onload = function (e) {
         try {
           const content = e.target.result;
 
@@ -3475,7 +3485,7 @@ function initializeImportHandler() {
 /**
  * 切换设定菜单显示/隐藏
  */
-window.toggleSettingsMenu = function() {
+window.toggleSettingsMenu = function () {
   try {
     const settingsMenu = document.getElementById('sw-settings-menu');
     const settingsBtn = document.getElementById('sw-settings-btn');
@@ -3514,16 +3524,18 @@ function closeSettingsMenu() {
 /**
  * 预设管理模态窗口
  */
-window.openPresetManager = function() {
+window.openPresetManager = function () {
   try {
     closeSettingsMenu();
 
     const modal = document.createElement('div');
     modal.id = 'preset-manager-modal';
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+    modal.style.cssText =
+      'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
 
     const modalContent = document.createElement('div');
-    modalContent.style.cssText = 'background: white; width: 90%; max-width: 600px; max-height: 80vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3);';
+    modalContent.style.cssText =
+      'background: white; width: 90%; max-width: 600px; max-height: 80vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3);';
 
     modalContent.innerHTML = `
       <div style="padding: 20px; border-bottom: 1px solid #eee; background: #667eea; color: white;">
@@ -3561,12 +3573,11 @@ window.openPresetManager = function() {
     loadPresetListForManager();
 
     // 点击外部关闭
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', e => {
       if (e.target === modal) {
         modal.remove();
       }
     });
-
   } catch (error) {
     StoryWeaverErrorHandler.handleError(error, 'openPresetManager');
   }
@@ -3575,16 +3586,18 @@ window.openPresetManager = function() {
 /**
  * 世界书查看器
  */
-window.openWorldBookViewer = function() {
+window.openWorldBookViewer = function () {
   try {
     closeSettingsMenu();
 
     const modal = document.createElement('div');
     modal.id = 'worldbook-viewer-modal';
-    modal.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
+    modal.style.cssText =
+      'position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 10000;';
 
     const modalContent = document.createElement('div');
-    modalContent.style.cssText = 'background: white; width: 90%; max-width: 800px; max-height: 90vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3);';
+    modalContent.style.cssText =
+      'background: white; width: 90%; max-width: 800px; max-height: 90vh; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.3);';
 
     modalContent.innerHTML = `
       <div style="padding: 20px; border-bottom: 1px solid #eee; background: #28a745; color: white;">
@@ -3617,12 +3630,11 @@ window.openWorldBookViewer = function() {
     loadWorldBookContent();
 
     // 点击外部关闭
-    modal.addEventListener('click', (e) => {
+    modal.addEventListener('click', e => {
       if (e.target === modal) {
         modal.remove();
       }
     });
-
   } catch (error) {
     StoryWeaverErrorHandler.handleError(error, 'openWorldBookViewer');
   }
@@ -3631,22 +3643,22 @@ window.openWorldBookViewer = function() {
 /**
  * 简化版本的其他管理功能
  */
-window.openPromptManager = function() {
+window.openPromptManager = function () {
   closeSettingsMenu();
   StoryWeaverErrorHandler.showNotification('提示词管理功能开发中', 'info');
 };
 
-window.openImportExportManager = function() {
+window.openImportExportManager = function () {
   closeSettingsMenu();
   StoryWeaverErrorHandler.showNotification('导入导出管理功能开发中', 'info');
 };
 
-window.openHistoryManager = function() {
+window.openHistoryManager = function () {
   closeSettingsMenu();
   StoryWeaverErrorHandler.showNotification('历史记录管理功能开发中', 'info');
 };
 
-window.openAdvancedSettings = function() {
+window.openAdvancedSettings = function () {
   closeSettingsMenu();
   StoryWeaverErrorHandler.showNotification('高级设定功能开发中', 'info');
 };
@@ -3698,7 +3710,7 @@ function loadPresetListForManager() {
 /**
  * 在管理器中加载选中的预设
  */
-window.loadSelectedPresetInManager = function(presetName) {
+window.loadSelectedPresetInManager = function (presetName) {
   try {
     const savedPresets = JSON.parse(localStorage.getItem('story_weaver_presets') || '{}');
     if (savedPresets[presetName]) {
@@ -3717,7 +3729,7 @@ window.loadSelectedPresetInManager = function(presetName) {
 /**
  * 保存当前设置为预设（在管理器中）
  */
-window.saveCurrentPresetDialog = function() {
+window.saveCurrentPresetDialog = function () {
   try {
     const presetName = prompt('请输入预设名称:');
     if (presetName && presetName.trim()) {
@@ -3747,7 +3759,8 @@ async function loadWorldBookContent() {
     if (contextInfo && contextInfo.trim()) {
       container.textContent = contextInfo;
     } else {
-      container.textContent = '未找到可用的世界书数据。\n\n可能的原因：\n1. 当前没有加载的世界书\n2. SillyTavern环境不支持\n3. 世界书数据获取失败\n\n请检查SillyTavern的世界书设置。';
+      container.textContent =
+        '未找到可用的世界书数据。\n\n可能的原因：\n1. 当前没有加载的世界书\n2. SillyTavern环境不支持\n3. 世界书数据获取失败\n\n请检查SillyTavern的世界书设置。';
     }
   } catch (error) {
     const container = document.getElementById('worldbook-content');
@@ -3761,7 +3774,7 @@ async function loadWorldBookContent() {
 /**
  * 刷新世界书数据
  */
-window.refreshWorldBookData = function() {
+window.refreshWorldBookData = function () {
   loadWorldBookContent();
   StoryWeaverErrorHandler.showNotification('正在刷新世界书数据...', 'info');
 };
@@ -3769,7 +3782,7 @@ window.refreshWorldBookData = function() {
 /**
  * 导出世界书数据
  */
-window.exportWorldBookData = function() {
+window.exportWorldBookData = function () {
   try {
     const container = document.getElementById('worldbook-content');
     if (!container || !container.textContent.trim()) {
@@ -3780,7 +3793,7 @@ window.exportWorldBookData = function() {
     const exportData = {
       title: '世界书数据导出',
       timestamp: new Date().toISOString(),
-      content: container.textContent
+      content: container.textContent,
     };
 
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -3798,10 +3811,9 @@ window.exportWorldBookData = function() {
 };
 
 // 点击其他地方关闭设定菜单
-document.addEventListener('click', function(e) {
+document.addEventListener('click', function (e) {
   const settingsContainer = document.querySelector('.sw-settings-container');
   if (settingsContainer && !settingsContainer.contains(e.target)) {
     closeSettingsMenu();
   }
 });
-
