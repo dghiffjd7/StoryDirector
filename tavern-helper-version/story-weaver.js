@@ -1546,8 +1546,13 @@ function makeElementDraggable(elementSelector, handleSelector) {
       'user-select': 'none',
     });
 
-    // Add dragging class for visual feedback
+    // Add dragging class for subtle visual feedback
     element.addClass('sw-dragging');
+    element.css({
+      boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
+      transform: 'scale(1.01)',
+      cursor: 'grabbing',
+    });
 
     // Prevent text selection and event propagation
     e.preventDefault();
@@ -1599,8 +1604,13 @@ function makeElementDraggable(elementSelector, handleSelector) {
       });
     }, 50);
 
-    // Remove dragging class
+    // Remove dragging class and restore visuals
     element.removeClass('sw-dragging');
+    element.css({
+      boxShadow: '',
+      transform: '',
+      cursor: '',
+    });
 
     console.log('[SW] Finished dragging element:', elementSelector);
   });
@@ -2072,7 +2082,7 @@ function showPromptEditor(identifier) {
       align-items: center;
       justify-content: center;
     ">
-      <div style="
+      <div id="sw-prompt-editor-dialog" class="sw-draggable-window" style="
         background: white;
         border-radius: 12px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -2081,7 +2091,7 @@ function showPromptEditor(identifier) {
         width: 700px;
         overflow: hidden;
       ">
-        <div style="
+        <div class="sw-editor-header" style="
           background: linear-gradient(135deg, #667eea, #764ba2);
           color: white;
           padding: 15px 20px;
@@ -2109,6 +2119,9 @@ function showPromptEditor(identifier) {
   `);
 
   $('body').append(editorModal);
+
+  // Make editor dialog draggable via its header
+  makeElementDraggable('#sw-prompt-editor-dialog', '.sw-editor-header');
 
   // Set up form values
   $('#sw-editor-name').val(prompt.name || '');
