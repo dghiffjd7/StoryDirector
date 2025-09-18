@@ -421,9 +421,13 @@ function createNativePopup() {
   // Settings button handler
   setupSettingsMenu();
 
-  // Click outside to close
+  // Click outside to close (but not when prompt panel is open)
   $('#sw-popup-overlay').click(e => {
     if (e.target.id === 'sw-popup-overlay') {
+      // Don't close if prompt panel is open
+      if ($('#sw-prompt-panel').hasClass('sw-panel-open')) {
+        return;
+      }
       $('#sw-popup-overlay').fadeOut(300, function () {
         $(this).remove();
       });
@@ -1395,7 +1399,7 @@ function createPromptManagerPanel() {
       background: white;
       border-radius: 12px 0 0 12px;
       box-shadow: -5px 0 25px rgba(0, 0, 0, 0.15);
-      z-index: 9999;
+      z-index: 10005;
       display: flex;
       flex-direction: column;
       transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1498,6 +1502,12 @@ function createPromptManagerPanel() {
   // Make panel draggable
   makeElementDraggable('#sw-prompt-panel', '.sw-panel-header');
 
+  // Ensure events are bound immediately after panel creation
+  setTimeout(() => {
+    setupPromptManagerEvents();
+    console.log('[SW] Panel events bound after creation');
+  }, 100);
+
   console.log('[SW] Prompt manager panel created');
 }
 
@@ -1507,13 +1517,21 @@ function closePromptManager() {
 }
 
 function makeElementDraggable(elementSelector, handleSelector) {
+  // Remove any existing drag handlers to avoid conflicts
+  $(document).off('mousedown.drag' + elementSelector.replace('#', ''));
+  $(document).off('mousemove.drag' + elementSelector.replace('#', ''));
+  $(document).off('mouseup.drag' + elementSelector.replace('#', ''));
+
   let isDragging = false;
   let startX, startY, startLeft, startTop;
+  let dragNamespace = '.drag' + elementSelector.replace('#', '');
 
-  $(document).on('mousedown', `${elementSelector} ${handleSelector}`, function(e) {
+  $(document).on('mousedown' + dragNamespace, elementSelector + ' ' + handleSelector, function(e) {
     if (e.button !== 0) return; // Only left mouse button
 
     const element = $(elementSelector);
+    if (element.length === 0) return;
+
     const rect = element[0].getBoundingClientRect();
 
     isDragging = true;
@@ -1523,43 +1541,50 @@ function makeElementDraggable(elementSelector, handleSelector) {
     startTop = rect.top;
 
     // Disable transitions during drag
-    element.css('transition', 'none');
+    element.css({
+      'transition': 'none',
+      'user-select': 'none'
+    });
 
     // Add dragging class for visual feedback
     element.addClass('sw-dragging');
 
-    // Prevent text selection
+    // Prevent text selection and event propagation
     e.preventDefault();
     e.stopPropagation();
 
-    console.log('[SW] Started dragging element');
+    console.log('[SW] Started dragging element:', elementSelector);
   });
 
-  $(document).on('mousemove', function(e) {
+  $(document).on('mousemove' + dragNamespace, function(e) {
     if (!isDragging) return;
 
     const element = $(elementSelector);
+    if (element.length === 0) return;
+
     const deltaX = e.clientX - startX;
     const deltaY = e.clientY - startY;
 
     let newLeft = startLeft + deltaX;
     let newTop = startTop + deltaY;
 
-    // Constrain to viewport
-    const maxLeft = window.innerWidth - element.outerWidth();
-    const maxTop = window.innerHeight - element.outerHeight();
+    // Constrain to viewport with some padding
+    const padding = 20;
+    const maxLeft = window.innerWidth - element.outerWidth() - padding;
+    const maxTop = window.innerHeight - element.outerHeight() - padding;
 
-    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
-    newTop = Math.max(0, Math.min(newTop, maxTop));
+    newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
+    newTop = Math.max(padding, Math.min(newTop, maxTop));
 
     element.css({
       left: newLeft + 'px',
       top: newTop + 'px',
-      right: 'auto' // Override the right positioning
+      right: 'auto', // Override any right positioning
+      position: 'fixed' // Ensure fixed positioning
     });
   });
 
-  $(document).on('mouseup', function(e) {
+  $(document).on('mouseup' + dragNamespace, function(e) {
     if (!isDragging) return;
 
     const element = $(elementSelector);
@@ -1570,14 +1595,14 @@ function makeElementDraggable(elementSelector, handleSelector) {
       element.css({
         'transition': 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         'transform': 'scale(1)',
-        'z-index': ''
+        'user-select': 'auto'
       });
     }, 50);
 
     // Remove dragging class
     element.removeClass('sw-dragging');
 
-    console.log('[SW] Finished dragging element');
+    console.log('[SW] Finished dragging element:', elementSelector);
   });
 }
 
@@ -1752,7 +1777,11 @@ function setupPromptManagerEvents() {
   // Clear any existing event handlers to prevent duplicates
   $(document).off('click.swpromptevents');
 
-  // Use more specific selectors and add better debugging
+  // Add a generic click handler for all buttons in the prompt panel for debugging
+  $(document).on('click.swpromptevents', '#sw-prompt-panel button', function (e) {
+    console.log('[SW] Button clicked in prompt panel:', this.id, this.className);
+    // Don't prevent default here, let specific handlers handle it
+  });
 
   // Toggle prompt enabled/disabled
   $(document).on('click.swpromptevents', '.sw-prompt-toggle', function (e) {
@@ -1838,8 +1867,17 @@ function setupPromptManagerEvents() {
     previewFinalPrompt();
   });
 
-  // Setup drag and drop sorting
-  setupPromptDragAndDrop();
+  // Test if elements exist
+  setTimeout(() => {
+    console.log('[SW] Panel elements check:');
+    console.log('  - Add button exists:', $('#sw-add-prompt-btn').length > 0);
+    console.log('  - Import button exists:', $('#sw-import-prompts-btn').length > 0);
+    console.log('  - Export button exists:', $('#sw-export-prompts-btn').length > 0);
+    console.log('  - Reset button exists:', $('#sw-reset-prompts-btn').length > 0);
+    console.log('  - Preview button exists:', $('#sw-preview-final-prompt-btn').length > 0);
+    console.log('  - Toggle buttons exist:', $('.sw-prompt-toggle').length);
+    console.log('  - Edit buttons exist:', $('.sw-prompt-edit').length);
+  }, 50);
 
   console.log('[SW] All prompt manager events bound successfully');
 }
