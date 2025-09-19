@@ -481,7 +481,10 @@ function createNativePopup() {
 
   // Close button handler
   $('#sw-close-btn').click(() => {
-    $('#sw-popup-overlay').fadeOut(300, function () {
+    // If dragging effects are active, reset them first
+    const $win = $('#sw-popup-window');
+    $win.removeClass('sw-dragging').css({ boxShadow: '', transform: '', cursor: '', filter: '' });
+    $('#sw-popup-overlay').fadeOut(200, function () {
       $(this).remove();
     });
   });
@@ -496,7 +499,7 @@ function createNativePopup() {
       if ($('#sw-prompt-panel').hasClass('sw-panel-open')) {
         return;
       }
-      $('#sw-popup-overlay').fadeOut(300, function () {
+      $('#sw-popup-overlay').fadeOut(200, function () {
         $(this).remove();
       });
     }
@@ -1528,6 +1531,7 @@ function createPromptManagerPanel() {
         box-shadow: -8px 0 35px rgba(0, 0, 0, 0.25);
         transform: scale(1.02);
         z-index: 10001;
+        right: auto !important; /* allow free dragging even if panel-open sets right:0 */
       }
 
       .sw-draggable-window.sw-dragging {
@@ -1683,8 +1687,9 @@ function makeElementDraggable(elementSelector, handleSelector) {
       willChange: 'transform,left,top',
     });
   };
-  $(document).on('mousemove' + dragNamespace + ' pointermove' + dragNamespace, moveHandler);
-  $(window).on('mousemove' + dragNamespace + ' pointermove' + dragNamespace, moveHandler);
+  // Use capture on window to ensure we receive movement before other handlers
+  window.addEventListener('mousemove', moveHandler, { capture: true });
+  window.addEventListener('pointermove', moveHandler, { capture: true });
 
   const endHandler = function (e) {
     if (!isDragging) return;
@@ -1712,11 +1717,9 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
     console.log('[SW] Finished dragging element:', elementSelector);
   };
-  $(document).on(
-    'mouseup' + dragNamespace + ' pointerup' + dragNamespace + ' pointercancel' + dragNamespace,
-    endHandler,
-  );
-  $(window).on('mouseup' + dragNamespace + ' pointerup' + dragNamespace + ' pointercancel' + dragNamespace, endHandler);
+  document.addEventListener('mouseup', endHandler, { capture: true });
+  document.addEventListener('pointerup', endHandler, { capture: true });
+  document.addEventListener('pointercancel', endHandler, { capture: true });
 }
 
 function openPromptManagerTH() {
