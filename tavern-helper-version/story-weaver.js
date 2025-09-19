@@ -115,6 +115,20 @@ if (typeof window.buildStoryContextForNative !== 'function') {
   window.buildStoryContextForNative = buildStoryContextForNative;
 }
 
+// Basic HTML escape for safe UI rendering (do not use for prompt building)
+function escapeHtml(text) {
+  try {
+    return String(text)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  } catch (_) {
+    return '';
+  }
+}
+
 // Helper: copy text in preview dialogs
 if (typeof window.copyPreviewContent !== 'function') {
   window.copyPreviewContent = function (text) {
@@ -1822,12 +1836,12 @@ function buildPromptItem(prompt) {
       </div>
 
       <div style="flex: 1; min-width: 0;">
-        <div style="font-weight: 600; margin-bottom: 5px;">${prompt.name}</div>
+        <div style="font-weight: 600; margin-bottom: 5px;">${escapeHtml(prompt.name)}</div>
         <div style="font-size: 12px; color: #666;">
-          角色: ${prompt.role} | 顺序: ${prompt.injection_order} | 深度: ${prompt.injection_depth}
+          角色: ${escapeHtml(prompt.role)} | 顺序: ${prompt.injection_order} | 深度: ${prompt.injection_depth}
         </div>
         <div style="font-size: 12px; color: #888; margin-top: 5px; max-width: 400px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-          ${prompt.content}
+          ${escapeHtml(prompt.content)}
         </div>
       </div>
 
