@@ -1584,47 +1584,51 @@ function makeElementDraggable(elementSelector, handleSelector) {
   let startX, startY, startLeft, startTop;
   let dragNamespace = '.drag' + elementSelector.replace('#', '');
 
-  $(document).on('mousedown' + dragNamespace, elementSelector + ' ' + handleSelector, function (e) {
-    if (e.button !== 0) return; // Only left mouse button
+  $(document).on(
+    'mousedown' + dragNamespace + ' pointerdown' + dragNamespace,
+    elementSelector + ' ' + handleSelector,
+    function (e) {
+      if (e.type === 'mousedown' && e.button !== 0) return; // Only left mouse button for mouse
 
-    const element = $(elementSelector);
-    if (element.length === 0) return;
+      const element = $(elementSelector);
+      if (element.length === 0) return;
 
-    const rect = element[0].getBoundingClientRect();
+      const rect = element[0].getBoundingClientRect();
 
-    isDragging = true;
-    startX = e.clientX;
-    startY = e.clientY;
-    startLeft = rect.left;
-    startTop = rect.top;
+      isDragging = true;
+      startX = e.clientX;
+      startY = e.clientY;
+      startLeft = rect.left;
+      startTop = rect.top;
 
-    // Disable transitions during drag
-    element.css({
-      transition: 'none',
-      'user-select': 'none',
-      right: 'auto',
-      position: 'fixed',
-      left: rect.left + 'px',
-      top: rect.top + 'px',
-    });
+      // Disable transitions during drag
+      element.css({
+        transition: 'none',
+        'user-select': 'none',
+        right: 'auto',
+        position: 'fixed',
+        left: rect.left + 'px',
+        top: rect.top + 'px',
+      });
 
-    // Add dragging class for subtle visual feedback
-    element.addClass('sw-dragging');
-    element.css({
-      boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
-      transform: 'scale(1.01)',
-      cursor: 'grabbing',
-      filter: 'brightness(0.98)',
-    });
+      // Add dragging class for subtle visual feedback
+      element.addClass('sw-dragging');
+      element.css({
+        boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
+        transform: 'scale(1.01)',
+        cursor: 'grabbing',
+        filter: 'brightness(0.98)',
+      });
 
-    // Prevent text selection and event propagation
-    e.preventDefault();
-    e.stopPropagation();
+      // Prevent text selection and event propagation
+      e.preventDefault();
+      e.stopPropagation();
 
-    console.log('[SW] Started dragging element:', elementSelector);
-  });
+      console.log('[SW] Started dragging element:', elementSelector);
+    },
+  );
 
-  $(document).on('mousemove' + dragNamespace, function (e) {
+  $(document).on('mousemove' + dragNamespace + ' pointermove' + dragNamespace, function (e) {
     if (!isDragging) return;
 
     const element = $(elementSelector);
@@ -1653,32 +1657,35 @@ function makeElementDraggable(elementSelector, handleSelector) {
     });
   });
 
-  $(document).on('mouseup' + dragNamespace, function (e) {
-    if (!isDragging) return;
+  $(document).on(
+    'mouseup' + dragNamespace + ' pointerup' + dragNamespace + ' pointercancel' + dragNamespace,
+    function (e) {
+      if (!isDragging) return;
 
-    const element = $(elementSelector);
-    isDragging = false;
+      const element = $(elementSelector);
+      isDragging = false;
 
-    // Re-enable transitions with smooth effect
-    setTimeout(() => {
+      // Re-enable transitions with smooth effect
+      setTimeout(() => {
+        element.css({
+          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: 'scale(1)',
+          'user-select': 'auto',
+        });
+      }, 50);
+
+      // Remove dragging class and restore visuals
+      element.removeClass('sw-dragging');
       element.css({
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: 'scale(1)',
-        'user-select': 'auto',
+        boxShadow: '',
+        transform: '',
+        cursor: '',
+        filter: '',
       });
-    }, 50);
 
-    // Remove dragging class and restore visuals
-    element.removeClass('sw-dragging');
-    element.css({
-      boxShadow: '',
-      transform: '',
-      cursor: '',
-      filter: '',
-    });
-
-    console.log('[SW] Finished dragging element:', elementSelector);
-  });
+      console.log('[SW] Finished dragging element:', elementSelector);
+    },
+  );
 }
 
 function openPromptManagerTH() {
