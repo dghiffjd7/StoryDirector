@@ -1614,6 +1614,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
       transform: 'scale(1.01)',
       cursor: 'grabbing',
+      filter: 'brightness(0.98)',
     });
 
     // Prevent text selection and event propagation
@@ -1673,6 +1674,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       boxShadow: '',
       transform: '',
       cursor: '',
+      filter: '',
     });
 
     console.log('[SW] Finished dragging element:', elementSelector);
