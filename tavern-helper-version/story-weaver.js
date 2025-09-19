@@ -1459,11 +1459,7 @@ function openPromptManager() {
   }
 
   // Show the panel with slide animation
-  const $panel = $('#sw-prompt-panel');
-  // Reset any previous drag geometry so slide-in uses right:0 baseline
-  $panel.removeClass('sw-dragging').css({ left: '', top: '', transform: '', filter: '', cursor: '', right: '' });
-  // Trigger open
-  $panel.addClass('sw-panel-open');
+  $('#sw-prompt-panel').addClass('sw-panel-open');
   console.log('[SW] Prompt manager panel opened');
 }
 
@@ -1594,17 +1590,8 @@ function createPromptManagerPanel() {
 function closePromptManager() {
   const $panel = $('#sw-prompt-panel');
   if ($panel.length === 0) return;
-
-  // Clear drag visuals and force slide-out using right:-450px
-  $panel
-    .removeClass('sw-panel-open sw-dragging')
-    .css({ transform: '', filter: '', cursor: '', left: '', top: '', right: '-450px' });
-
-  // Remove from DOM after transition to avoid residual inline styles on next open
-  setTimeout(() => {
-    $panel.remove();
-  }, 220);
-
+  // Remove immediately to avoid overlaying invisible layer
+  $panel.remove();
   console.log('[SW] Prompt manager panel closed');
 }
 
@@ -1783,7 +1770,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
     const element = $(elementSelector);
     isDragging = false;
 
-    // Compute final position from visual location (robust against transforms)
+    // Commit to visual rect instead of deltas to avoid scroll/zoom shifts
     const rectNow = element[0].getBoundingClientRect();
     const padding = 20;
     const width = rectNow.width || element.outerWidth();
@@ -3522,9 +3509,7 @@ function setupSettingsMenu() {
     e.preventDefault();
     e.stopPropagation();
     $('#sw-settings-dropdown').hide();
-    // Ensure panel does not already exist hidden with stale styles
-    $('#sw-prompt-panel').remove();
-    setTimeout(() => openPromptManager(), 0);
+    openPromptManager();
   });
 
   $('#sw-menu-settings').click(function (e) {
