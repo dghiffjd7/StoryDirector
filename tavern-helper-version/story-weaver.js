@@ -1579,15 +1579,24 @@ function makeElementDraggable(elementSelector, handleSelector) {
   $(document).off('mousedown.drag' + elementSelector.replace('#', ''));
   $(document).off('mousemove.drag' + elementSelector.replace('#', ''));
   $(document).off('mouseup.drag' + elementSelector.replace('#', ''));
+  $(window).off('mousemove.drag' + elementSelector.replace('#', ''));
+  $(window).off('mouseup.drag' + elementSelector.replace('#', ''));
 
   let isDragging = false;
   let startX, startY, startLeft, startTop;
   let dragNamespace = '.drag' + elementSelector.replace('#', '');
+  const handleTarget = elementSelector + ' ' + handleSelector;
 
-  $(document).on(
-    'mousedown' + dragNamespace + ' pointerdown' + dragNamespace,
-    elementSelector + ' ' + handleSelector,
-    function (e) {
+  // Debug: ensure handle exists
+  try {
+    const handleCount = $(handleTarget).length;
+    console.log('[SW] Bind draggable → element:', elementSelector, 'handle:', handleSelector, 'count:', handleCount);
+  } catch (err) {}
+
+  // Bind directly to handle to avoid delegation interference
+  $(handleTarget)
+    .off(dragNamespace)
+    .on('mousedown' + dragNamespace + ' pointerdown' + dragNamespace, function (e) {
       if (e.type === 'mousedown' && e.button !== 0) return; // Only left mouse button for mouse
 
       const element = $(elementSelector);
@@ -1625,10 +1634,14 @@ function makeElementDraggable(elementSelector, handleSelector) {
       e.stopPropagation();
 
       console.log('[SW] Started dragging element:', elementSelector);
-    },
-  );
+    });
+  // Also keep delegated binding as fallback for dynamic handles
+  $(document).on('mousedown' + dragNamespace + ' pointerdown' + dragNamespace, handleTarget, function (e) {
+    if (e.type === 'mousedown' && e.button !== 0) return;
+    $(handleTarget).trigger(e);
+  });
 
-  $(document).on('mousemove' + dragNamespace + ' pointermove' + dragNamespace, function (e) {
+  const moveHandler = function (e) {
     if (!isDragging) return;
 
     const element = $(elementSelector);
@@ -1655,37 +1668,41 @@ function makeElementDraggable(elementSelector, handleSelector) {
       position: 'fixed', // Ensure fixed positioning
       willChange: 'transform,left,top',
     });
-  });
+  };
+  $(document).on('mousemove' + dragNamespace + ' pointermove' + dragNamespace, moveHandler);
+  $(window).on('mousemove' + dragNamespace + ' pointermove' + dragNamespace, moveHandler);
 
+  const endHandler = function (e) {
+    if (!isDragging) return;
+
+    const element = $(elementSelector);
+    isDragging = false;
+
+    // Re-enable transitions with smooth effect
+    setTimeout(() => {
+      element.css({
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        transform: 'scale(1)',
+        'user-select': 'auto',
+      });
+    }, 50);
+
+    // Remove dragging class and restore visuals
+    element.removeClass('sw-dragging');
+    element.css({
+      boxShadow: '',
+      transform: '',
+      cursor: '',
+      filter: '',
+    });
+
+    console.log('[SW] Finished dragging element:', elementSelector);
+  };
   $(document).on(
     'mouseup' + dragNamespace + ' pointerup' + dragNamespace + ' pointercancel' + dragNamespace,
-    function (e) {
-      if (!isDragging) return;
-
-      const element = $(elementSelector);
-      isDragging = false;
-
-      // Re-enable transitions with smooth effect
-      setTimeout(() => {
-        element.css({
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          transform: 'scale(1)',
-          'user-select': 'auto',
-        });
-      }, 50);
-
-      // Remove dragging class and restore visuals
-      element.removeClass('sw-dragging');
-      element.css({
-        boxShadow: '',
-        transform: '',
-        cursor: '',
-        filter: '',
-      });
-
-      console.log('[SW] Finished dragging element:', elementSelector);
-    },
+    endHandler,
   );
+  $(window).on('mouseup' + dragNamespace + ' pointerup' + dragNamespace + ' pointercancel' + dragNamespace, endHandler);
 }
 
 function openPromptManagerTH() {
