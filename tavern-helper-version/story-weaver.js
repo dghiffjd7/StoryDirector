@@ -1760,53 +1760,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
       transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
     });
   };
-  // Use capture on window to ensure we receive movement before other handlers
-  window.addEventListener('mousemove', moveHandler, { capture: true });
-  window.addEventListener('pointermove', moveHandler, { capture: true });
-
-  const endHandler = function (e) {
-    if (!isDragging) return;
-
-    const element = $(elementSelector);
-    isDragging = false;
-
-    // Commit to visual rect instead of deltas to avoid scroll/zoom shifts
-    const rectNow = element[0].getBoundingClientRect();
-    const padding = 20;
-    const width = rectNow.width || element.outerWidth();
-    const height = rectNow.height || element.outerHeight();
-    let newLeft = rectNow.left;
-    let newTop = rectNow.top;
-    const maxLeft = window.innerWidth - width - padding;
-    const maxTop = window.innerHeight - height - padding;
-    newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
-    newTop = Math.max(padding, Math.min(newTop, maxTop));
-
-    element.css({ left: newLeft + 'px', top: newTop + 'px' });
-
-    // Re-enable transitions with smooth effect
-    setTimeout(() => {
-      element.css({
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        transform: 'scale(1)',
-        'user-select': 'auto',
-      });
-    }, 50);
-
-    // Remove dragging class and restore visuals
-    element.removeClass('sw-dragging');
-    element.css({
-      boxShadow: '',
-      transform: '',
-      cursor: '',
-      filter: '',
-    });
-
-    console.log('[SW] Finished dragging element:', elementSelector);
-  };
-  document.addEventListener('mouseup', endHandler, { capture: true });
-  document.addEventListener('pointerup', endHandler, { capture: true });
-  document.addEventListener('pointercancel', endHandler, { capture: true });
 }
 
 function openPromptManagerTH() {

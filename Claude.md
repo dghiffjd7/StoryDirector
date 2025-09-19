@@ -5,3 +5,4 @@
 - Remember rules when we develope this extension:
 - 1. When designing, can reference famous desgin pages and applications, especially openai or claude/Gemini web frontpages, make the page beautiful and user friendly at the same time. 
 - 2. Make the function names clear and easy to understand.      
+- 请看tavern-helper-version文件夹当中的story-weaver.js， 这是我们目前在酒馆上通过taven-helper加载的脚本，作用在于大纲生成辅助创作。我们原本的功能完整版本在index.js， 这是一个原本通过SillyTavern Extension实作的，但是本地extension实作无法推广，于是转变为我们目前酒馆助手的版本（功能相同但是许多实现方式都不同，请先理解过去版本的功能的作用是什么，在实作于我们的新版本时需要适配我们的新做法，以及兼顾设计）
