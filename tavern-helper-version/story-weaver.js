@@ -1613,11 +1613,17 @@ function makeElementDraggable(elementSelector, handleSelector) {
     console.log('[SW] Bind draggable → element:', elementSelector, 'handle:', handleSelector, 'count:', handleCount);
   } catch (err) {}
 
-  // Bind directly to handle to avoid delegation interference
+  // Bind directly to handle with pointer events (clean & robust)
   $(handleTarget)
     .off(dragNamespace)
-    .on('mousedown' + dragNamespace + ' pointerdown' + dragNamespace, function (e) {
-      if (e.type === 'mousedown' && e.button !== 0) return; // Only left mouse button for mouse
+    .on('pointerdown' + dragNamespace, function (e) {
+      // Left mouse or touch/pen only
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+      // Don't start drag from interactive controls inside header
+      if ($(e.target).closest('button, a, input, textarea, select, [data-no-drag]').length) {
+        return;
+      }
 
       const element = $(elementSelector);
       if (element.length === 0) return;
@@ -1632,30 +1638,97 @@ function makeElementDraggable(elementSelector, handleSelector) {
       currentDeltaX = 0;
       currentDeltaY = 0;
 
-      // Disable transitions during drag
-      element.css({
-        transition: 'none',
-        'user-select': 'none',
-        right: 'auto',
-        position: 'fixed',
-        left: rect.left + 'px',
-        top: rect.top + 'px',
-      });
-
-      // Add dragging class for subtle visual feedback
-      element.addClass('sw-dragging');
-      element.css({
-        boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
-        transform: 'translate3d(0, 0, 0) scale(1.01)',
-        cursor: 'grabbing',
-        filter: 'brightness(0.98)',
-      });
+      // Prepare for potential drag (apply styles after threshold)
+      element.css({ 'user-select': 'none' });
+      try {
+        e.target.setPointerCapture && e.target.setPointerCapture(e.pointerId);
+      } catch (_) {}
 
       // Prevent text selection and event propagation
       e.preventDefault();
       e.stopPropagation();
 
       console.log('[SW] Started dragging element:', elementSelector);
+    })
+    .on('pointermove' + dragNamespace, function (e) {
+      if (!isDragging) return;
+
+      const element = $(elementSelector);
+      if (element.length === 0) return;
+
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+      currentDeltaX = deltaX;
+      currentDeltaY = deltaY;
+
+      if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3 && !element.hasClass('sw-dragging')) {
+        return; // not yet dragging
+      }
+
+      if (!element.hasClass('sw-dragging')) {
+        // start drag: set fixed position baseline
+        element.addClass('sw-dragging');
+        element.css({
+          transition: 'none',
+          right: 'auto',
+          position: 'fixed',
+          left: startLeft + 'px',
+          top: startTop + 'px',
+        });
+      }
+
+      element.css({
+        willChange: 'transform',
+        transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
+        boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
+        cursor: 'grabbing',
+        filter: 'brightness(0.98)',
+      });
+    })
+    .on('pointerup' + dragNamespace + ' pointercancel' + dragNamespace, function (e) {
+      if (!isDragging) return;
+
+      const element = $(elementSelector);
+      isDragging = false;
+
+      if (element.hasClass('sw-dragging')) {
+        const padding = 20;
+        const width = element.outerWidth();
+        const height = element.outerHeight();
+        let newLeft = startLeft + currentDeltaX;
+        let newTop = startTop + currentDeltaY;
+        const maxLeft = window.innerWidth - width - padding;
+        const maxTop = window.innerHeight - height - padding;
+        newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
+        newTop = Math.max(padding, Math.min(newTop, maxTop));
+
+        element.css({ left: newLeft + 'px', top: newTop + 'px' });
+
+        const suppress = ev => {
+          ev.stopPropagation();
+          ev.preventDefault();
+          window.removeEventListener('click', suppress, true);
+        };
+        window.addEventListener('click', suppress, true);
+        setTimeout(() => window.removeEventListener('click', suppress, true), 100);
+      }
+
+      setTimeout(() => {
+        element.css({
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: 'none',
+          'user-select': 'auto',
+          filter: '',
+          cursor: '',
+        });
+        element.removeClass('sw-dragging');
+      }, 0);
+
+      try {
+        e.target.releasePointerCapture && e.target.releasePointerCapture(e.pointerId);
+      } catch (_) {}
+
+      console.log('[SW] Finished dragging element:', elementSelector);
     });
   // Also keep delegated binding as fallback for dynamic handles
   $(document).on('mousedown' + dragNamespace + ' pointerdown' + dragNamespace, handleTarget, function (e) {
@@ -1674,12 +1747,14 @@ function makeElementDraggable(elementSelector, handleSelector) {
     currentDeltaX = deltaX;
     currentDeltaY = deltaY;
 
-    // Use transform during drag for smoothness and to avoid layout conflicts
+    // If direct pointer handlers handled active drag, skip fallback
+    if ($(elementSelector).hasClass('sw-dragging')) return;
+
     element.css({
       right: 'auto',
       position: 'fixed',
-      willChange: 'transform,left,top',
-      transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.01)`,
+      willChange: 'transform',
+      transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
     });
   };
   // Use capture on window to ensure we receive movement before other handlers
