@@ -1602,6 +1602,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
   let isDragging = false;
   let startX, startY, startLeft, startTop;
+  let currentDeltaX = 0,
+    currentDeltaY = 0;
   let dragNamespace = '.drag' + elementSelector.replace('#', '');
   const handleTarget = elementSelector + ' ' + handleSelector;
 
@@ -1627,6 +1629,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
       startY = e.clientY;
       startLeft = rect.left;
       startTop = rect.top;
+      currentDeltaX = 0;
+      currentDeltaY = 0;
 
       // Disable transitions during drag
       element.css({
@@ -1642,7 +1646,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       element.addClass('sw-dragging');
       element.css({
         boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
-        transform: 'scale(1.01)',
+        transform: 'translate3d(0, 0, 0) scale(1.01)',
         cursor: 'grabbing',
         filter: 'brightness(0.98)',
       });
@@ -1667,24 +1671,15 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
     const deltaX = e.clientX - startX;
     const deltaY = e.clientY - startY;
+    currentDeltaX = deltaX;
+    currentDeltaY = deltaY;
 
-    let newLeft = startLeft + deltaX;
-    let newTop = startTop + deltaY;
-
-    // Constrain to viewport with some padding
-    const padding = 20;
-    const maxLeft = window.innerWidth - element.outerWidth() - padding;
-    const maxTop = window.innerHeight - element.outerHeight() - padding;
-
-    newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
-    newTop = Math.max(padding, Math.min(newTop, maxTop));
-
+    // Use transform during drag for smoothness and to avoid layout conflicts
     element.css({
-      left: newLeft + 'px',
-      top: newTop + 'px',
-      right: 'auto', // Override any right positioning
-      position: 'fixed', // Ensure fixed positioning
+      right: 'auto',
+      position: 'fixed',
       willChange: 'transform,left,top',
+      transform: `translate3d(${deltaX}px, ${deltaY}px, 0) scale(1.01)`,
     });
   };
   // Use capture on window to ensure we receive movement before other handlers
@@ -1696,6 +1691,19 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
     const element = $(elementSelector);
     isDragging = false;
+
+    // Compute final constrained position and commit
+    const padding = 20;
+    const width = element.outerWidth();
+    const height = element.outerHeight();
+    let newLeft = startLeft + currentDeltaX;
+    let newTop = startTop + currentDeltaY;
+    const maxLeft = window.innerWidth - width - padding;
+    const maxTop = window.innerHeight - height - padding;
+    newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
+    newTop = Math.max(padding, Math.min(newTop, maxTop));
+
+    element.css({ left: newLeft + 'px', top: newTop + 'px' });
 
     // Re-enable transitions with smooth effect
     setTimeout(() => {
@@ -3407,6 +3415,7 @@ function setupSettingsMenu() {
 
   // Settings button click handler
   $('#sw-settings-btn').click(function (e) {
+    e.preventDefault();
     e.stopPropagation();
     const dropdown = $('#sw-settings-dropdown');
     if (dropdown.is(':visible')) {
@@ -3419,6 +3428,7 @@ function setupSettingsMenu() {
   // Menu item handlers
   $('#sw-menu-prompt-manager').click(function (e) {
     e.preventDefault();
+    e.stopPropagation();
     $('#sw-settings-dropdown').hide();
     openPromptManager();
   });
