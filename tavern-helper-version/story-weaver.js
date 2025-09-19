@@ -1459,7 +1459,11 @@ function openPromptManager() {
   }
 
   // Show the panel with slide animation
-  $('#sw-prompt-panel').addClass('sw-panel-open');
+  const $panel = $('#sw-prompt-panel');
+  // Reset any previous drag geometry so slide-in uses right:0 baseline
+  $panel.removeClass('sw-dragging').css({ left: '', top: '', transform: '', filter: '', cursor: '', right: '' });
+  // Trigger open
+  $panel.addClass('sw-panel-open');
   console.log('[SW] Prompt manager panel opened');
 }
 
@@ -1588,7 +1592,19 @@ function createPromptManagerPanel() {
 }
 
 function closePromptManager() {
-  $('#sw-prompt-panel').removeClass('sw-panel-open');
+  const $panel = $('#sw-prompt-panel');
+  if ($panel.length === 0) return;
+
+  // Clear drag visuals and force slide-out using right:-450px
+  $panel
+    .removeClass('sw-panel-open sw-dragging')
+    .css({ transform: '', filter: '', cursor: '', left: '', top: '', right: '-450px' });
+
+  // Remove from DOM after transition to avoid residual inline styles on next open
+  setTimeout(() => {
+    $panel.remove();
+  }, 220);
+
   console.log('[SW] Prompt manager panel closed');
 }
 
@@ -1769,12 +1785,12 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
     // Compute final constrained position and commit
     const padding = 20;
-    const width = element.outerWidth();
-    const height = element.outerHeight();
+    const width = element.outerWidth() || element[0].getBoundingClientRect().width;
+    const height = element.outerHeight() || element[0].getBoundingClientRect().height;
     let newLeft = startLeft + currentDeltaX;
     let newTop = startTop + currentDeltaY;
-    const maxLeft = window.innerWidth - width - padding;
-    const maxTop = window.innerHeight - height - padding;
+    const maxLeft = Math.max(padding, window.innerWidth - width - padding);
+    const maxTop = Math.max(padding, window.innerHeight - height - padding);
     newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
     newTop = Math.max(padding, Math.min(newTop, maxTop));
 
