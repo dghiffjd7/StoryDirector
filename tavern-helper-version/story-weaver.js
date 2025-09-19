@@ -1783,14 +1783,15 @@ function makeElementDraggable(elementSelector, handleSelector) {
     const element = $(elementSelector);
     isDragging = false;
 
-    // Compute final constrained position and commit
+    // Compute final position from visual location (robust against transforms)
+    const rectNow = element[0].getBoundingClientRect();
     const padding = 20;
-    const width = element.outerWidth() || element[0].getBoundingClientRect().width;
-    const height = element.outerHeight() || element[0].getBoundingClientRect().height;
-    let newLeft = startLeft + currentDeltaX;
-    let newTop = startTop + currentDeltaY;
-    const maxLeft = Math.max(padding, window.innerWidth - width - padding);
-    const maxTop = Math.max(padding, window.innerHeight - height - padding);
+    const width = rectNow.width || element.outerWidth();
+    const height = rectNow.height || element.outerHeight();
+    let newLeft = rectNow.left;
+    let newTop = rectNow.top;
+    const maxLeft = window.innerWidth - width - padding;
+    const maxTop = window.innerHeight - height - padding;
     newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
     newTop = Math.max(padding, Math.min(newTop, maxTop));
 
@@ -3521,7 +3522,9 @@ function setupSettingsMenu() {
     e.preventDefault();
     e.stopPropagation();
     $('#sw-settings-dropdown').hide();
-    openPromptManager();
+    // Ensure panel does not already exist hidden with stale styles
+    $('#sw-prompt-panel').remove();
+    setTimeout(() => openPromptManager(), 0);
   });
 
   $('#sw-menu-settings').click(function (e) {
