@@ -1711,7 +1711,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       isDragging = false;
 
       if (element.hasClass('sw-dragging')) {
-        const padding = 20;
+        const padding = 0; // use 0 to avoid unintended snap to 20, clamp later if needed
         // Commit based on the live visual rect to avoid zoom/scroll delta drift
         const rectNow = element[0].getBoundingClientRect();
         const width = rectNow.width || element.outerWidth();
@@ -1783,12 +1783,10 @@ function makeElementDraggable(elementSelector, handleSelector) {
     // If direct pointer handlers handled active drag, skip fallback
     if ($(elementSelector).hasClass('sw-dragging')) return;
 
-    element.css({
-      right: 'auto',
-      position: 'fixed',
-      willChange: 'transform',
-      transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
-    });
+    // Fallback path (should rarely run). Compute absolute left/top directly.
+    const newLeft = startLeft + deltaX;
+    const newTop = startTop + deltaY;
+    element.css({ right: 'auto', position: 'fixed', left: newLeft + 'px', top: newTop + 'px' });
   };
 }
 
