@@ -2928,6 +2928,42 @@ function processImportData(data) {
       throw new Error('文件中没有找到有效的提示词');
     }
 
+    // Try to extract ordering and enabled states from prompt_order/promptOrder if not provided
+    if ((!order || order.length === 0) && (Array.isArray(data.prompt_order) || Array.isArray(data.promptOrder))) {
+      // Helper to detect current character id
+      function getCurrentCharacterIdSafe() {
+        try {
+          const ch =
+            window.TavernHelper && window.TavernHelper.getCharacterData && window.TavernHelper.getCharacterData();
+          const cands = [
+            ch && ch.character_id,
+            ch && ch.id,
+            ch && ch.charId,
+            ch && ch.avatar_id,
+            ch && ch.avatar && ch.avatar.id,
+          ];
+          for (const v of cands) {
+            if (typeof v === 'number' && isFinite(v)) return Number(v);
+            if (typeof v === 'string' && v.trim()) {
+              const n = Number(v);
+              if (!isNaN(n)) return n;
+            }
+          }
+        } catch (e) {}
+        return null;
+      }
+      const promptOrderArray = Array.isArray(data.prompt_order) ? data.prompt_order : data.promptOrder;
+      const currentId = getCurrentCharacterIdSafe();
+      let entry = null;
+      if (currentId !== null) {
+        entry = promptOrderArray.find(po => Number(po && po.character_id) === Number(currentId));
+      }
+      if (!entry) entry = promptOrderArray[0];
+      if (entry && Array.isArray(entry.order)) {
+        order = entry.order; // array of {identifier, enabled}
+      }
+    }
+
     // Show import confirmation dialog
     showImportConfirmationDialog(prompts, order);
   } catch (error) {
