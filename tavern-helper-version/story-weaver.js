@@ -3081,37 +3081,71 @@ function performImport(prompts, order, mode) {
       storyWeaverPromptOrder = [];
     }
 
+    // Helper: role mapping
+    function mapRole(rawRole) {
+      if (!rawRole) return 'user';
+      const val = String(rawRole).toLowerCase();
+      if (val.includes('system')) return 'system';
+      if (val.includes('assistant')) return 'assistant';
+      if (val === 'user' || val.includes('user')) return 'user';
+      return 'user';
+    }
+
+    // Helper: normalize a single prompt object
+    function normalizeImportedPrompt(raw, index) {
+      const normalized = {};
+      // identifier
+      normalized.identifier =
+        (typeof raw.identifier === 'string' && raw.identifier.trim()) ||
+        (typeof raw.id === 'string' && raw.id.trim()) ||
+        `imported_${Date.now()}_${index}`;
+      // name
+      normalized.name =
+        (typeof raw.name === 'string' && raw.name.trim()) ||
+        (typeof raw.title === 'string' && raw.title.trim()) ||
+        (typeof raw.label === 'string' && raw.label.trim()) ||
+        `导入的提示词 ${index + 1}`;
+      // content
+      const content =
+        (typeof raw.content === 'string' && raw.content) ||
+        (typeof raw.text === 'string' && raw.text) ||
+        (typeof raw.prompt === 'string' && raw.prompt) ||
+        '';
+      normalized.content = String(content);
+      // role
+      normalized.role = mapRole(raw.role || raw.type || (raw.system_prompt ? 'system' : 'user'));
+      // enabled
+      if (typeof raw.enabled === 'boolean') normalized.enabled = raw.enabled;
+      else if (typeof raw.disabled === 'boolean') normalized.enabled = !raw.disabled;
+      else if (typeof raw.active === 'boolean') normalized.enabled = raw.active;
+      else normalized.enabled = true;
+      // system_prompt
+      normalized.system_prompt = !!(raw.system_prompt || normalized.role === 'system');
+      // injection_order
+      const orderCandidates = [raw.injection_order, raw.order, raw.position, raw.index];
+      let ord = orderCandidates.find(v => typeof v === 'number' && Number.isFinite(v));
+      if (typeof ord !== 'number') ord = storyWeaverPrompts.size + 1;
+      normalized.injection_order = ord;
+      // injection_depth
+      const depthCandidates = [raw.injection_depth, raw.depth];
+      let dep = depthCandidates.find(v => typeof v === 'number' && Number.isFinite(v));
+      if (typeof dep !== 'number') dep = 0;
+      normalized.injection_depth = dep;
+      // injection_position
+      const posCandidates = [raw.injection_position, raw.insertion_position, raw.anchor_position];
+      let pos = posCandidates.find(v => typeof v === 'number' && Number.isFinite(v));
+      if (typeof pos !== 'number') pos = 0;
+      normalized.injection_position = pos;
+      return normalized;
+    }
+
     // Import prompts
-    prompts.forEach((promptData, index) => {
-      // Ensure required fields
-      if (!promptData.identifier) {
-        promptData.identifier = `imported_${Date.now()}_${index}`;
-      }
-      if (!promptData.name) {
-        promptData.name = `导入的提示词 ${index + 1}`;
-      }
-      if (!promptData.role) {
-        promptData.role = 'user';
-      }
-      if (typeof promptData.injection_order !== 'number') {
-        promptData.injection_order = storyWeaverPrompts.size + 1;
-      }
-      if (typeof promptData.injection_depth !== 'number') {
-        promptData.injection_depth = 0;
-      }
-      if (typeof promptData.injection_position !== 'number') {
-        promptData.injection_position = 0;
-      }
-      if (typeof promptData.enabled !== 'boolean') {
-        promptData.enabled = true;
-      }
-      if (typeof promptData.system_prompt !== 'boolean') {
-        promptData.system_prompt = false;
-      }
+    const importedIds = [];
+    prompts.forEach((rawPrompt, index) => {
+      let promptData = normalizeImportedPrompt(rawPrompt, index);
 
       // Check for duplicates in merge mode
       if (mode === 'merge' && storyWeaverPrompts.has(promptData.identifier)) {
-        // Generate new identifier for duplicates
         let counter = 1;
         let newIdentifier = `${promptData.identifier}_copy_${counter}`;
         while (storyWeaverPrompts.has(newIdentifier)) {
@@ -3124,16 +3158,23 @@ function performImport(prompts, order, mode) {
 
       storyWeaverPrompts.set(promptData.identifier, promptData);
       storyWeaverPromptOrder.push(promptData.identifier);
+      importedIds.push(promptData.identifier);
       importedCount++;
     });
 
-    // Use imported order if available and in replace mode
+    // Use provided order if available and in replace mode; otherwise sort by injection_order
     if (mode === 'replace' && order && Array.isArray(order) && order.length > 0) {
-      // Filter order to only include imported prompts
       const validOrder = order.filter(id => storyWeaverPrompts.has(id));
       if (validOrder.length > 0) {
         storyWeaverPromptOrder = validOrder;
       }
+    } else if (mode === 'replace') {
+      // build list of only imported prompts and sort them
+      storyWeaverPromptOrder = importedIds.slice().sort((a, b) => {
+        const pa = storyWeaverPrompts.get(a);
+        const pb = storyWeaverPrompts.get(b);
+        return (pa?.injection_order || 0) - (pb?.injection_order || 0);
+      });
     }
 
     // Save and refresh
