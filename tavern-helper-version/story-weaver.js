@@ -1529,12 +1529,14 @@ function createPromptManagerPanel() {
 
       .sw-draggable-panel.sw-dragging {
         box-shadow: -8px 0 35px rgba(0, 0, 0, 0.25);
+        transform: scale(1.02);
         z-index: 10001;
         right: auto !important; /* allow free dragging even if panel-open sets right:0 */
       }
 
       .sw-draggable-window.sw-dragging {
         box-shadow: 0 25px 70px rgba(0, 0, 0, 0.4);
+        transform: scale(1.02);
         z-index: 10001;
       }
 
@@ -1678,22 +1680,9 @@ function makeElementDraggable(elementSelector, handleSelector) {
         });
       }
 
-      // Calculate new position with boundary constraints
-      const padding = 20;
-      const width = element.outerWidth();
-      const height = element.outerHeight();
-      let newLeft = startLeft + deltaX;
-      let newTop = startTop + deltaY;
-
-      // Keep element within viewport bounds
-      const maxLeft = window.innerWidth - width - padding;
-      const maxTop = window.innerHeight - height - padding;
-      newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
-      newTop = Math.max(padding, Math.min(newTop, maxTop));
-
       element.css({
-        left: newLeft + 'px',
-        top: newTop + 'px',
+        willChange: 'transform',
+        transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
         boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
         cursor: 'grabbing',
         filter: 'brightness(0.98)',
@@ -1706,7 +1695,18 @@ function makeElementDraggable(elementSelector, handleSelector) {
       isDragging = false;
 
       if (element.hasClass('sw-dragging')) {
-        // Position is already set correctly during move, just suppress clicks
+        const padding = 20;
+        const width = element.outerWidth();
+        const height = element.outerHeight();
+        let newLeft = startLeft + currentDeltaX;
+        let newTop = startTop + currentDeltaY;
+        const maxLeft = window.innerWidth - width - padding;
+        const maxTop = window.innerHeight - height - padding;
+        newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
+        newTop = Math.max(padding, Math.min(newTop, maxTop));
+
+        element.css({ left: newLeft + 'px', top: newTop + 'px' });
+
         const suppress = ev => {
           ev.stopPropagation();
           ev.preventDefault();
@@ -1718,11 +1718,11 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
       setTimeout(() => {
         element.css({
-          transition: 'box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: 'none',
           'user-select': 'auto',
           filter: '',
           cursor: '',
-          willChange: 'auto',
         });
         element.removeClass('sw-dragging');
       }, 0);
@@ -1753,7 +1753,12 @@ function makeElementDraggable(elementSelector, handleSelector) {
     // If direct pointer handlers handled active drag, skip fallback
     if ($(elementSelector).hasClass('sw-dragging')) return;
 
-    // Fallback handler is no longer needed as we handle movement directly
+    element.css({
+      right: 'auto',
+      position: 'fixed',
+      willChange: 'transform',
+      transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
+    });
   };
 }
 
