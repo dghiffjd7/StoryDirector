@@ -1675,6 +1675,10 @@ function makeElementDraggable(elementSelector, handleSelector) {
       if (!element.hasClass('sw-dragging')) {
         // start drag: set fixed position baseline
         element.addClass('sw-dragging');
+        // If it's the side panel, detach from slide-in state
+        if (element.is('#sw-prompt-panel')) {
+          element.removeClass('sw-panel-open');
+        }
         element.css({
           transition: 'none',
           right: 'auto',
@@ -1719,7 +1723,17 @@ function makeElementDraggable(elementSelector, handleSelector) {
         newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
         newTop = Math.max(padding, Math.min(newTop, maxTop));
 
-        element.css({ left: newLeft + 'px', top: newTop + 'px' });
+        element.css({ left: newLeft + 'px', top: newTop + 'px', right: 'auto' });
+        console.log('[SW][DRAG] end clamp data', elementSelector, {
+          rectNow: {
+            l: Math.round(rectNow.left),
+            t: Math.round(rectNow.top),
+            w: Math.round(width),
+            h: Math.round(height),
+          },
+          win: { w: window.innerWidth, h: window.innerHeight },
+          max: { l: Math.round(maxLeft), t: Math.round(maxTop) },
+        });
         console.log('[SW][DRAG] end commit', elementSelector, { left: newLeft, top: newTop }, 'rectNow', {
           l: Math.round(rectNow.left),
           t: Math.round(rectNow.top),
