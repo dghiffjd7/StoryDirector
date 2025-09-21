@@ -481,6 +481,7 @@ function createNativePopup() {
 
   // Close button handler
   $('#sw-close-btn').click(() => {
+    console.log('[SW][POPUP] close button clicked');
     // If dragging effects are active, reset them first
     const $win = $('#sw-popup-window');
     $win.removeClass('sw-dragging').css({ boxShadow: '', transform: '', cursor: '', filter: '' });
@@ -510,6 +511,7 @@ function createNativePopup() {
 
   // Normalize starting position for dragging
   const wndRect = $('#sw-popup-window')[0].getBoundingClientRect();
+  console.log('[SW][DRAG] init popup baseline rect', JSON.stringify({ left: wndRect.left, top: wndRect.top }));
   $('#sw-popup-window').css({ position: 'fixed', right: 'auto', left: wndRect.left + 'px', top: wndRect.top + 'px' });
 
   console.log('[SW] ✅ Native popup opened');
@@ -1572,6 +1574,7 @@ function createPromptManagerPanel() {
 
   // Bind panel events
   $('#sw-prompt-panel-close').click(() => {
+    console.log('[SW][PM] close button clicked');
     closePromptManager();
   });
 
@@ -1607,8 +1610,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
   let startX, startY, startLeft, startTop;
   let currentDeltaX = 0,
     currentDeltaY = 0;
-  let dragStarted = false;
-  const dragThreshold = 4; // px to start drag
   let dragNamespace = '.drag' + elementSelector.replace('#', '');
   const handleTarget = elementSelector + ' ' + handleSelector;
 
@@ -1636,7 +1637,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
       const rect = element[0].getBoundingClientRect();
 
       isDragging = true;
-      dragStarted = false;
       startX = e.clientX;
       startY = e.clientY;
       startLeft = rect.left;
@@ -1654,7 +1654,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
       e.preventDefault();
       e.stopPropagation();
 
-      console.log('[SW] Started dragging element:', elementSelector);
+      const logRect = { left: startLeft, top: startTop };
+      console.log('[SW][DRAG] start', elementSelector, 'baseRect', JSON.stringify(logRect));
     })
     .on('pointermove' + dragNamespace, function (e) {
       if (!isDragging) return;
@@ -1667,10 +1668,12 @@ function makeElementDraggable(elementSelector, handleSelector) {
       currentDeltaX = deltaX;
       currentDeltaY = deltaY;
 
-      if (!dragStarted) {
-        if (Math.abs(deltaX) < dragThreshold && Math.abs(deltaY) < dragThreshold) return;
-        dragStarted = true;
-        // Initialize fixed positioning when drag truly starts
+      if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3 && !element.hasClass('sw-dragging')) {
+        return; // not yet dragging
+      }
+
+      if (!element.hasClass('sw-dragging')) {
+        // start drag: set fixed position baseline
         element.addClass('sw-dragging');
         element.css({
           transition: 'none',
@@ -1678,18 +1681,24 @@ function makeElementDraggable(elementSelector, handleSelector) {
           position: 'fixed',
           left: startLeft + 'px',
           top: startTop + 'px',
-          transform: 'none',
         });
       }
 
-      // Update absolute position without constraining to avoid snap
       element.css({
-        left: startLeft + deltaX + 'px',
-        top: startTop + deltaY + 'px',
+        willChange: 'transform',
+        transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
         boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
         cursor: 'grabbing',
         filter: 'brightness(0.98)',
       });
+      if (Math.abs(deltaX) % 40 === 0 || Math.abs(deltaY) % 40 === 0) {
+        const cur = element[0].getBoundingClientRect();
+        console.log('[SW][DRAG] move', elementSelector, 'delta', { x: deltaX, y: deltaY }, 'rect', {
+          l: Math.round(cur.left),
+          t: Math.round(cur.top),
+          tr: element.css('transform'),
+        });
+      }
     })
     .on('pointerup' + dragNamespace + ' pointercancel' + dragNamespace, function (e) {
       if (!isDragging) return;
@@ -1697,7 +1706,25 @@ function makeElementDraggable(elementSelector, handleSelector) {
       const element = $(elementSelector);
       isDragging = false;
 
-      if (dragStarted && element.hasClass('sw-dragging')) {
+      if (element.hasClass('sw-dragging')) {
+        const padding = 20;
+        // Commit based on the live visual rect to avoid zoom/scroll delta drift
+        const rectNow = element[0].getBoundingClientRect();
+        const width = rectNow.width || element.outerWidth();
+        const height = rectNow.height || element.outerHeight();
+        let newLeft = rectNow.left;
+        let newTop = rectNow.top;
+        const maxLeft = window.innerWidth - width - padding;
+        const maxTop = window.innerHeight - height - padding;
+        newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
+        newTop = Math.max(padding, Math.min(newTop, maxTop));
+
+        element.css({ left: newLeft + 'px', top: newTop + 'px' });
+        console.log('[SW][DRAG] end commit', elementSelector, { left: newLeft, top: newTop }, 'rectNow', {
+          l: Math.round(rectNow.left),
+          t: Math.round(rectNow.top),
+        });
+
         const suppress = ev => {
           ev.stopPropagation();
           ev.preventDefault();
@@ -1710,6 +1737,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       setTimeout(() => {
         element.css({
           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+          transform: 'none',
           'user-select': 'auto',
           filter: '',
           cursor: '',
@@ -1721,7 +1749,9 @@ function makeElementDraggable(elementSelector, handleSelector) {
         e.target.releasePointerCapture && e.target.releasePointerCapture(e.pointerId);
       } catch (_) {}
 
-      console.log('[SW] Finished dragging element:', elementSelector);
+      const after =
+        element[0] && element[0].getBoundingClientRect ? element[0].getBoundingClientRect() : { left: null, top: null };
+      console.log('[SW][DRAG] finish', elementSelector, { left: after.left, top: after.top });
     });
   // Note: we bind directly on header; no delegated re-trigger to avoid double-start
 
