@@ -1610,6 +1610,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
   let startX, startY, startLeft, startTop;
   let currentDeltaX = 0,
     currentDeltaY = 0;
+  let commitLeft = 0,
+    commitTop = 0;
   let dragNamespace = '.drag' + elementSelector.replace('#', '');
   const handleTarget = elementSelector + ' ' + handleSelector;
 
@@ -1643,6 +1645,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
       startTop = rect.top;
       currentDeltaX = 0;
       currentDeltaY = 0;
+      commitLeft = startLeft;
+      commitTop = startTop;
 
       // Prepare for potential drag (apply styles after threshold)
       element.css({ 'user-select': 'none' });
@@ -1667,6 +1671,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
       const deltaY = e.clientY - startY;
       currentDeltaX = deltaX;
       currentDeltaY = deltaY;
+      commitLeft = startLeft + deltaX;
+      commitTop = startTop + deltaY;
 
       if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3 && !element.hasClass('sw-dragging')) {
         return; // not yet dragging
@@ -1749,8 +1755,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
         const vp = getViewport();
         const padding = 8; // minimal padding away from edges
-        let newLeft = rectNow.left;
-        let newTop = rectNow.top;
+        let newLeft = commitLeft;
+        let newTop = commitTop;
 
         if (vp.w > 0 && vp.h > 0) {
           const maxLeft = vp.w - width - padding;
