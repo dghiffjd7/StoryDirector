@@ -1767,7 +1767,14 @@ function makeElementDraggable(elementSelector, handleSelector) {
           console.log('[SW][DRAG] viewport invalid, skip clamp', elementSelector, vp);
         }
 
-        element.css({ left: newLeft + 'px', top: newTop + 'px', right: 'auto' });
+        // Commit instantly at drop point without any animation/flicker
+        element.css({
+          transition: 'none',
+          transform: 'none',
+          left: newLeft + 'px',
+          top: newTop + 'px',
+          right: 'auto',
+        });
         console.log('[SW][DRAG] end clamp data', elementSelector, {
           rectNow: {
             l: Math.round(rectNow.left),
@@ -1794,11 +1801,12 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
       setTimeout(() => {
         element.css({
-          transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-          transform: 'none',
+          transition: '',
           'user-select': 'auto',
           filter: '',
           cursor: '',
+          willChange: '',
+          boxShadow: '',
         });
         element.removeClass('sw-dragging');
       }, 0);
