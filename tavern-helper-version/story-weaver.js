@@ -1711,17 +1711,55 @@ function makeElementDraggable(elementSelector, handleSelector) {
       isDragging = false;
 
       if (element.hasClass('sw-dragging')) {
-        const padding = 0; // use 0 to avoid unintended snap to 20, clamp later if needed
         // Commit based on the live visual rect to avoid zoom/scroll delta drift
         const rectNow = element[0].getBoundingClientRect();
         const width = rectNow.width || element.outerWidth();
         const height = rectNow.height || element.outerHeight();
+
+        // Robust viewport detection to avoid 0 width/height in iframes
+        function getViewport() {
+          let ws = [
+            typeof window !== 'undefined' ? window.innerWidth : 0,
+            document && document.documentElement ? document.documentElement.clientWidth : 0,
+          ];
+          let hs = [
+            typeof window !== 'undefined' ? window.innerHeight : 0,
+            document && document.documentElement ? document.documentElement.clientHeight : 0,
+          ];
+          if (window && window.visualViewport) {
+            ws.push(window.visualViewport.width);
+            hs.push(window.visualViewport.height);
+          }
+          try {
+            if (window.top && window.top !== window) {
+              ws.push(window.top.innerWidth || 0);
+              hs.push(window.top.innerHeight || 0);
+            }
+          } catch (e) {}
+          const w = Math.max.apply(
+            null,
+            ws.filter(n => n && n > 0),
+          );
+          const h = Math.max.apply(
+            null,
+            hs.filter(n => n && n > 0),
+          );
+          return { w: w || 0, h: h || 0 };
+        }
+
+        const vp = getViewport();
+        const padding = 8; // minimal padding away from edges
         let newLeft = rectNow.left;
         let newTop = rectNow.top;
-        const maxLeft = window.innerWidth - width - padding;
-        const maxTop = window.innerHeight - height - padding;
-        newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
-        newTop = Math.max(padding, Math.min(newTop, maxTop));
+
+        if (vp.w > 0 && vp.h > 0) {
+          const maxLeft = vp.w - width - padding;
+          const maxTop = vp.h - height - padding;
+          newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
+          newTop = Math.max(padding, Math.min(newTop, maxTop));
+        } else {
+          console.log('[SW][DRAG] viewport invalid, skip clamp', elementSelector, vp);
+        }
 
         element.css({ left: newLeft + 'px', top: newTop + 'px', right: 'auto' });
         console.log('[SW][DRAG] end clamp data', elementSelector, {
@@ -1731,8 +1769,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
             w: Math.round(width),
             h: Math.round(height),
           },
-          win: { w: window.innerWidth, h: window.innerHeight },
-          max: { l: Math.round(maxLeft), t: Math.round(maxTop) },
+          win: vp,
+          commit: { l: Math.round(newLeft), t: Math.round(newTop) },
         });
         console.log('[SW][DRAG] end commit', elementSelector, { left: newLeft, top: newTop }, 'rectNow', {
           l: Math.round(rectNow.left),
