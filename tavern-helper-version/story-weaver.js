@@ -1696,10 +1696,12 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
       if (element.hasClass('sw-dragging')) {
         const padding = 20;
-        const width = element.outerWidth();
-        const height = element.outerHeight();
-        let newLeft = startLeft + currentDeltaX;
-        let newTop = startTop + currentDeltaY;
+        // Commit based on the live visual rect to avoid zoom/scroll delta drift
+        const rectNow = element[0].getBoundingClientRect();
+        const width = rectNow.width || element.outerWidth();
+        const height = rectNow.height || element.outerHeight();
+        let newLeft = rectNow.left;
+        let newTop = rectNow.top;
         const maxLeft = window.innerWidth - width - padding;
         const maxTop = window.innerHeight - height - padding;
         newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
@@ -1733,11 +1735,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
       console.log('[SW] Finished dragging element:', elementSelector);
     });
-  // Also keep delegated binding as fallback for dynamic handles
-  $(document).on('mousedown' + dragNamespace + ' pointerdown' + dragNamespace, handleTarget, function (e) {
-    if (e.type === 'mousedown' && e.button !== 0) return;
-    $(handleTarget).trigger(e);
-  });
+  // Note: we bind directly on header; no delegated re-trigger to avoid double-start
 
   const moveHandler = function (e) {
     if (!isDragging) return;
