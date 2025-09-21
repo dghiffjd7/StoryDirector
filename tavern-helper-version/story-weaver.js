@@ -511,7 +511,6 @@ function createNativePopup() {
 
   // Normalize starting position for dragging
   const wndRect = $('#sw-popup-window')[0].getBoundingClientRect();
-  console.log('[SW][DRAG] init popup baseline rect', JSON.stringify({ left: wndRect.left, top: wndRect.top }));
   $('#sw-popup-window').css({ position: 'fixed', right: 'auto', left: wndRect.left + 'px', top: wndRect.top + 'px' });
 
   console.log('[SW] ✅ Native popup opened');
@@ -1659,7 +1658,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
       e.stopPropagation();
 
       const logRect = { left: startLeft, top: startTop };
-      console.log('[SW][DRAG] start', elementSelector, 'baseRect', JSON.stringify(logRect));
     })
     .on('pointermove' + dragNamespace, function (e) {
       if (!isDragging) return;
@@ -1703,11 +1701,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
       });
       if (Math.abs(deltaX) % 40 === 0 || Math.abs(deltaY) % 40 === 0) {
         const cur = element[0].getBoundingClientRect();
-        console.log('[SW][DRAG] move', elementSelector, 'delta', { x: deltaX, y: deltaY }, 'rect', {
-          l: Math.round(cur.left),
-          t: Math.round(cur.top),
-          tr: element.css('transform'),
-        });
       }
     })
     .on('pointerup' + dragNamespace + ' pointercancel' + dragNamespace, function (e) {
@@ -1764,7 +1757,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
           newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
           newTop = Math.max(padding, Math.min(newTop, maxTop));
         } else {
-          console.log('[SW][DRAG] viewport invalid, skip clamp', elementSelector, vp);
         }
 
         // Commit instantly at drop point without any animation/flicker
@@ -1774,20 +1766,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
           left: newLeft + 'px',
           top: newTop + 'px',
           right: 'auto',
-        });
-        console.log('[SW][DRAG] end clamp data', elementSelector, {
-          rectNow: {
-            l: Math.round(rectNow.left),
-            t: Math.round(rectNow.top),
-            w: Math.round(width),
-            h: Math.round(height),
-          },
-          win: vp,
-          commit: { l: Math.round(newLeft), t: Math.round(newTop) },
-        });
-        console.log('[SW][DRAG] end commit', elementSelector, { left: newLeft, top: newTop }, 'rectNow', {
-          l: Math.round(rectNow.left),
-          t: Math.round(rectNow.top),
         });
 
         const suppress = ev => {
@@ -1817,7 +1795,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
 
       const after =
         element[0] && element[0].getBoundingClientRect ? element[0].getBoundingClientRect() : { left: null, top: null };
-      console.log('[SW][DRAG] finish', elementSelector, { left: after.left, top: after.top });
     });
   // Note: we bind directly on header; no delegated re-trigger to avoid double-start
 
@@ -3139,10 +3116,33 @@ function performImport(prompts, order, mode) {
       return normalized;
     }
 
+    // Normalize order info: allow strings or objects {identifier, enabled}
+    const orderItems = Array.isArray(order)
+      ? order
+          .map(item => {
+            if (typeof item === 'string') return { identifier: item };
+            if (item && typeof item === 'object') {
+              const ident = item.identifier || item.id;
+              if (typeof ident === 'string') return { identifier: ident, enabled: item.enabled };
+            }
+            return null;
+          })
+          .filter(Boolean)
+      : [];
+    const orderEnabledMap = new Map(
+      orderItems.map(o => [o.identifier, o.hasOwnProperty('enabled') ? o.enabled === true : undefined]),
+    );
+    const allowedIds = orderItems.map(o => o.identifier);
+
     // Import prompts
     const importedIds = [];
     prompts.forEach((rawPrompt, index) => {
       let promptData = normalizeImportedPrompt(rawPrompt, index);
+
+      // In replace mode with explicit order: only import prompts present in order
+      if (mode === 'replace' && allowedIds.length > 0 && !allowedIds.includes(promptData.identifier)) {
+        return; // skip
+      }
 
       // Check for duplicates in merge mode
       if (mode === 'merge' && storyWeaverPrompts.has(promptData.identifier)) {
@@ -3156,6 +3156,12 @@ function performImport(prompts, order, mode) {
         promptData.name += ` (副本)`;
       }
 
+      // Apply enabled state from order if provided; otherwise keep normalized
+      if (orderEnabledMap.has(promptData.identifier)) {
+        const val = orderEnabledMap.get(promptData.identifier);
+        if (typeof val === 'boolean') promptData.enabled = val;
+      }
+
       storyWeaverPrompts.set(promptData.identifier, promptData);
       storyWeaverPromptOrder.push(promptData.identifier);
       importedIds.push(promptData.identifier);
@@ -3163,8 +3169,8 @@ function performImport(prompts, order, mode) {
     });
 
     // Use provided order if available and in replace mode; otherwise sort by injection_order
-    if (mode === 'replace' && order && Array.isArray(order) && order.length > 0) {
-      const validOrder = order.filter(id => storyWeaverPrompts.has(id));
+    if (mode === 'replace' && orderItems.length > 0) {
+      const validOrder = orderItems.map(o => o.identifier).filter(id => storyWeaverPrompts.has(id));
       if (validOrder.length > 0) {
         storyWeaverPromptOrder = validOrder;
       }
