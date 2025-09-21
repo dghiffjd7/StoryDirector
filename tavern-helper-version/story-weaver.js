@@ -1677,12 +1677,24 @@ function makeElementDraggable(elementSelector, handleSelector) {
           position: 'fixed',
           left: startLeft + 'px',
           top: startTop + 'px',
+          transform: 'none',
         });
       }
 
+      // Calculate constrained target position using left/top instead of transform
+      const padding = 20;
+      const width = element.outerWidth();
+      const height = element.outerHeight();
+      let newLeft = startLeft + deltaX;
+      let newTop = startTop + deltaY;
+      const maxLeft = window.innerWidth - width - padding;
+      const maxTop = window.innerHeight - height - padding;
+      newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
+      newTop = Math.max(padding, Math.min(newTop, maxTop));
+
       element.css({
-        willChange: 'transform',
-        transform: `translate3d(${deltaX}px, ${deltaY}px, 0)`,
+        left: newLeft + 'px',
+        top: newTop + 'px',
         boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
         cursor: 'grabbing',
         filter: 'brightness(0.98)',
@@ -1695,20 +1707,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
       isDragging = false;
 
       if (element.hasClass('sw-dragging')) {
-        const padding = 20;
-        // Commit based on the live visual rect to avoid zoom/scroll delta drift
-        const rectNow = element[0].getBoundingClientRect();
-        const width = rectNow.width || element.outerWidth();
-        const height = rectNow.height || element.outerHeight();
-        let newLeft = rectNow.left;
-        let newTop = rectNow.top;
-        const maxLeft = window.innerWidth - width - padding;
-        const maxTop = window.innerHeight - height - padding;
-        newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
-        newTop = Math.max(padding, Math.min(newTop, maxTop));
-
-        element.css({ left: newLeft + 'px', top: newTop + 'px' });
-
         const suppress = ev => {
           ev.stopPropagation();
           ev.preventDefault();
@@ -1721,7 +1719,6 @@ function makeElementDraggable(elementSelector, handleSelector) {
       setTimeout(() => {
         element.css({
           transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-          transform: 'none',
           'user-select': 'auto',
           filter: '',
           cursor: '',
