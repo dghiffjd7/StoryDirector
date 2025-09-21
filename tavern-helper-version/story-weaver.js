@@ -1607,6 +1607,8 @@ function makeElementDraggable(elementSelector, handleSelector) {
   let startX, startY, startLeft, startTop;
   let currentDeltaX = 0,
     currentDeltaY = 0;
+  let dragStarted = false;
+  const dragThreshold = 4; // px to start drag
   let dragNamespace = '.drag' + elementSelector.replace('#', '');
   const handleTarget = elementSelector + ' ' + handleSelector;
 
@@ -1634,6 +1636,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       const rect = element[0].getBoundingClientRect();
 
       isDragging = true;
+      dragStarted = false;
       startX = e.clientX;
       startY = e.clientY;
       startLeft = rect.left;
@@ -1664,12 +1667,10 @@ function makeElementDraggable(elementSelector, handleSelector) {
       currentDeltaX = deltaX;
       currentDeltaY = deltaY;
 
-      if (Math.abs(deltaX) < 3 && Math.abs(deltaY) < 3 && !element.hasClass('sw-dragging')) {
-        return; // not yet dragging
-      }
-
-      if (!element.hasClass('sw-dragging')) {
-        // start drag: set fixed position baseline
+      if (!dragStarted) {
+        if (Math.abs(deltaX) < dragThreshold && Math.abs(deltaY) < dragThreshold) return;
+        dragStarted = true;
+        // Initialize fixed positioning when drag truly starts
         element.addClass('sw-dragging');
         element.css({
           transition: 'none',
@@ -1681,20 +1682,10 @@ function makeElementDraggable(elementSelector, handleSelector) {
         });
       }
 
-      // Calculate constrained target position using left/top instead of transform
-      const padding = 20;
-      const width = element.outerWidth();
-      const height = element.outerHeight();
-      let newLeft = startLeft + deltaX;
-      let newTop = startTop + deltaY;
-      const maxLeft = window.innerWidth - width - padding;
-      const maxTop = window.innerHeight - height - padding;
-      newLeft = Math.max(padding, Math.min(newLeft, maxLeft));
-      newTop = Math.max(padding, Math.min(newTop, maxTop));
-
+      // Update absolute position without constraining to avoid snap
       element.css({
-        left: newLeft + 'px',
-        top: newTop + 'px',
+        left: startLeft + deltaX + 'px',
+        top: startTop + deltaY + 'px',
         boxShadow: '0 16px 40px rgba(0,0,0,0.25)',
         cursor: 'grabbing',
         filter: 'brightness(0.98)',
@@ -1706,7 +1697,7 @@ function makeElementDraggable(elementSelector, handleSelector) {
       const element = $(elementSelector);
       isDragging = false;
 
-      if (element.hasClass('sw-dragging')) {
+      if (dragStarted && element.hasClass('sw-dragging')) {
         const suppress = ev => {
           ev.stopPropagation();
           ev.preventDefault();
