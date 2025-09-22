@@ -3175,8 +3175,8 @@ function performImport(prompts, order, mode) {
     prompts.forEach((rawPrompt, index) => {
       let promptData = normalizeImportedPrompt(rawPrompt, index);
 
-      // In replace mode with explicit order: only import prompts present in order
-      if (mode === 'replace' && allowedIds.length > 0 && !allowedIds.includes(promptData.identifier)) {
+      // With explicit order: only import prompts present in order (for both modes)
+      if (allowedIds.length > 0 && !allowedIds.includes(promptData.identifier)) {
         return; // skip
       }
 
@@ -3204,11 +3204,16 @@ function performImport(prompts, order, mode) {
       importedCount++;
     });
 
-    // Use provided order if available and in replace mode; otherwise sort by injection_order
-    if (mode === 'replace' && orderItems.length > 0) {
+    // Apply ordering
+    if (orderItems.length > 0) {
       const validOrder = orderItems.map(o => o.identifier).filter(id => storyWeaverPrompts.has(id));
-      if (validOrder.length > 0) {
-        storyWeaverPromptOrder = validOrder;
+      if (mode === 'replace') {
+        if (validOrder.length > 0) storyWeaverPromptOrder = validOrder;
+      } else {
+        // merge: keep existing not in validOrder, then ensure validOrder sequence at the end
+        const existing = Array.from(new Set(storyWeaverPromptOrder));
+        const notInValid = existing.filter(id => !validOrder.includes(id));
+        storyWeaverPromptOrder = notInValid.concat(validOrder);
       }
     } else if (mode === 'replace') {
       // build list of only imported prompts and sort them
