@@ -4044,7 +4044,6 @@ window.StoryWeaver = {
   loadSettings,
   saveSettings,
   showNotification,
-  testWorldbookFetch,
 };
 
 // Try to expose to top window if possible
