@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器6</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器7</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3980,26 +3980,33 @@ function ensureTopWorldbookBridge() {
 function fetchWorldInfoViaTopBridge() {
   return new Promise(resolve => {
     try {
-      const ok = ensureTopWorldbookBridge();
-      if (!ok) return resolve([]);
       const token = 'sw_wb_' + Math.random().toString(36).slice(2);
+      const started = Date.now();
       const onMsg = ev => {
         const data = ev && ev.data;
         if (!data || data.type !== 'SW_RESPONSE_WORLDINFO' || data.token !== token) return;
         window.removeEventListener('message', onMsg, false);
+        console.log(
+          '[SW][WB][BRIDGE] response in',
+          Date.now() - started,
+          'ms, sections =',
+          data && Array.isArray(data.sections) ? data.sections.length : 'n/a',
+        );
         if (data && Array.isArray(data.sections)) return resolve(data.sections);
         return resolve([]);
       };
       window.addEventListener('message', onMsg, false);
+      console.log('[SW][WB][BRIDGE] sending request to top');
       (window.top || window).postMessage({ type: 'SW_REQUEST_WORLDINFO', token }, '*');
       setTimeout(() => {
         try {
           window.removeEventListener('message', onMsg, false);
         } catch (_) {}
+        console.warn('[SW][WB][BRIDGE] timeout waiting for top response');
         resolve([]);
       }, 4000);
     } catch (e) {
-      console.error('[SW][WB] fetchWorldInfoViaTopBridge failed:', e);
+      console.error('[SW][WB][BRIDGE] failed:', e);
       resolve([]);
     }
   });
@@ -4256,3 +4263,72 @@ $(document).ready(() => {
 
 console.log('[SW] ✅ Story Weaver Enhanced loaded successfully!');
 console.log('[SW] Available functions:', Object.keys(window.StoryWeaver));
+
+// === Worldbook responder installed at top window ===
+(function installWorldbookResponder() {
+  try {
+    if (window.__SW_WB_TOP_RESPONDER__) return;
+    window.__SW_WB_TOP_RESPONDER__ = true;
+    window.addEventListener(
+      'message',
+      async ev => {
+        const data = ev && ev.data;
+        if (!data || data.type !== 'SW_REQUEST_WORLDINFO') return;
+        const token = data.token;
+        const reply = payload => {
+          try {
+            ev && ev.source && ev.source.postMessage({ type: 'SW_RESPONSE_WORLDINFO', token, ...payload }, '*');
+          } catch (_) {}
+        };
+        try {
+          console.log('[SW][WB][RESP] request received on top');
+          const out = [];
+          if (typeof getWorldInfoPrompt === 'function' && typeof getContext === 'function') {
+            const ctx = getContext();
+            const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
+            const formatted = chat
+              .map(m => (typeof m === 'string' ? m : (m && (m.mes || m.content || m.message)) || JSON.stringify(m)))
+              .filter(Boolean);
+            const res = await getWorldInfoPrompt(formatted, 131072, true);
+            if (res) {
+              if (res.worldInfoString && String(res.worldInfoString).trim()) out.push(String(res.worldInfoString));
+              if (res.worldInfoBefore && String(res.worldInfoBefore).trim()) out.push(String(res.worldInfoBefore));
+              if (res.worldInfoAfter && String(res.worldInfoAfter).trim()) out.push(String(res.worldInfoAfter));
+              if (Array.isArray(res.worldInfoDepth)) {
+                res.worldInfoDepth.forEach(d => {
+                  if (Array.isArray(d.entries)) {
+                    const s = d.entries.join('\n\n').trim();
+                    if (s) out.push(s);
+                  }
+                });
+              }
+              if (Array.isArray(res.worldInfoExamples)) {
+                res.worldInfoExamples.forEach(e => {
+                  const s = (e && (e.content || e.entry || e.text)) || '';
+                  if (s && String(s).trim()) out.push(String(s));
+                });
+              }
+            }
+            console.log('[SW][WB][RESP] top APIs used, sections =', out.length);
+          } else if (Array.isArray(window.world_info)) {
+            window.world_info.forEach(w => {
+              const s = (w && (w.content || w.entry || w.description)) || '';
+              if (s && String(s).trim()) out.push(String(s));
+            });
+            console.log('[SW][WB][RESP] window.world_info used, sections =', out.length);
+          } else {
+            console.warn('[SW][WB][RESP] no APIs available on top');
+          }
+          reply({ sections: out });
+        } catch (err) {
+          console.error('[SW][WB][RESP] error:', err);
+          reply({ error: String(err && err.message), sections: [] });
+        }
+      },
+      false,
+    );
+    console.log('[SW][WB][RESP] top responder installed');
+  } catch (e) {
+    console.error('[SW][WB][RESP] install failed:', e);
+  }
+})();
