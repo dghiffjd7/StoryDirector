@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器4</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3667,47 +3667,110 @@ function openWorldbookManagerTH() {
 // Worldbook retrieval — single method via TavernHelper only
 function getWorldbookEntriesFromTavernHelper() {
   try {
-    if (typeof window.TavernHelper === 'undefined') return [];
-    if (typeof window.TavernHelper.getCharWorldbookNames !== 'function') return [];
+    console.log('[SW][WB][TH] start retrieval');
+    const thType = typeof window.TavernHelper;
+    console.log('[SW][WB][TH] TavernHelper typeof =', thType);
+    if (thType === 'undefined') {
+      console.warn('[SW][WB][TH] TavernHelper is undefined');
+      return [];
+    }
+
+    const hasNames = typeof window.TavernHelper.getCharWorldbookNames === 'function';
+    const hasEntries = typeof window.TavernHelper.getLorebookEntries === 'function';
+    console.log('[SW][WB][TH] has getCharWorldbookNames:', hasNames, 'has getLorebookEntries:', hasEntries);
+
+    if (!hasNames) {
+      console.warn('[SW][WB][TH] getCharWorldbookNames is not a function');
+      return [];
+    }
 
     const names = window.TavernHelper.getCharWorldbookNames('current') || [];
-    if (!Array.isArray(names) || names.length === 0) return [];
+    console.log(
+      '[SW][WB][TH] names result length =',
+      Array.isArray(names) ? names.length : 'non-array',
+      'value =',
+      names,
+    );
+
+    if (!Array.isArray(names) || names.length === 0) {
+      console.warn('[SW][WB][TH] no worldbook names returned for current character');
+      return [];
+    }
+
+    if (!hasEntries) {
+      console.warn('[SW][WB][TH] getLorebookEntries is not a function');
+      return [];
+    }
 
     const collected = [];
     names.forEach(name => {
-      if (!name) return;
-      if (typeof window.TavernHelper.getLorebookEntries !== 'function') return;
-      const entries = window.TavernHelper.getLorebookEntries(name) || [];
-      if (!Array.isArray(entries) || entries.length === 0) return;
+      try {
+        console.log('[SW][WB][TH] fetching entries for name =', name);
+        const entries = window.TavernHelper.getLorebookEntries(name) || [];
+        console.log(
+          '[SW][WB][TH] entries length for',
+          name,
+          '=',
+          Array.isArray(entries) ? entries.length : 'non-array',
+        );
+        if (!Array.isArray(entries) || entries.length === 0) return;
 
-      entries.forEach(e => {
-        const isEnabled = e && e.enabled !== false && e.disabled !== true;
-        if (!isEnabled) return;
-        const key = e && (e.key || (e.keys && e.keys[0]) || e.name || e.title || '');
-        const content = e && (e.content || e.entry || e.description || e.text || '');
-        if ((key || content) && typeof (content || '') === 'string') {
-          collected.push({ key: key || '', content: content || '' });
-        }
-      });
+        let beforeFilter = 0;
+        let filteredOut = 0;
+        entries.forEach(e => {
+          beforeFilter++;
+          const isEnabled = e && e.enabled !== false && e.disabled !== true;
+          if (!isEnabled) {
+            filteredOut++;
+            return;
+          }
+          const key = e && (e.key || (e.keys && e.keys[0]) || e.name || e.title || '');
+          const content = e && (e.content || e.entry || e.description || e.text || '');
+          if ((key || content) && typeof (content || '') === 'string') {
+            collected.push({ key: key || '', content: content || '' });
+          }
+        });
+        console.log(
+          '[SW][WB][TH] processed',
+          beforeFilter,
+          'for',
+          name,
+          'filteredOut',
+          filteredOut,
+          'collected so far',
+          collected.length,
+        );
+      } catch (errName) {
+        console.error('[SW][WB][TH] error while fetching entries for', name, errName);
+      }
     });
 
+    console.log('[SW][WB][TH] total collected entries =', collected.length, 'sample =', collected.slice(0, 3));
     return collected;
   } catch (err) {
+    console.error('[SW][WB][TH] unexpected error in retrieval', err);
     return [];
   }
 }
 
 function buildWorldInfoText() {
   const entries = getWorldbookEntriesFromTavernHelper();
-  if (!entries.length) return '';
-  return entries.map(e => (e.key ? `${e.key}: ${e.content}` : e.content)).join('\n\n');
+  if (!entries.length) {
+    console.warn('[SW][WB][TH] buildWorldInfoText: no entries collected');
+    return '';
+  }
+  const text = entries.map(e => (e.key ? `${e.key}: ${e.content}` : e.content)).join('\n\n');
+  console.log('[SW][WB][TH] buildWorldInfoText length =', text.length);
+  return text;
 }
 
 function renderWorldbookList(containerSelector) {
   try {
+    console.log('[SW][WB] renderWorldbookList start →', containerSelector);
     const list = $(containerSelector);
     list.empty();
     const entries = getWorldbookEntriesFromTavernHelper();
+    console.log('[SW][WB] renderWorldbookList entries count =', entries ? entries.length : 'null');
     if (!entries || entries.length === 0) {
       list.append('<div style="color:#666">未获取到世界书条目。</div>');
       return;
@@ -3730,7 +3793,9 @@ function renderWorldbookList(containerSelector) {
       `);
       list.append(item);
     });
+    console.log('[SW][WB] renderWorldbookList done');
   } catch (err) {
+    console.error('[SW][WB] renderWorldbookList error', err);
     $(containerSelector).append('<div style="color:#c00">世界书渲染失败。</div>');
   }
 }
