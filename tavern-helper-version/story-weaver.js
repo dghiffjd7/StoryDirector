@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器1</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -735,8 +735,7 @@ function buildSimpleInterface(settings) {
         // Get enabled prompts in order
         const enabledPrompts = storyWeaverPromptOrder
           .map(identifier => storyWeaverPrompts.get(identifier))
-          .filter(prompt => prompt && prompt.enabled !== false)
-          .sort((a, b) => a.injection_order - b.injection_order);
+          .filter(prompt => prompt && prompt.enabled !== false);
 
         // Process each prompt
         enabledPrompts.forEach(prompt => {
@@ -1252,8 +1251,7 @@ function buildCompleteInterface(settings) {
       // Get enabled prompts in order
       const enabledPrompts = storyWeaverPromptOrder
         .map(identifier => storyWeaverPrompts.get(identifier))
-        .filter(prompt => prompt && prompt.enabled !== false)
-        .sort((a, b) => a.injection_order - b.injection_order);
+    .filter(prompt => prompt && prompt.enabled !== false);
 
       // Process each prompt
       enabledPrompts.forEach(prompt => {
@@ -1863,7 +1861,7 @@ function openPromptManagerTH() {
 }
 
 function buildPromptManagerContent() {
-  const prompts = Array.from(storyWeaverPrompts.values()).sort((a, b) => a.injection_order - b.injection_order);
+  const prompts = storyWeaverPromptOrder.map(id => storyWeaverPrompts.get(id)).filter(Boolean);
 
   return `
     <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
@@ -3309,8 +3307,7 @@ function buildPromptForPreview(settings) {
   // Get enabled prompts in order
   const enabledPrompts = storyWeaverPromptOrder
     .map(identifier => storyWeaverPrompts.get(identifier))
-    .filter(prompt => prompt && prompt.enabled !== false)
-    .sort((a, b) => a.injection_order - b.injection_order);
+    .filter(prompt => prompt && prompt.enabled !== false);
 
   // Process each prompt and collect them
   enabledPrompts.forEach((prompt, index) => {
@@ -3602,6 +3599,16 @@ function setupSettingsMenu() {
         ">
           📝 提示词管理器
         </a>
+        <a href="#" id="sw-menu-worldbook" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          border-bottom: 1px solid #eee;
+          transition: background 0.2s;
+        ">
+          📚 世界书管理
+        </a>
         <a href="#" id="sw-menu-settings" style="
           display: block;
           padding: 12px 16px;
@@ -3657,6 +3664,13 @@ function setupSettingsMenu() {
     openPromptManager();
   });
 
+  $('#sw-menu-worldbook').click(function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#sw-settings-dropdown').hide();
+    openWorldbookManager();
+  });
+
   $('#sw-menu-settings').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown').hide();
@@ -3702,6 +3716,16 @@ function setupSettingsMenuTH() {
         ">
           📝 提示词管理器
         </a>
+        <a href="#" id="sw-menu-worldbook-th" style="
+          display: block;
+          padding: 12px 16px;
+          text-decoration: none;
+          color: #333;
+          border-bottom: 1px solid #eee;
+          transition: background 0.2s;
+        ">
+          📚 世界书管理
+        </a>
         <a href="#" id="sw-menu-settings-th" style="
           display: block;
           padding: 12px 16px;
@@ -3745,6 +3769,12 @@ function setupSettingsMenuTH() {
     openPromptManagerTH();
   });
 
+  $('#sw-menu-worldbook-th').click(function (e) {
+    e.preventDefault();
+    $('#sw-settings-dropdown-th').hide();
+    openWorldbookManagerTH();
+  });
+
   $('#sw-menu-settings-th').click(function (e) {
     e.preventDefault();
     $('#sw-settings-dropdown-th').hide();
@@ -3760,6 +3790,74 @@ function setupSettingsMenuTH() {
   $(document).click(function () {
     $('#sw-settings-dropdown-th').hide();
   });
+}
+
+function openWorldbookManager() {
+  $('#sw-worldbook-panel').remove();
+  const panel = $(`
+    <div id="sw-worldbook-panel" class="sw-draggable-panel" style="
+      position: fixed; top: 100px; right: 20px; width: 520px; max-height: 80vh;
+      background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      z-index: 10005; display: flex; flex-direction: column; overflow: hidden;">
+      <div class="sw-panel-header" style="
+        background: linear-gradient(135deg, #667eea, #764ba2); color: white;
+        padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+        cursor: move; user-select: none;">
+        <span>📚 世界书管理</span>
+        <button id="sw-worldbook-close" class="sw-themed-close-btn" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 6px; cursor: pointer;">✕</button>
+      </div>
+      <div class="sw-panel-body" style="padding: 12px; overflow: auto;">
+        <div id="sw-worldbook-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;"></div>
+      </div>
+    </div>
+  `);
+  $('body').append(panel);
+  makeElementDraggable('#sw-worldbook-panel', '.sw-panel-header');
+  $('#sw-worldbook-close').on('click', function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $('#sw-worldbook-panel').remove();
+  });
+  renderWorldbookList('#sw-worldbook-list');
+}
+
+function openWorldbookManagerTH() {
+  openWorldbookManager();
+}
+
+function renderWorldbookList(containerSelector) {
+  try {
+    const list = $(containerSelector);
+    list.empty();
+    const entries =
+      (window.TavernHelper && window.TavernHelper.getWorldbookEntries && window.TavernHelper.getWorldbookEntries()) ||
+      [];
+    if (!entries || entries.length === 0) {
+      list.append('<div style="color:#666">未获取到世界书条目。</div>');
+      return;
+    }
+    entries.forEach((entry, idx) => {
+      const key = entry.key || (entry.keys && entry.keys[0]) || '';
+      const content = entry.content || entry.description || '';
+      const item = $(`
+        <div style="border:1px solid #eee; border-radius:8px; overflow:hidden;">
+          <div style="background:#f8f9fa; padding:8px 10px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+            <span>${$('<div/>').text(key).html()}</span>
+            <span style="color:#999; font-size:12px;">#${idx + 1}</span>
+          </div>
+          <div style="padding:10px; font-family:'Courier New', monospace; white-space:pre-wrap; font-size:13px;">${$(
+            '<div/>',
+          )
+            .text(content)
+            .html()}</div>
+        </div>
+      `);
+      list.append(item);
+    });
+  } catch (err) {
+    console.error('[SW] Render worldbook failed:', err);
+    $(containerSelector).append('<div style="color:#c00">世界书渲染失败。</div>');
+  }
 }
 
 function showAboutDialog() {
