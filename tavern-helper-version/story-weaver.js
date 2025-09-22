@@ -588,24 +588,24 @@ function buildSimpleInterface(settings) {
       <div id="sw-output-section" style="display: none;">
         <label style="display: block; margin-bottom: 5px; font-weight: 600;">生成结果：</label>
         <pre id="sw-output-content" style="
-          background: #f8f9fa;
-          border: 1px solid #e9ecef;
+        background: #f8f9fa;
+        border: 1px solid #e9ecef;
           border-radius: 8px;
           padding: 12px;
           min-height: 120px;
-          white-space: pre-wrap;
+        white-space: pre-wrap;
           font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
         "></pre>
-        
-        <div id="sw-output-controls" style="display: none; margin-top: 10px; text-align: center;">
-          <button onclick="copyNativeResult()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">📋 复制</button>
-          <button onclick="saveNativeResult()" style="padding: 8px 15px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">💾 保存</button>
-        </div>
-      </div>
       
-      <script>
-        window.swNativeResult = window.swNativeResult || '';
-        
+      <div id="sw-output-controls" style="display: none; margin-top: 10px; text-align: center;">
+        <button onclick="copyNativeResult()" style="padding: 8px 15px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 10px;">📋 复制</button>
+        <button onclick="saveNativeResult()" style="padding: 8px 15px; background: #17a2b8; color: white; border: none; border-radius: 5px; cursor: pointer;">💾 保存</button>
+      </div>
+    </div>
+    
+    <script>
+      window.swNativeResult = window.swNativeResult || '';
+      
         function collectNativeSettingsForPreview() {
           return {
             storyTheme: document.getElementById('sw-theme').value,
@@ -630,33 +630,33 @@ function buildSimpleInterface(settings) {
             console.error('[SW] Preview failed:', err);
             alert('预览失败: ' + err.message);
           }
+      }
+      
+      function copyNativeResult() {
+        if (window.swNativeResult) {
+          navigator.clipboard.writeText(window.swNativeResult).then(() => {
+            alert('结果已复制到剪贴板！');
+          }).catch(() => {
+            alert('复制失败，请手动选择文本复制');
+          });
         }
-
-        function copyNativeResult() {
-          if (window.swNativeResult) {
-            navigator.clipboard.writeText(window.swNativeResult).then(() => {
-              alert('结果已复制到剪贴板！');
-            }).catch(() => {
-              alert('复制失败，请手动选择文本复制');
-            });
-          }
-        }
-        
-        function saveNativeResult() {
-          if (window.swNativeResult) {
-            const blob = new Blob([window.swNativeResult], { type: 'text/plain;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
+      }
+      
+      function saveNativeResult() {
+        if (window.swNativeResult) {
+          const blob = new Blob([window.swNativeResult], { type: 'text/plain;charset=utf-8' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
             a.download = 'story-outline-' + Date.now() + '.txt';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            alert('文件已保存！');
-          }
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+          alert('文件已保存！');
         }
-      </script>
+      }
+    </script>
     </div>
   `;
 }
