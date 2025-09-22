@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器3/span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器3</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -2966,8 +2966,30 @@ function processImportData(data) {
 
     // Strictly extract ordering and enabled states from prompt_order/promptOrder
     if (Array.isArray(data.prompt_order) || Array.isArray(data.promptOrder)) {
+      // Helper to detect current character id
+      function getCurrentCharacterIdSafe() {
+        try {
+          const ch =
+            window.TavernHelper && window.TavernHelper.getCharacterData && window.TavernHelper.getCharacterData();
+          const cands = [
+            ch && ch.character_id,
+            ch && ch.id,
+            ch && ch.charId,
+            ch && ch.avatar_id,
+            ch && ch.avatar && ch.avatar.id,
+          ];
+          for (const v of cands) {
+            if (typeof v === 'number' && isFinite(v)) return Number(v);
+            if (typeof v === 'string' && v.trim()) {
+              const n = Number(v);
+              if (!isNaN(n)) return n;
+            }
+          }
+        } catch (e) {}
+        return null;
+      }
       const promptOrderArray = Array.isArray(data.prompt_order) ? data.prompt_order : data.promptOrder;
-      // Always pick the group with the largest order length to ensure最大覆盖
+      // Select the group with the largest order length (maximum coverage)
       let entry = null;
       let maxLen = -1;
       promptOrderArray.forEach(po => {
@@ -3201,7 +3223,7 @@ function performImport(prompts, order, mode) {
 
     orderItems.forEach((ord, index) => {
       const base = byId.get(ord.identifier);
-      if (!base) return; // skip unknown id (not present in prompts)
+      if (!base) return; // skip unknown id
       let promptData = { ...base };
 
       // Apply enabled state exactly from order
@@ -3213,7 +3235,7 @@ function performImport(prompts, order, mode) {
         promptData.injection_order = index + 1;
       }
 
-      // Overwrite existing entries by same identifier (both modes) to keep mapping consistent
+      // In merge mode, overwrite existing entries by same identifier
       storyWeaverPrompts.set(promptData.identifier, promptData);
       storyWeaverPromptOrder.push(promptData.identifier);
       importedIds.push(promptData.identifier);
@@ -3807,23 +3829,20 @@ function openWorldbookManagerTH() {
   openWorldbookManager();
 }
 
-function renderWorldbookList(containerSelector) {
+async function renderWorldbookList(containerSelector) {
   try {
     const list = $(containerSelector);
     list.empty();
-    // Use index.js approach: extract from SillyTavern DOM/state if available
-    const entries = getWorldInfoData();
-    if (!entries || entries.length === 0) {
+    const sections = await getWorldInfoSectionsFromTop();
+    if (!sections || sections.length === 0) {
       list.append('<div style="color:#666">未获取到世界书条目。</div>');
       return;
     }
-    entries.forEach((entry, idx) => {
-      const key = entry.key || (entry.keys && entry.keys[0]) || '';
-      const content = entry.content || entry.description || '';
+    sections.forEach((content, idx) => {
       const item = $(`
         <div style="border:1px solid #eee; border-radius:8px; overflow:hidden;">
           <div style="background:#f8f9fa; padding:8px 10px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
-            <span>${$('<div/>').text(key).html()}</span>
+            <span>条目</span>
             <span style="color:#999; font-size:12px;">#${idx + 1}</span>
           </div>
           <div style="padding:10px; font-family:'Courier New', monospace; white-space:pre-wrap; font-size:13px;">${$(
@@ -3841,24 +3860,47 @@ function renderWorldbookList(containerSelector) {
   }
 }
 
-// Extract world info entries similar to index.js
-function getWorldInfoData() {
+async function getWorldInfoSectionsFromTop() {
   try {
-    if (typeof window.TavernHelper !== 'undefined' && typeof window.TavernHelper.getWorldbookEntries === 'function') {
-      const arr = window.TavernHelper.getWorldbookEntries();
-      if (Array.isArray(arr)) return arr;
+    const win = window.top || window;
+    if (typeof win.getWorldInfoPrompt !== 'function' || typeof win.getContext !== 'function') {
+      return [];
     }
-  } catch (e) {}
-  // Fallback to SillyTavern environments: try common globals/DOM
-  try {
-    if (typeof window.world_info !== 'undefined' && Array.isArray(window.world_info)) {
-      return window.world_info.map(w => ({
-        key: w.key || (w.keys && w.keys[0]) || '',
-        content: w.content || w.entry || '',
-      }));
+    const context = win.getContext();
+    const chat = Array.isArray(context && context.chat) ? context.chat : [];
+    const formatted = chat
+      .map(m => {
+        if (typeof m === 'string') return m;
+        if (m && typeof m === 'object') return m.mes || m.content || m.message || JSON.stringify(m);
+        return String(m ?? '');
+      })
+      .filter(s => typeof s === 'string' && s.trim());
+    const maxContext = 131072;
+    const res = await win.getWorldInfoPrompt(formatted, maxContext, true);
+    if (!res) return [];
+    const out = [];
+    if (res.worldInfoString && String(res.worldInfoString).trim()) out.push(String(res.worldInfoString));
+    if (res.worldInfoBefore && String(res.worldInfoBefore).trim()) out.push(String(res.worldInfoBefore));
+    if (res.worldInfoAfter && String(res.worldInfoAfter).trim()) out.push(String(res.worldInfoAfter));
+    if (Array.isArray(res.worldInfoDepth)) {
+      res.worldInfoDepth.forEach(d => {
+        if (Array.isArray(d.entries)) {
+          const s = d.entries.join('\n\n').trim();
+          if (s) out.push(s);
+        }
+      });
     }
-  } catch (e) {}
-  return [];
+    if (Array.isArray(res.worldInfoExamples)) {
+      res.worldInfoExamples.forEach(e => {
+        const s = (e && (e.content || e.entry || e.text)) || '';
+        if (s && String(s).trim()) out.push(String(s));
+      });
+    }
+    return out;
+  } catch (e) {
+    console.error('[SW] getWorldInfoSectionsFromTop failed:', e);
+    return [];
+  }
 }
 
 function showAboutDialog() {
