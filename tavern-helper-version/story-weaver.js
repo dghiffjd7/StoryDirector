@@ -3786,40 +3786,6 @@ function buildWorldInfoText() {
 }
 
 /* removed: legacy synchronous renderWorldbookList (use async version below) */
-  try {
-    console.log('[SW][WB] renderWorldbookList start →', containerSelector);
-    const list = $(containerSelector);
-    list.empty();
-    const entries = getWorldbookEntriesFromTavernHelper();
-    console.log('[SW][WB] renderWorldbookList entries count =', entries ? entries.length : 'null');
-    if (!entries || entries.length === 0) {
-      list.append('<div style="color:#666">未获取到世界书条目。</div>');
-      return;
-    }
-    entries.forEach((entry, idx) => {
-      const key = entry.key || '';
-      const content = entry.content || '';
-      const item = $(`
-        <div style="border:1px solid #eee; border-radius:8px; overflow:hidden;">
-          <div style="background:#f8f9fa; padding:8px 10px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
-            <span>${$('<div/>').text(key).html()}</span>
-            <span style="color:#999; font-size:12px;">#${idx + 1}</span>
-          </div>
-          <div style="padding:10px; font-family:'Courier New', monospace; white-space:pre-wrap; font-size:13px;">${$(
-            '<div/>',
-          )
-            .text(content)
-            .html()}</div>
-        </div>
-      `);
-      list.append(item);
-    });
-    console.log('[SW][WB] renderWorldbookList done');
-  } catch (err) {
-    console.error('[SW][WB] renderWorldbookList error', err);
-    $(containerSelector).append('<div style="color:#c00">世界书渲染失败。</div>');
-  }
-}
 
 function showAboutDialog() {
   alert('Story Weaver Enhanced v2.0\n\n一个强大的AI故事大纲生成器\n支持多种故事类型和风格\n\n作者：Story Weaver Team');
