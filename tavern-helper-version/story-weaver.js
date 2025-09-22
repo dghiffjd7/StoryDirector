@@ -3785,7 +3785,7 @@ function buildWorldInfoText() {
   return text;
 }
 
-function renderWorldbookList(containerSelector) {
+/* removed: legacy synchronous renderWorldbookList (use async version below) */
   try {
     console.log('[SW][WB] renderWorldbookList start →', containerSelector);
     const list = $(containerSelector);
