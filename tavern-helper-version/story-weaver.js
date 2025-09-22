@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器6</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3879,8 +3879,10 @@ async function getWorldInfoSectionsFromTop() {
       typeof (win && win.getContext),
     );
     if (typeof win.getWorldInfoPrompt !== 'function' || typeof win.getContext !== 'function') {
-      console.warn('[SW][WB] top window world info APIs not available');
-      return [];
+      console.warn('[SW][WB] top window world info APIs not available, trying bridge');
+      const bridged = await fetchWorldInfoViaTopBridge();
+      console.log('[SW][WB] bridge result count =', Array.isArray(bridged) ? bridged.length : 'n/a');
+      return bridged || [];
     }
     const context = win.getContext();
     const chat = Array.isArray(context && context.chat) ? context.chat : [];
@@ -3920,6 +3922,87 @@ async function getWorldInfoSectionsFromTop() {
     console.error('[SW][WB] getWorldInfoSectionsFromTop failed:', e);
     return [];
   }
+}
+
+// Inject a small bridge into the top window to respond with worldbook content via postMessage
+function ensureTopWorldbookBridge() {
+  try {
+    const win = window.top || window;
+    if (!win || win.__SW_WB_BRIDGE_INSTALLED__) return true;
+    const script = win.document && win.document.createElement ? win.document.createElement('script') : null;
+    if (!script) return false;
+    script.type = 'text/javascript';
+    script.text = `(() => {
+      if (window.__SW_WB_BRIDGE_INSTALLED__) return;
+      window.__SW_WB_BRIDGE_INSTALLED__ = true;
+      window.addEventListener('message', async (ev) => {
+        const data = ev && ev.data;
+        if (!data || data.type !== 'SW_REQUEST_WORLDINFO') return;
+        const token = data.token;
+        const reply = (payload) => {
+          try { ev && ev.source && ev.source.postMessage({ type: 'SW_RESPONSE_WORLDINFO', token, ...payload }, '*'); } catch (_) {}
+        };
+        try {
+          const out = [];
+          if (typeof getWorldInfoPrompt === 'function' && typeof getContext === 'function') {
+            const ctx = getContext();
+            const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
+            const formatted = chat.map(m => (typeof m === 'string' ? m : (m && (m.mes || m.content || m.message)) || JSON.stringify(m))).filter(Boolean);
+            const res = await getWorldInfoPrompt(formatted, 131072, true);
+            if (res) {
+              if (res.worldInfoString && String(res.worldInfoString).trim()) out.push(String(res.worldInfoString));
+              if (res.worldInfoBefore && String(res.worldInfoBefore).trim()) out.push(String(res.worldInfoBefore));
+              if (res.worldInfoAfter && String(res.worldInfoAfter).trim()) out.push(String(res.worldInfoAfter));
+              if (Array.isArray(res.worldInfoDepth)) {
+                res.worldInfoDepth.forEach(d => { if (Array.isArray(d.entries)) { const s = d.entries.join('\n\n').trim(); if (s) out.push(s); } });
+              }
+              if (Array.isArray(res.worldInfoExamples)) {
+                res.worldInfoExamples.forEach(e => { const s = (e && (e.content || e.entry || e.text)) || ''; if (s && String(s).trim()) out.push(String(s)); });
+              }
+            }
+          } else if (Array.isArray(window.world_info)) {
+            window.world_info.forEach(w => { const s = (w && (w.content || w.entry || w.description)) || ''; if (s && String(s).trim()) out.push(String(s)); });
+          }
+          reply({ sections: out });
+        } catch (err) {
+          reply({ error: String(err && err.message) });
+        }
+      }, false);
+    })();`;
+    win.document.head.appendChild(script);
+    return true;
+  } catch (e) {
+    console.error('[SW][WB] ensureTopWorldbookBridge failed:', e);
+    return false;
+  }
+}
+
+function fetchWorldInfoViaTopBridge() {
+  return new Promise(resolve => {
+    try {
+      const ok = ensureTopWorldbookBridge();
+      if (!ok) return resolve([]);
+      const token = 'sw_wb_' + Math.random().toString(36).slice(2);
+      const onMsg = ev => {
+        const data = ev && ev.data;
+        if (!data || data.type !== 'SW_RESPONSE_WORLDINFO' || data.token !== token) return;
+        window.removeEventListener('message', onMsg, false);
+        if (data && Array.isArray(data.sections)) return resolve(data.sections);
+        return resolve([]);
+      };
+      window.addEventListener('message', onMsg, false);
+      (window.top || window).postMessage({ type: 'SW_REQUEST_WORLDINFO', token }, '*');
+      setTimeout(() => {
+        try {
+          window.removeEventListener('message', onMsg, false);
+        } catch (_) {}
+        resolve([]);
+      }, 4000);
+    } catch (e) {
+      console.error('[SW][WB] fetchWorldInfoViaTopBridge failed:', e);
+      resolve([]);
+    }
+  });
 }
 
 // ===== Worldbook debug: try multiple strategies and report which works =====
