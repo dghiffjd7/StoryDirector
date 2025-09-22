@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器9</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器1</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -728,6 +728,7 @@ function buildSimpleInterface(settings) {
       function buildPromptForNative(settings) {
         // Build context data first
         const contextData = buildStoryContextForNative(settings);
+        const worldInfoText = (typeof buildWorldInfoText === 'function' && buildWorldInfoText()) || '';
 
         // Build final prompt from enabled prompts using prompt manager
         let finalPrompt = '';
@@ -743,14 +744,17 @@ function buildSimpleInterface(settings) {
 
           // Replace placeholders
           processedContent = processedContent.replace(/\{\{STORY_CONTEXT\}\}/g, contextData);
+          if (worldInfoText) {
+            processedContent = processedContent.replace(/\{\{WORLD_INFO\}\}/g, worldInfoText);
+          }
 
           // Add role prefix for non-system prompts
           if (prompt.role === 'user') {
-            finalPrompt += processedContent + '\\n\\n';
+            finalPrompt += processedContent + '\n\n';
           } else if (prompt.role === 'system') {
-            finalPrompt = processedContent + '\\n\\n' + finalPrompt;
+            finalPrompt = processedContent + '\n\n' + finalPrompt;
           } else if (prompt.role === 'assistant') {
-            finalPrompt += '[Assistant]: ' + processedContent + '\\n\\n';
+            finalPrompt += '[Assistant]: ' + processedContent + '\n\n';
           }
         });
 
@@ -3303,6 +3307,7 @@ function previewFinalPrompt() {
 function buildPromptForPreview(settings) {
   // Build context data first (reuse existing function)
   const contextData = buildStoryContextForNative(settings);
+  const worldInfoText = (typeof buildWorldInfoText === 'function' && buildWorldInfoText()) || '';
 
   // Build final prompt from enabled prompts using prompt manager
   let finalPrompt = '';
@@ -3322,6 +3327,9 @@ function buildPromptForPreview(settings) {
 
     // Replace placeholders
     processedContent = processedContent.replace(/\{\{STORY_CONTEXT\}\}/g, contextData);
+    if (worldInfoText) {
+      processedContent = processedContent.replace(/\{\{WORLD_INFO\}\}/g, worldInfoText);
+    }
 
     promptSections.push({
       name: prompt && prompt.name ? prompt.name : `未命名提示词 ${index + 1}`,
@@ -3839,6 +3847,8 @@ function getWorldbookEntriesFromStorage() {
       const arr = JSON.parse(primary);
       if (Array.isArray(arr)) {
         arr.forEach(e => {
+          const isEnabled = e && e.enabled !== false && e.disabled !== true;
+          if (!isEnabled) return;
           const key = e && (e.key || (e.keys && e.keys[0]));
           const content = e && (e.content || e.entry || e.description || e.text);
           if ((key || content) && typeof (content || '') === 'string') {
@@ -3851,6 +3861,12 @@ function getWorldbookEntriesFromStorage() {
   } catch (e) {}
   // If primary key missing or malformed, treat as empty by design (no alternative method)
   return out;
+}
+
+function buildWorldInfoText() {
+  const entries = getWorldbookEntriesFromStorage();
+  if (!entries.length) return '';
+  return entries.map(e => (e.key ? `${e.key}: ${e.content}` : e.content)).join('\n\n');
 }
 
 async function renderWorldbookList(containerSelector) {
