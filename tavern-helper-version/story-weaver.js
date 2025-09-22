@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器1</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -571,6 +571,19 @@ function buildSimpleInterface(settings) {
         }</textarea>
       </div>
       
+      <button id="sw-preview-btn" onclick="handleNativePreview()" style="
+        width: 100%;
+        padding: 10px;
+        background: #f1f5ff;
+        color: #4353b3;
+        border: 1px solid #dbe3ff;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: 600;
+        margin-bottom: 12px;
+        transition: transform .05s ease;
+      " onmousedown="this.style.transform='scale(0.98)'" onmouseup="this.style.transform='none'" onmouseleave="this.style.transform='none'">👁️ 预览完整提示词</button>
+
       <div style="margin-bottom: 20px;">
         <label style="display: block; margin-bottom: 8px; font-weight: 600;">包含选项：</label>
         <div style="display: flex; gap: 20px;">
@@ -624,6 +637,31 @@ function buildSimpleInterface(settings) {
     
     <script>
       window.swNativeResult = window.swNativeResult || '';
+      
+      function collectNativeSettingsForPreview() {
+        return {
+          storyTheme: document.getElementById('sw-theme').value,
+          storyType: document.getElementById('sw-type').value,
+          storyStyle: document.getElementById('sw-style').value,
+          chapterCount: Number(document.getElementById('sw-chapters').value) || 5,
+          detailLevel: document.getElementById('sw-detail').value,
+          specialRequirements: document.getElementById('sw-requirements').value,
+          includeSummary: document.getElementById('sw-summary').checked,
+          includeCharacters: document.getElementById('sw-characters').checked,
+          includeThemes: document.getElementById('sw-themes').checked
+        };
+      }
+
+      function handleNativePreview() {
+        try {
+          const settings = collectNativeSettingsForPreview();
+          const previewData = buildPromptForPreview(settings);
+          showPromptPreviewDialog(previewData, settings);
+        } catch (err) {
+          console.error('[SW] Native preview failed:', err);
+          alert('预览失败：' + err.message);
+        }
+      }
       
       async function handleNativeGenerate() {
         const btn = document.getElementById('sw-generate-btn');
