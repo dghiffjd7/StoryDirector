@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器1</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3837,43 +3837,50 @@ function openWorldbookManagerTH() {
   openWorldbookManager();
 }
 
-// Single method: read worldbook data from localStorage
-function getWorldbookEntriesFromStorage() {
-  const out = [];
+// Worldbook retrieval — single method via TavernHelper only
+function getWorldbookEntriesFromTavernHelper() {
   try {
-    // Primary expected key
-    const primary = localStorage.getItem('world_info');
-    if (primary) {
-      const arr = JSON.parse(primary);
-      if (Array.isArray(arr)) {
-        arr.forEach(e => {
-          const isEnabled = e && e.enabled !== false && e.disabled !== true;
-          if (!isEnabled) return;
-          const key = e && (e.key || (e.keys && e.keys[0]));
-          const content = e && (e.content || e.entry || e.description || e.text);
-          if ((key || content) && typeof (content || '') === 'string') {
-            out.push({ key: key || '', content: content || '' });
-          }
-        });
-        return out;
-      }
-    }
-  } catch (e) {}
-  // If primary key missing or malformed, treat as empty by design (no alternative method)
-  return out;
+    if (typeof window.TavernHelper === 'undefined') return [];
+    if (typeof window.TavernHelper.getCharWorldbookNames !== 'function') return [];
+
+    const names = window.TavernHelper.getCharWorldbookNames('current') || [];
+    if (!Array.isArray(names) || names.length === 0) return [];
+
+    const collected = [];
+    names.forEach(name => {
+      if (!name) return;
+      if (typeof window.TavernHelper.getLorebookEntries !== 'function') return;
+      const entries = window.TavernHelper.getLorebookEntries(name) || [];
+      if (!Array.isArray(entries) || entries.length === 0) return;
+
+      entries.forEach(e => {
+        const isEnabled = e && e.enabled !== false && e.disabled !== true;
+        if (!isEnabled) return;
+        const key = e && (e.key || (e.keys && e.keys[0]) || e.name || e.title || '');
+        const content = e && (e.content || e.entry || e.description || e.text || '');
+        if ((key || content) && typeof (content || '') === 'string') {
+          collected.push({ key: key || '', content: content || '' });
+        }
+      });
+    });
+
+    return collected;
+  } catch (err) {
+    return [];
+  }
 }
 
 function buildWorldInfoText() {
-  const entries = getWorldbookEntriesFromStorage();
+  const entries = getWorldbookEntriesFromTavernHelper();
   if (!entries.length) return '';
   return entries.map(e => (e.key ? `${e.key}: ${e.content}` : e.content)).join('\n\n');
 }
 
-async function renderWorldbookList(containerSelector) {
+function renderWorldbookList(containerSelector) {
   try {
     const list = $(containerSelector);
     list.empty();
-    const entries = getWorldbookEntriesFromStorage();
+    const entries = getWorldbookEntriesFromTavernHelper();
     if (!entries || entries.length === 0) {
       list.append('<div style="color:#666">未获取到世界书条目。</div>');
       return;
