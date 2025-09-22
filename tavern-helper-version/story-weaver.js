@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器4</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3822,6 +3822,7 @@ function openWorldbookManager() {
     e.stopPropagation();
     $('#sw-worldbook-panel').remove();
   });
+  console.log('[SW][WB] opening worldbook manager, start render');
   renderWorldbookList('#sw-worldbook-list');
 }
 
@@ -3833,7 +3834,12 @@ async function renderWorldbookList(containerSelector) {
   try {
     const list = $(containerSelector);
     list.empty();
+    console.log('[SW][WB] renderWorldbookList: fetching sections via top.getWorldInfoPrompt...');
     const sections = await getWorldInfoSectionsFromTop();
+    console.log(
+      '[SW][WB] renderWorldbookList: fetched sections count =',
+      Array.isArray(sections) ? sections.length : 'n/a',
+    );
     if (!sections || sections.length === 0) {
       list.append('<div style="color:#666">未获取到世界书条目。</div>');
       return;
@@ -3855,7 +3861,7 @@ async function renderWorldbookList(containerSelector) {
       list.append(item);
     });
   } catch (err) {
-    console.error('[SW] Render worldbook failed:', err);
+    console.error('[SW][WB] Render worldbook failed:', err);
     $(containerSelector).append('<div style="color:#c00">世界书渲染失败。</div>');
   }
 }
@@ -3863,11 +3869,22 @@ async function renderWorldbookList(containerSelector) {
 async function getWorldInfoSectionsFromTop() {
   try {
     const win = window.top || window;
+    const hasTop = !!win && win !== window;
+    console.log(
+      '[SW][WB] getWorldInfoSectionsFromTop: topDifferent=',
+      hasTop,
+      'typeof getWorldInfoPrompt=',
+      typeof (win && win.getWorldInfoPrompt),
+      'typeof getContext=',
+      typeof (win && win.getContext),
+    );
     if (typeof win.getWorldInfoPrompt !== 'function' || typeof win.getContext !== 'function') {
+      console.warn('[SW][WB] top window world info APIs not available');
       return [];
     }
     const context = win.getContext();
     const chat = Array.isArray(context && context.chat) ? context.chat : [];
+    console.log('[SW][WB] getWorldInfoSectionsFromTop: chat length =', chat.length);
     const formatted = chat
       .map(m => {
         if (typeof m === 'string') return m;
@@ -3877,6 +3894,7 @@ async function getWorldInfoSectionsFromTop() {
       .filter(s => typeof s === 'string' && s.trim());
     const maxContext = 131072;
     const res = await win.getWorldInfoPrompt(formatted, maxContext, true);
+    console.log('[SW][WB] getWorldInfoSectionsFromTop: result keys =', res ? Object.keys(res) : null);
     if (!res) return [];
     const out = [];
     if (res.worldInfoString && String(res.worldInfoString).trim()) out.push(String(res.worldInfoString));
@@ -3896,11 +3914,79 @@ async function getWorldInfoSectionsFromTop() {
         if (s && String(s).trim()) out.push(String(s));
       });
     }
+    console.log('[SW][WB] getWorldInfoSectionsFromTop: out count =', out.length);
     return out;
   } catch (e) {
-    console.error('[SW] getWorldInfoSectionsFromTop failed:', e);
+    console.error('[SW][WB] getWorldInfoSectionsFromTop failed:', e);
     return [];
   }
+}
+
+// ===== Worldbook debug: try multiple strategies and report which works =====
+async function testWorldbookFetch() {
+  const report = [];
+  const push = (name, ok, extra) => {
+    report.push({ method: name, ok, ...extra });
+    console.log(`[SW][WB][TEST] ${name}:`, ok ? 'OK' : 'FAIL', extra || '');
+  };
+
+  // Strategy 1: top.getWorldInfoPrompt + getContext
+  try {
+    const data = await getWorldInfoSectionsFromTop();
+    push('top.getWorldInfoPrompt', Array.isArray(data) && data.length > 0, { count: data && data.length });
+  } catch (e) {
+    push('top.getWorldInfoPrompt', false, { error: String(e && e.message) });
+  }
+
+  // Strategy 2: current window getWorldInfoPrompt (if present)
+  try {
+    if (typeof window.getWorldInfoPrompt === 'function' && typeof window.getContext === 'function') {
+      const ctx = window.getContext();
+      const chat = Array.isArray(ctx && ctx.chat) ? ctx.chat : [];
+      const formatted = chat
+        .map(m => (typeof m === 'string' ? m : m?.mes || m?.content || m?.message || JSON.stringify(m)))
+        .filter(Boolean);
+      const res = await window.getWorldInfoPrompt(formatted, 131072, true);
+      const ok = !!res && (res.worldInfoString || res.worldInfoBefore || res.worldInfoAfter);
+      push('self.getWorldInfoPrompt', !!ok, { keys: res ? Object.keys(res) : null });
+    } else {
+      push('self.getWorldInfoPrompt', false, { reason: 'APIs not present' });
+    }
+  } catch (e) {
+    push('self.getWorldInfoPrompt', false, { error: String(e && e.message) });
+  }
+
+  // Strategy 3: TavernHelper.getWorldbookEntries
+  try {
+    if (window.TavernHelper && typeof window.TavernHelper.getWorldbookEntries === 'function') {
+      const arr = window.TavernHelper.getWorldbookEntries();
+      push('TavernHelper.getWorldbookEntries', Array.isArray(arr) && arr.length > 0, { count: arr && arr.length });
+    } else {
+      push('TavernHelper.getWorldbookEntries', false, { reason: 'function not present' });
+    }
+  } catch (e) {
+    push('TavernHelper.getWorldbookEntries', false, { error: String(e && e.message) });
+  }
+
+  // Strategy 4: global world_info
+  try {
+    if (Array.isArray(window.world_info)) {
+      push('window.world_info', window.world_info.length > 0, { count: window.world_info.length });
+    } else {
+      push('window.world_info', false, { type: typeof window.world_info });
+    }
+  } catch (e) {
+    push('window.world_info', false, { error: String(e && e.message) });
+  }
+
+  console.log('[SW][WB][TEST] summary:', report);
+  try {
+    alert(
+      '世界书获取测试完成\n\n' +
+        report.map(r => `${r.method}: ${r.ok ? 'OK' : 'FAIL'}${r.count ? ` (count=${r.count})` : ''}`).join('\n'),
+    );
+  } catch (_) {}
+  return report;
 }
 
 function showAboutDialog() {
@@ -4062,6 +4148,7 @@ window.StoryWeaver = {
   loadSettings,
   saveSettings,
   showNotification,
+  testWorldbookFetch,
 };
 
 // Try to expose to top window if possible
