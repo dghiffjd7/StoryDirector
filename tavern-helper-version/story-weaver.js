@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器7</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器8</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3977,9 +3977,50 @@ function ensureTopWorldbookBridge() {
   }
 }
 
+function installTopResponderViaEval() {
+  try {
+    const win = window.top || window;
+    if (!win) return false;
+    if (win.__SW_WB_TOP_RESPONDER__) return true;
+    const code =
+      'try{\n' +
+      'if(!window.__SW_WB_TOP_RESPONDER__){\n' +
+      'window.__SW_WB_TOP_RESPONDER__=true;\n' +
+      'window.addEventListener("message",async function(ev){\n' +
+      ' var d=ev&&ev.data; if(!d||d.type!=="SW_REQUEST_WORLDINFO")return; var t=d.token;\n' +
+      ' function reply(p){ try{ ev&&ev.source&&ev.source.postMessage(Object.assign({type:"SW_RESPONSE_WORLDINFO",token:t},p),"*"); }catch(_){} }\n' +
+      ' try{ var out=[];\n' +
+      '  if(typeof getWorldInfoPrompt==="function" && typeof getContext==="function"){\n' +
+      '    var ctx=getContext(); var chat=Array.isArray(ctx&&ctx.chat)?ctx.chat:[];\n' +
+      '    var formatted=chat.map(function(m){ if(typeof m==="string")return m; return (m&&(m.mes||m.content||m.message))||JSON.stringify(m); }).filter(Boolean);\n' +
+      '    var res=await getWorldInfoPrompt(formatted,131072,true);\n' +
+      '    if(res){ if(res.worldInfoString&&String(res.worldInfoString).trim()) out.push(String(res.worldInfoString));\n' +
+      '      if(res.worldInfoBefore&&String(res.worldInfoBefore).trim()) out.push(String(res.worldInfoBefore));\n' +
+      '      if(res.worldInfoAfter&&String(res.worldInfoAfter).trim()) out.push(String(res.worldInfoAfter));\n' +
+      '      if(Array.isArray(res.worldInfoDepth)){ res.worldInfoDepth.forEach(function(x){ if(Array.isArray(x.entries)){ var s=x.entries.join("\\n\\n").trim(); if(s) out.push(s); } }); }\n' +
+      '      if(Array.isArray(res.worldInfoExamples)){ res.worldInfoExamples.forEach(function(e){ var s=(e&&(e.content||e.entry||e.text))||""; if(s&&String(s).trim()) out.push(String(s)); }); }\n' +
+      '    }\n' +
+      '  }else if(Array.isArray(window.world_info)){ window.world_info.forEach(function(w){ var s=(w&&(w.content||w.entry||w.description))||""; if(s&&String(s).trim()) out.push(String(s)); }); }\n' +
+      '  reply({sections:out});\n' +
+      ' }catch(err){ reply({error:String(err&&err.message),sections:[]}); }\n' +
+      '},false);\n' +
+      '}\n' +
+      '}catch(e){}';
+    if (typeof win.eval === 'function') {
+      win.eval(code);
+      return true;
+    }
+  } catch (e) {
+    console.error('[SW][WB][EVAL] installTopResponderViaEval failed:', e);
+    return false;
+  }
+  return false;
+}
+
 function fetchWorldInfoViaTopBridge() {
   return new Promise(resolve => {
     try {
+      installTopResponderViaEval();
       const token = 'sw_wb_' + Math.random().toString(36).slice(2);
       const started = Date.now();
       const onMsg = ev => {
