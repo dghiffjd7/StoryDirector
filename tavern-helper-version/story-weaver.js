@@ -2928,8 +2928,8 @@ function processImportData(data) {
       throw new Error('文件中没有找到有效的提示词');
     }
 
-    // Try to extract ordering and enabled states from prompt_order/promptOrder if not provided
-    if ((!order || order.length === 0) && (Array.isArray(data.prompt_order) || Array.isArray(data.promptOrder))) {
+    // Strictly extract ordering and enabled states from prompt_order/promptOrder
+    if (Array.isArray(data.prompt_order) || Array.isArray(data.promptOrder)) {
       // Helper to detect current character id
       function getCurrentCharacterIdSafe() {
         try {
@@ -2959,9 +2959,12 @@ function processImportData(data) {
         entry = promptOrderArray.find(po => Number(po && po.character_id) === Number(currentId));
       }
       if (!entry) entry = promptOrderArray[0];
-      if (entry && Array.isArray(entry.order)) {
-        order = entry.order; // array of {identifier, enabled}
+      if (!entry || !Array.isArray(entry.order) || entry.order.length === 0) {
+        throw new Error('缺少 prompt_order 对应条目或其 order 为空');
       }
+      order = entry.order; // array of {identifier, enabled}
+    } else {
+      throw new Error('缺少 prompt_order/promptOrder，无法确定顺序与启用状态');
     }
 
     // Show import confirmation dialog
@@ -3152,11 +3155,10 @@ function performImport(prompts, order, mode) {
       return normalized;
     }
 
-    // Normalize order info: allow strings or objects {identifier, enabled}
+    // Normalize order info: must be objects {identifier, enabled}
     const orderItems = Array.isArray(order)
       ? order
           .map(item => {
-            if (typeof item === 'string') return { identifier: item };
             if (item && typeof item === 'object') {
               const ident = item.identifier || item.id;
               if (typeof ident === 'string') return { identifier: ident, enabled: item.enabled };
@@ -3170,58 +3172,42 @@ function performImport(prompts, order, mode) {
     );
     const allowedIds = orderItems.map(o => o.identifier);
 
-    // Import prompts
+    // Import prompts strictly based on orderItems only
     const importedIds = [];
+    // Build a map for quick lookup by identifier
+    const byId = new Map();
     prompts.forEach((rawPrompt, index) => {
-      let promptData = normalizeImportedPrompt(rawPrompt, index);
+      const tmp = normalizeImportedPrompt(rawPrompt, index);
+      byId.set(tmp.identifier, tmp);
+    });
 
-      // With explicit order: only import prompts present in order (for both modes)
-      if (allowedIds.length > 0 && !allowedIds.includes(promptData.identifier)) {
-        return; // skip
-      }
+    orderItems.forEach((ord, index) => {
+      const base = byId.get(ord.identifier);
+      if (!base) return; // skip unknown id
+      let promptData = { ...base };
 
-      // Check for duplicates in merge mode
-      if (mode === 'merge' && storyWeaverPrompts.has(promptData.identifier)) {
-        let counter = 1;
-        let newIdentifier = `${promptData.identifier}_copy_${counter}`;
-        while (storyWeaverPrompts.has(newIdentifier)) {
-          counter++;
-          newIdentifier = `${promptData.identifier}_copy_${counter}`;
-        }
-        promptData.identifier = newIdentifier;
-        promptData.name += ` (副本)`;
-      }
-
-      // Apply enabled state from order if provided; otherwise keep normalized
+      // Apply enabled state exactly from order
       if (orderEnabledMap.has(promptData.identifier)) {
-        const val = orderEnabledMap.get(promptData.identifier);
-        if (typeof val === 'boolean') promptData.enabled = val;
+        promptData.enabled = orderEnabledMap.get(promptData.identifier) === true;
+      }
+      // Apply strict ordering index as injection_order if missing
+      if (typeof promptData.injection_order !== 'number') {
+        promptData.injection_order = index + 1;
       }
 
+      // In merge mode, overwrite existing entries by same identifier
       storyWeaverPrompts.set(promptData.identifier, promptData);
       storyWeaverPromptOrder.push(promptData.identifier);
       importedIds.push(promptData.identifier);
       importedCount++;
     });
 
-    // Apply ordering
+    // Use provided order if available and in replace mode; otherwise sort by injection_order
     if (orderItems.length > 0) {
       const validOrder = orderItems.map(o => o.identifier).filter(id => storyWeaverPrompts.has(id));
-      if (mode === 'replace') {
-        if (validOrder.length > 0) storyWeaverPromptOrder = validOrder;
-      } else {
-        // merge: keep existing not in validOrder, then ensure validOrder sequence at the end
-        const existing = Array.from(new Set(storyWeaverPromptOrder));
-        const notInValid = existing.filter(id => !validOrder.includes(id));
-        storyWeaverPromptOrder = notInValid.concat(validOrder);
+      if (validOrder.length > 0) {
+        storyWeaverPromptOrder = validOrder;
       }
-    } else if (mode === 'replace') {
-      // build list of only imported prompts and sort them
-      storyWeaverPromptOrder = importedIds.slice().sort((a, b) => {
-        const pa = storyWeaverPrompts.get(a);
-        const pb = storyWeaverPrompts.get(b);
-        return (pa?.injection_order || 0) - (pb?.injection_order || 0);
-      });
     }
 
     // Save and refresh
