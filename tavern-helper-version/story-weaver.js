@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器1</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -4073,3 +4073,158 @@ console.log('[SW] Available functions:', Object.keys(window.StoryWeaver));
     console.error('[SW][WB][RESP] install failed:', e);
   }
 })();
+
+function logTavernHelperWorldbookApis() {
+  try {
+    if (typeof window.TavernHelper === 'undefined') return;
+    const keys = Object.keys(window.TavernHelper || {}).filter(k => /worldbook|lorebook/i.test(k));
+    console.log('[SW][WB][TH] available TH methods (worldbook/lorebook):', keys);
+  } catch (e) {}
+}
+
+async function getWorldbookEntriesFromTavernHelperAsync() {
+  console.log('[SW][WB][TH][async] start retrieval');
+  logTavernHelperWorldbookApis();
+
+  if (typeof window.TavernHelper === 'undefined') {
+    console.warn('[SW][WB][TH][async] TavernHelper undefined');
+    return [];
+  }
+
+  const getNames = window.TavernHelper.getCharWorldbookNames;
+  const getEntries = window.TavernHelper.getLorebookEntries;
+  console.log(
+    '[SW][WB][TH][async] hasNames:',
+    typeof getNames === 'function',
+    'hasEntries:',
+    typeof getEntries === 'function',
+  );
+  if (typeof getNames !== 'function' || typeof getEntries !== 'function') return [];
+
+  let rawNames = getNames('current');
+  if (rawNames && typeof rawNames.then === 'function') {
+    console.log('[SW][WB][TH][async] names is Promise, awaiting...');
+    rawNames = await rawNames;
+  }
+  console.log('[SW][WB][TH][async] rawNames =', rawNames);
+
+  let names = [];
+  if (Array.isArray(rawNames)) {
+    names = rawNames.filter(Boolean);
+  } else if (rawNames && typeof rawNames === 'object') {
+    const primary = rawNames.primary;
+    const additional = Array.isArray(rawNames.additional) ? rawNames.additional : [];
+    names = [].concat(primary ? [primary] : []).concat(additional.filter(Boolean));
+  }
+  console.log('[SW][WB][TH][async] normalized names =', names);
+  if (!names.length) return [];
+
+  const collected = [];
+  for (const name of names) {
+    try {
+      console.log('[SW][WB][TH][async] fetching entries for', name);
+      let entriesRaw = getEntries(name);
+      if (entriesRaw && typeof entriesRaw.then === 'function') {
+        console.log('[SW][WB][TH][async] entries is Promise for', name, 'awaiting...');
+        entriesRaw = await entriesRaw;
+      }
+      console.log(
+        '[SW][WB][TH][async] entriesRaw keys:',
+        entriesRaw && typeof entriesRaw === 'object' ? Object.keys(entriesRaw) : '(n/a)',
+      );
+      let entries = [];
+      if (Array.isArray(entriesRaw)) {
+        entries = entriesRaw;
+        console.log('[SW][WB][TH][async] entries shape = array, len =', entries.length);
+      } else if (entriesRaw && typeof entriesRaw === 'object' && Array.isArray(entriesRaw.entries)) {
+        entries = entriesRaw.entries;
+        console.log('[SW][WB][TH][async] entries shape = wrapper.entries[array], len =', entries.length);
+      } else if (
+        entriesRaw &&
+        typeof entriesRaw === 'object' &&
+        entriesRaw.entries &&
+        typeof entriesRaw.entries === 'object'
+      ) {
+        entries = Object.values(entriesRaw.entries);
+        console.log('[SW][WB][TH][async] entries shape = wrapper.entries[map], len =', entries.length);
+      } else if (entriesRaw && typeof entriesRaw === 'object') {
+        const vals = Object.values(entriesRaw);
+        const looksLikeEntry = v => v && (v.content || v.entry || v.description || v.text || v.keys || v.key);
+        const filteredVals = vals.filter(looksLikeEntry);
+        entries = filteredVals.length ? filteredVals : vals;
+        console.log('[SW][WB][TH][async] entries shape = object map, len =', entries.length);
+      } else {
+        console.warn('[SW][WB][TH][async] entries unknown shape for', name, entriesRaw);
+        entries = [];
+      }
+
+      let beforeFilter = 0;
+      let filteredOut = 0;
+      entries.forEach(e => {
+        beforeFilter++;
+        const isEnabled = e && e.enabled !== false && e.disabled !== true;
+        if (!isEnabled) {
+          filteredOut++;
+          return;
+        }
+        const key = e && (e.key || (e.keys && e.keys[0]) || e.name || e.title || '');
+        const content = e && (e.content || e.entry || e.description || e.text || '');
+        if ((key || content) && typeof (content || '') === 'string') {
+          collected.push({ key: key || '', content: content || '' });
+        }
+      });
+      console.log(
+        '[SW][WB][TH][async] processed',
+        beforeFilter,
+        'for',
+        name,
+        'filteredOut',
+        filteredOut,
+        'collected total',
+        collected.length,
+      );
+    } catch (e) {
+      console.error('[SW][WB][TH][async] error on', name, e);
+    }
+  }
+
+  console.log('[SW][WB][TH][async] DONE, total entries =', collected.length);
+  return collected;
+}
+
+// Update render to use async version
+async function renderWorldbookList(containerSelector) {
+  try {
+    console.log('[SW][WB] renderWorldbookList start →', containerSelector);
+    const list = $(containerSelector);
+    list.empty();
+    const entries = await getWorldbookEntriesFromTavernHelperAsync();
+    console.log('[SW][WB] renderWorldbookList entries count =', entries ? entries.length : 'null');
+    if (!entries || entries.length === 0) {
+      list.append('<div style="color:#666">未获取到世界书条目。</div>');
+      return;
+    }
+    entries.forEach((entry, idx) => {
+      const key = entry.key || '';
+      const content = entry.content || '';
+      const item = $(`
+        <div style="border:1px solid #eee; border-radius:8px; overflow:hidden;">
+          <div style="background:#f8f9fa; padding:8px 10px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+            <span>${$('<div/>').text(key).html()}</span>
+            <span style="color:#999; font-size:12px;">#${idx + 1}</span>
+          </div>
+          <div style="padding:10px; font-family:'Courier New', monospace; white-space:pre-wrap; font-size:13px;">${$(
+            '<div/>',
+          )
+            .text(content)
+            .html()}</div>
+        </div>
+      `);
+      list.append(item);
+    });
+    console.log('[SW][WB] renderWorldbookList done');
+  } catch (err) {
+    console.error('[SW][WB] renderWorldbookList error', err);
+    $(containerSelector).append('<div style="color:#c00">世界书渲染失败。</div>');
+  }
+}
