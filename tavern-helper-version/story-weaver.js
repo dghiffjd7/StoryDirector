@@ -429,7 +429,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器3/span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -2966,35 +2966,17 @@ function processImportData(data) {
 
     // Strictly extract ordering and enabled states from prompt_order/promptOrder
     if (Array.isArray(data.prompt_order) || Array.isArray(data.promptOrder)) {
-      // Helper to detect current character id
-      function getCurrentCharacterIdSafe() {
-        try {
-          const ch =
-            window.TavernHelper && window.TavernHelper.getCharacterData && window.TavernHelper.getCharacterData();
-          const cands = [
-            ch && ch.character_id,
-            ch && ch.id,
-            ch && ch.charId,
-            ch && ch.avatar_id,
-            ch && ch.avatar && ch.avatar.id,
-          ];
-          for (const v of cands) {
-            if (typeof v === 'number' && isFinite(v)) return Number(v);
-            if (typeof v === 'string' && v.trim()) {
-              const n = Number(v);
-              if (!isNaN(n)) return n;
-            }
-          }
-        } catch (e) {}
-        return null;
-      }
       const promptOrderArray = Array.isArray(data.prompt_order) ? data.prompt_order : data.promptOrder;
-      const currentId = getCurrentCharacterIdSafe();
+      // Always pick the group with the largest order length to ensure最大覆盖
       let entry = null;
-      if (currentId !== null) {
-        entry = promptOrderArray.find(po => Number(po && po.character_id) === Number(currentId));
-      }
-      if (!entry) entry = promptOrderArray[0];
+      let maxLen = -1;
+      promptOrderArray.forEach(po => {
+        const len = Array.isArray(po && po.order) ? po.order.length : 0;
+        if (len > maxLen) {
+          maxLen = len;
+          entry = po;
+        }
+      });
       if (!entry || !Array.isArray(entry.order) || entry.order.length === 0) {
         throw new Error('缺少 prompt_order 对应条目或其 order 为空');
       }
@@ -3219,7 +3201,7 @@ function performImport(prompts, order, mode) {
 
     orderItems.forEach((ord, index) => {
       const base = byId.get(ord.identifier);
-      if (!base) return; // skip unknown id
+      if (!base) return; // skip unknown id (not present in prompts)
       let promptData = { ...base };
 
       // Apply enabled state exactly from order
@@ -3231,7 +3213,7 @@ function performImport(prompts, order, mode) {
         promptData.injection_order = index + 1;
       }
 
-      // In merge mode, overwrite existing entries by same identifier
+      // Overwrite existing entries by same identifier (both modes) to keep mapping consistent
       storyWeaverPrompts.set(promptData.identifier, promptData);
       storyWeaverPromptOrder.push(promptData.identifier);
       importedIds.push(promptData.identifier);
@@ -3829,9 +3811,8 @@ function renderWorldbookList(containerSelector) {
   try {
     const list = $(containerSelector);
     list.empty();
-    const entries =
-      (window.TavernHelper && window.TavernHelper.getWorldbookEntries && window.TavernHelper.getWorldbookEntries()) ||
-      [];
+    // Use index.js approach: extract from SillyTavern DOM/state if available
+    const entries = getWorldInfoData();
     if (!entries || entries.length === 0) {
       list.append('<div style="color:#666">未获取到世界书条目。</div>');
       return;
@@ -3858,6 +3839,26 @@ function renderWorldbookList(containerSelector) {
     console.error('[SW] Render worldbook failed:', err);
     $(containerSelector).append('<div style="color:#c00">世界书渲染失败。</div>');
   }
+}
+
+// Extract world info entries similar to index.js
+function getWorldInfoData() {
+  try {
+    if (typeof window.TavernHelper !== 'undefined' && typeof window.TavernHelper.getWorldbookEntries === 'function') {
+      const arr = window.TavernHelper.getWorldbookEntries();
+      if (Array.isArray(arr)) return arr;
+    }
+  } catch (e) {}
+  // Fallback to SillyTavern environments: try common globals/DOM
+  try {
+    if (typeof window.world_info !== 'undefined' && Array.isArray(window.world_info)) {
+      return window.world_info.map(w => ({
+        key: w.key || (w.keys && w.keys[0]) || '',
+        content: w.content || w.entry || '',
+      }));
+    }
+  } catch (e) {}
+  return [];
 }
 
 function showAboutDialog() {
