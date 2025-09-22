@@ -391,7 +391,7 @@ function createNativePopup() {
 
   const settings = loadSettings();
 
-  // Create overlay and popup
+  // Create popup HTML without inline <style>
   const popupHTML = `
     <div id="sw-popup-overlay" style="
       position: fixed;
@@ -399,24 +399,22 @@ function createNativePopup() {
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 10000;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 10005;
       display: flex;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(5px);
     ">
       <div id="sw-popup-window" class="sw-draggable-window" style="
         background: white;
         border-radius: 12px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-        max-width: 90vw;
-        max-height: 90vh;
-        width: 800px;
-        height: 700px;
+        width: 900px;
+        height: 600px;
         overflow: hidden;
-        position: relative;
-        animation: popupFadeIn 0.3s ease-out;
+        display: flex;
+        flex-direction: column;
+        animation: popupFadeIn 0.25s ease-out;
       ">
         <div class="sw-window-header" style="
           background: linear-gradient(135deg, #667eea, #764ba2);
@@ -429,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器3</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -461,20 +459,15 @@ function createNativePopup() {
         </div>
       </div>
     </div>
-    
-    <style>
-      @keyframes popupFadeIn {
-        from {
-          opacity: 0;
-          transform: scale(0.9) translateY(-20px);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1) translateY(0);
-        }
-      }
-    </style>
   `;
+
+  // Ensure keyframes style exists in <head>
+  if (!document.getElementById('sw-popup-keyframes')) {
+    const style = document.createElement('style');
+    style.id = 'sw-popup-keyframes';
+    style.textContent = `@keyframes popupFadeIn { from { opacity: 0; transform: scale(0.9) translateY(-20px); } to { opacity: 1; transform: scale(1) translateY(0); } }`;
+    document.head.appendChild(style);
+  }
 
   // Inject popup
   $('body').append(popupHTML);
