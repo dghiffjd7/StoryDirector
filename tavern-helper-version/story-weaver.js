@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器1</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3684,13 +3684,24 @@ function getWorldbookEntriesFromTavernHelper() {
       return [];
     }
 
-    const names = window.TavernHelper.getCharWorldbookNames('current') || [];
+    const rawNames = window.TavernHelper.getCharWorldbookNames('current') || [];
     console.log(
       '[SW][WB][TH] names result length =',
-      Array.isArray(names) ? names.length : 'non-array',
+      Array.isArray(rawNames) ? rawNames.length : 'non-array',
       'value =',
-      names,
+      rawNames,
     );
+
+    // Normalize names: handle { primary: string, additional: [] } or array
+    let names = [];
+    if (Array.isArray(rawNames)) {
+      names = rawNames.filter(Boolean);
+    } else if (rawNames && typeof rawNames === 'object') {
+      const primary = rawNames.primary;
+      const additional = Array.isArray(rawNames.additional) ? rawNames.additional : [];
+      names = [].concat(primary ? [primary] : []).concat(additional.filter(Boolean));
+      console.log('[SW][WB][TH] normalized names =', names);
+    }
 
     if (!Array.isArray(names) || names.length === 0) {
       console.warn('[SW][WB][TH] no worldbook names returned for current character');
@@ -3706,13 +3717,23 @@ function getWorldbookEntriesFromTavernHelper() {
     names.forEach(name => {
       try {
         console.log('[SW][WB][TH] fetching entries for name =', name);
-        const entries = window.TavernHelper.getLorebookEntries(name) || [];
-        console.log(
-          '[SW][WB][TH] entries length for',
-          name,
-          '=',
-          Array.isArray(entries) ? entries.length : 'non-array',
-        );
+        let entriesRaw = window.TavernHelper.getLorebookEntries(name);
+        // Normalize different shapes: array | { entries: [] } | object map
+        let entries = [];
+        if (Array.isArray(entriesRaw)) {
+          entries = entriesRaw;
+          console.log('[SW][WB][TH] entries shape = array, length =', entries.length);
+        } else if (entriesRaw && typeof entriesRaw === 'object' && Array.isArray(entriesRaw.entries)) {
+          entries = entriesRaw.entries;
+          console.log('[SW][WB][TH] entries shape = wrapper.entries, length =', entries.length);
+        } else if (entriesRaw && typeof entriesRaw === 'object') {
+          entries = Object.values(entriesRaw);
+          console.log('[SW][WB][TH] entries shape = object map, length =', entries.length);
+        } else {
+          console.warn('[SW][WB][TH] entries shape = unknown', entriesRaw);
+          entries = [];
+        }
+
         if (!Array.isArray(entries) || entries.length === 0) return;
 
         let beforeFilter = 0;
