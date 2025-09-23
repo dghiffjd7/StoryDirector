@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器3</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -3675,36 +3675,46 @@ function getWorldbookEntriesFromTavernHelper() {
       return [];
     }
 
-    const hasNames = typeof window.TavernHelper.getCharWorldbookNames === 'function';
+    const hasNamesChar = typeof window.TavernHelper.getCharWorldbookNames === 'function';
+    const hasNamesGlobal = typeof window.TavernHelper.getGlobalWorldbookNames === 'function';
     const hasEntries = typeof window.TavernHelper.getLorebookEntries === 'function';
-    console.log('[SW][WB][TH] has getCharWorldbookNames:', hasNames, 'has getLorebookEntries:', hasEntries);
+    console.log(
+      '[SW][WB][TH] has getCharWorldbookNames:',
+      hasNamesChar,
+      'has getGlobalWorldbookNames:',
+      hasNamesGlobal,
+      'has getLorebookEntries:',
+      hasEntries,
+    );
 
-    if (!hasNames) {
-      console.warn('[SW][WB][TH] getCharWorldbookNames is not a function');
+    if (!hasNamesChar && !hasNamesGlobal) {
+      console.warn('[SW][WB][TH] no worldbook names API available');
       return [];
     }
 
-    const rawNames = window.TavernHelper.getCharWorldbookNames('current') || [];
-    console.log(
-      '[SW][WB][TH] names result length =',
-      Array.isArray(rawNames) ? rawNames.length : 'non-array',
-      'value =',
-      rawNames,
-    );
+    const rawChar = hasNamesChar ? window.TavernHelper.getCharWorldbookNames('current') : [];
+    const rawGlobal = hasNamesGlobal ? window.TavernHelper.getGlobalWorldbookNames() : [];
+    console.log('[SW][WB][TH] raw char names =', rawChar, 'raw global names =', rawGlobal);
 
-    // Normalize names: handle { primary: string, additional: [] } or array
+    const normalizeNames = raw => {
+      if (Array.isArray(raw)) return raw.filter(Boolean);
+      if (raw && typeof raw === 'object') {
+        const primary = raw.primary;
+        const additional = Array.isArray(raw.additional) ? raw.additional : [];
+        return [].concat(primary ? [primary] : []).concat(additional.filter(Boolean));
+      }
+      return [];
+    };
+
     let names = [];
-    if (Array.isArray(rawNames)) {
-      names = rawNames.filter(Boolean);
-    } else if (rawNames && typeof rawNames === 'object') {
-      const primary = rawNames.primary;
-      const additional = Array.isArray(rawNames.additional) ? rawNames.additional : [];
-      names = [].concat(primary ? [primary] : []).concat(additional.filter(Boolean));
-      console.log('[SW][WB][TH] normalized names =', names);
-    }
+    names = names.concat(normalizeNames(rawChar));
+    names = names.concat(normalizeNames(rawGlobal));
+    // de-duplicate
+    names = Array.from(new Set(names.filter(Boolean)));
+    console.log('[SW][WB][TH] normalized merged names =', names);
 
     if (!Array.isArray(names) || names.length === 0) {
-      console.warn('[SW][WB][TH] no worldbook names returned for current character');
+      console.warn('[SW][WB][TH] no worldbook names returned');
       return [];
     }
 
@@ -3716,26 +3726,13 @@ function getWorldbookEntriesFromTavernHelper() {
     const collected = [];
     names.forEach(name => {
       try {
-        console.log('[SW][WB][TH] fetching entries for name =', name);
-        let entriesRaw = window.TavernHelper.getLorebookEntries(name);
-        // Normalize different shapes: array | { entries: [] } | object map
-        let entries = [];
-        if (Array.isArray(entriesRaw)) {
-          entries = entriesRaw;
-          console.log('[SW][WB][TH] entries shape = array, length =', entries.length);
-        } else if (entriesRaw && typeof entriesRaw === 'object' && Array.isArray(entriesRaw.entries)) {
-          entries = entriesRaw.entries;
-          console.log('[SW][WB][TH] entries shape = wrapper.entries, length =', entries.length);
-        } else if (entriesRaw && typeof entriesRaw === 'object') {
-          entries = Object.values(entriesRaw);
-          console.log('[SW][WB][TH] entries shape = object map, length =', entries.length);
-        } else {
-          console.warn('[SW][WB][TH] entries shape = unknown', entriesRaw);
-          entries = [];
+        console.log('[SW][WB][TH] fetching entries (sync path) for name =', name);
+        const entries = window.TavernHelper.getLorebookEntries(name) || [];
+        if (!Array.isArray(entries)) {
+          // non-array shapes are ignored in sync path
+          console.warn('[SW][WB][TH] entries not array in sync path for', name);
+          return;
         }
-
-        if (!Array.isArray(entries) || entries.length === 0) return;
-
         let beforeFilter = 0;
         let filteredOut = 0;
         entries.forEach(e => {
@@ -3752,7 +3749,7 @@ function getWorldbookEntriesFromTavernHelper() {
           }
         });
         console.log(
-          '[SW][WB][TH] processed',
+          '[SW][WB][TH] (sync) processed',
           beforeFilter,
           'for',
           name,
@@ -3772,6 +3769,138 @@ function getWorldbookEntriesFromTavernHelper() {
     console.error('[SW][WB][TH] unexpected error in retrieval', err);
     return [];
   }
+}
+
+function logTavernHelperWorldbookApis() {
+  try {
+    if (typeof window.TavernHelper === 'undefined') return;
+    const keys = Object.keys(window.TavernHelper || {}).filter(k => /worldbook|lorebook/i.test(k));
+    console.log('[SW][WB][TH] available TH methods (worldbook/lorebook):', keys);
+  } catch (e) {}
+}
+
+async function getWorldbookEntriesFromTavernHelperAsync() {
+  console.log('[SW][WB][TH][async] start retrieval');
+  logTavernHelperWorldbookApis();
+
+  if (typeof window.TavernHelper === 'undefined') {
+    console.warn('[SW][WB][TH][async] TavernHelper undefined');
+    return [];
+  }
+
+  const getNamesChar = window.TavernHelper.getCharWorldbookNames;
+  const getNamesGlobal = window.TavernHelper.getGlobalWorldbookNames;
+  const getEntries = window.TavernHelper.getLorebookEntries;
+  console.log(
+    '[SW][WB][TH][async] hasNames(char):',
+    typeof getNamesChar === 'function',
+    'hasNames(global):',
+    typeof getNamesGlobal === 'function',
+    'hasEntries:',
+    typeof getEntries === 'function',
+  );
+  if (typeof getEntries !== 'function' || (!getNamesChar && !getNamesGlobal)) return [];
+
+  let rawChar = getNamesChar ? getNamesChar('current') : [];
+  if (rawChar && typeof rawChar.then === 'function') {
+    console.log('[SW][WB][TH][async] char names is Promise, awaiting...');
+    rawChar = await rawChar;
+  }
+  let rawGlobal = getNamesGlobal ? getNamesGlobal() : [];
+  if (rawGlobal && typeof rawGlobal.then === 'function') {
+    console.log('[SW][WB][TH][async] global names is Promise, awaiting...');
+    rawGlobal = await rawGlobal;
+  }
+  console.log('[SW][WB][TH][async] raw char names =', rawChar, 'raw global names =', rawGlobal);
+
+  const normalizeNames = raw => {
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (raw && typeof raw === 'object') {
+      const primary = raw.primary;
+      const additional = Array.isArray(raw.additional) ? raw.additional : [];
+      return [].concat(primary ? [primary] : []).concat(additional.filter(Boolean));
+    }
+    return [];
+  };
+
+  let names = [];
+  names = names.concat(normalizeNames(rawChar));
+  names = names.concat(normalizeNames(rawGlobal));
+  names = Array.from(new Set(names.filter(Boolean)));
+  console.log('[SW][WB][TH][async] normalized names =', names);
+  if (!names.length) return [];
+
+  const collected = [];
+  for (const name of names) {
+    try {
+      console.log('[SW][WB][TH][async] fetching entries for', name);
+      let entriesRaw = getEntries(name);
+      if (entriesRaw && typeof entriesRaw.then === 'function') {
+        console.log('[SW][WB][TH][async] entries is Promise for', name, 'awaiting...');
+        entriesRaw = await entriesRaw;
+      }
+      console.log(
+        '[SW][WB][TH][async] entriesRaw keys:',
+        entriesRaw && typeof entriesRaw === 'object' ? Object.keys(entriesRaw) : '(n/a)',
+      );
+      let entries = [];
+      if (Array.isArray(entriesRaw)) {
+        entries = entriesRaw;
+        console.log('[SW][WB][TH][async] entries shape = array, len =', entries.length);
+      } else if (entriesRaw && typeof entriesRaw === 'object' && Array.isArray(entriesRaw.entries)) {
+        entries = entriesRaw.entries;
+        console.log('[SW][WB][TH][async] entries shape = wrapper.entries[array], len =', entries.length);
+      } else if (
+        entriesRaw &&
+        typeof entriesRaw === 'object' &&
+        entriesRaw.entries &&
+        typeof entriesRaw.entries === 'object'
+      ) {
+        entries = Object.values(entriesRaw.entries);
+        console.log('[SW][WB][TH][async] entries shape = wrapper.entries[map], len =', entries.length);
+      } else if (entriesRaw && typeof entriesRaw === 'object') {
+        const vals = Object.values(entriesRaw);
+        const looksLikeEntry = v => v && (v.content || v.entry || v.description || v.text || v.keys || v.key);
+        const filteredVals = vals.filter(looksLikeEntry);
+        entries = filteredVals.length ? filteredVals : vals;
+        console.log('[SW][WB][TH][async] entries shape = object map, len =', entries.length);
+      } else {
+        console.warn('[SW][WB][TH][async] entries unknown shape for', name, entriesRaw);
+        entries = [];
+      }
+
+      let beforeFilter = 0;
+      let filteredOut = 0;
+      entries.forEach(e => {
+        beforeFilter++;
+        const isEnabled = e && e.enabled !== false && e.disabled !== true;
+        if (!isEnabled) {
+          filteredOut++;
+          return;
+        }
+        const key = e && (e.key || (e.keys && e.keys[0]) || e.name || e.title || '');
+        const content = e && (e.content || e.entry || e.description || e.text || '');
+        if ((key || content) && typeof (content || '') === 'string') {
+          collected.push({ key: key || '', content: content || '' });
+        }
+      });
+      console.log(
+        '[SW][WB][TH][async] processed',
+        beforeFilter,
+        'for',
+        name,
+        'filteredOut',
+        filteredOut,
+        'collected total',
+        collected.length,
+      );
+    } catch (e) {
+      console.error('[SW][WB][TH][async] error on', name, e);
+    }
+  }
+
+  console.log('[SW][WB][TH][async] DONE, total entries =', collected.length);
+  return collected;
 }
 
 function buildWorldInfoText() {
@@ -4057,31 +4186,45 @@ async function getWorldbookEntriesFromTavernHelperAsync() {
     return [];
   }
 
-  const getNames = window.TavernHelper.getCharWorldbookNames;
+  const getNamesChar = window.TavernHelper.getCharWorldbookNames;
+  const getNamesGlobal = window.TavernHelper.getGlobalWorldbookNames;
   const getEntries = window.TavernHelper.getLorebookEntries;
   console.log(
-    '[SW][WB][TH][async] hasNames:',
-    typeof getNames === 'function',
+    '[SW][WB][TH][async] hasNames(char):',
+    typeof getNamesChar === 'function',
+    'hasNames(global):',
+    typeof getNamesGlobal === 'function',
     'hasEntries:',
     typeof getEntries === 'function',
   );
-  if (typeof getNames !== 'function' || typeof getEntries !== 'function') return [];
+  if (typeof getEntries !== 'function' || (!getNamesChar && !getNamesGlobal)) return [];
 
-  let rawNames = getNames('current');
-  if (rawNames && typeof rawNames.then === 'function') {
-    console.log('[SW][WB][TH][async] names is Promise, awaiting...');
-    rawNames = await rawNames;
+  let rawChar = getNamesChar ? getNamesChar('current') : [];
+  if (rawChar && typeof rawChar.then === 'function') {
+    console.log('[SW][WB][TH][async] char names is Promise, awaiting...');
+    rawChar = await rawChar;
   }
-  console.log('[SW][WB][TH][async] rawNames =', rawNames);
+  let rawGlobal = getNamesGlobal ? getNamesGlobal() : [];
+  if (rawGlobal && typeof rawGlobal.then === 'function') {
+    console.log('[SW][WB][TH][async] global names is Promise, awaiting...');
+    rawGlobal = await rawGlobal;
+  }
+  console.log('[SW][WB][TH][async] raw char names =', rawChar, 'raw global names =', rawGlobal);
+
+  const normalizeNames = raw => {
+    if (Array.isArray(raw)) return raw.filter(Boolean);
+    if (raw && typeof raw === 'object') {
+      const primary = raw.primary;
+      const additional = Array.isArray(raw.additional) ? raw.additional : [];
+      return [].concat(primary ? [primary] : []).concat(additional.filter(Boolean));
+    }
+    return [];
+  };
 
   let names = [];
-  if (Array.isArray(rawNames)) {
-    names = rawNames.filter(Boolean);
-  } else if (rawNames && typeof rawNames === 'object') {
-    const primary = rawNames.primary;
-    const additional = Array.isArray(rawNames.additional) ? rawNames.additional : [];
-    names = [].concat(primary ? [primary] : []).concat(additional.filter(Boolean));
-  }
+  names = names.concat(normalizeNames(rawChar));
+  names = names.concat(normalizeNames(rawGlobal));
+  names = Array.from(new Set(names.filter(Boolean)));
   console.log('[SW][WB][TH][async] normalized names =', names);
   if (!names.length) return [];
 
