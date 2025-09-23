@@ -30,8 +30,6 @@
           },
         };
         const fsEl = root.querySelector('.fs');
-        const settingsBtn = $('#btn-settings');
-        const settingsDropdown = $('#settings-dropdown');
         const n = x => (typeof x === 'number' ? x : Number(x) || 0);
         function boundsOf(key) {
           const map = {
@@ -44,6 +42,7 @@
           return map[key] || { min: -1e9, max: 1e9, step: 1 };
         }
         function render(data) {
+          if (!Mvu || !data) return;
           const get = (p, cat = 'stat') => Mvu.getMvuVariable(data, p, { category: cat });
           ui.pts.textContent = `剩余点数：${n(get('points.remaining'))}`;
           ui.vals.range.textContent = n(get('ability.spatial_gate.range_m'));
@@ -249,6 +248,19 @@
           }
         }
         function bind() {
+          // 确保在绑定时重新获取元素引用
+          const settingsBtn = $('#btn-settings');
+          const settingsDropdown = $('#settings-dropdown');
+
+          if (!settingsBtn) {
+            console.error('Settings button not found!');
+            return;
+          }
+          if (!settingsDropdown) {
+            console.error('Settings dropdown not found!');
+            return;
+          }
+
           $$('#card-attrs button[data-k]').forEach(btn => {
             btn.addEventListener('click', () => {
               const key = btn.getAttribute('data-k');
@@ -367,11 +379,11 @@
           });
         }
         function init() {
+          bind(); // 始终绑定事件监听器
           if (!Mvu) {
             ui.msg.textContent = '未检测到 Mvu API';
             return;
           }
-          bind();
           render(Mvu.getCurrentMvuData());
         }
         init();
