@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器8</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器9</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -528,6 +528,21 @@ function createNativePopup() {
           console.error('[SW][PREVIEW] handleNativePreview not found');
         }
       });
+
+    // Bind generate button similarly (avoid inline onclick)
+    $(document)
+      .off('click.swGenerate')
+      .on('click.swGenerate', '#sw-generate-btn', function (e) {
+        e.preventDefault();
+        if (typeof handleGenerate === 'function') {
+          handleGenerate();
+        } else if (window && typeof window.handleGenerate === 'function') {
+          window.handleGenerate();
+        } else {
+          console.error('[SW][GENERATE] handleGenerate not found');
+          alert('生成失败: 处理函数未加载');
+        }
+      });
   } catch (e) {}
 
   // Normalize starting position for dragging
@@ -590,27 +605,29 @@ function buildSimpleInterface(settings) {
       
       <button id="sw-preview-btn" style="
         width: 100%;
-        padding: 8px;
+        padding: 6px;
         background: linear-gradient(90deg, #667eea, #764ba2);
         border: none;
         color: white;
         border-radius: 6px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
+        line-height: 1.1;
         box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
-        margin-bottom: 12px;
+        margin-bottom: 8px;
       ">预览完整提示词</button>
-      <button id="sw-generate-btn" onclick="handleGenerate()" style="
+      <button id="sw-generate-btn" style="
         width: 100%;
-        padding: 8px;
+        padding: 6px;
         background: linear-gradient(90deg, #22c55e, #16a34a);
         border: none;
         color: white;
         border-radius: 6px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 13px;
+        line-height: 1.1;
         box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-        margin-bottom: 10px;
+        margin-bottom: 8px;
       ">🎯 生成故事大纲</button>
       
       <div id="sw-output-section" style="display: none;">
