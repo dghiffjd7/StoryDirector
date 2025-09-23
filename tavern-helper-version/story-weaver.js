@@ -3727,12 +3727,44 @@ function getWorldbookEntriesFromTavernHelper() {
     names.forEach(name => {
       try {
         console.log('[SW][WB][TH] fetching entries (sync path) for name =', name);
-        const entries = window.TavernHelper.getLorebookEntries(name) || [];
-        if (!Array.isArray(entries)) {
-          // non-array shapes are ignored in sync path
-          console.warn('[SW][WB][TH] entries not array in sync path for', name);
+        const entriesRaw = window.TavernHelper.getLorebookEntries(name);
+        let entries = [];
+        if (Array.isArray(entriesRaw)) {
+          entries = entriesRaw;
+        } else if (entriesRaw && typeof entriesRaw === 'object' && Array.isArray(entriesRaw.entries)) {
+          entries = entriesRaw.entries;
+        } else if (
+          entriesRaw &&
+          typeof entriesRaw === 'object' &&
+          entriesRaw.entries &&
+          typeof entriesRaw.entries === 'object'
+        ) {
+          entries = Object.values(entriesRaw.entries);
+        } else if (entriesRaw && typeof entriesRaw === 'object') {
+          const vals = Object.values(entriesRaw);
+          const looksLikeEntry = v => v && (v.content || v.entry || v.description || v.text || v.keys || v.key);
+          const filteredVals = vals.filter(looksLikeEntry);
+          entries = filteredVals.length ? filteredVals : vals;
+        } else {
+          console.warn('[SW][WB][TH] entries unknown shape in sync path for', name, entriesRaw);
           return;
         }
+
+        // Sort by explicit order fields if present
+        const getOrder = e => {
+          const raw = e && (e.order ?? e.injection_order ?? e.position ?? e.index ?? e.sortOrder);
+          if (typeof raw === 'number') return raw;
+          const num = raw != null ? Number(raw) : NaN;
+          return Number.isFinite(num) ? num : null;
+        };
+        entries = entries.slice().sort((a, b) => {
+          const oa = getOrder(a);
+          const ob = getOrder(b);
+          if (oa == null && ob == null) return 0;
+          if (oa == null) return 1;
+          if (ob == null) return -1;
+          return oa - ob;
+        });
         let beforeFilter = 0;
         let filteredOut = 0;
         entries.forEach(e => {
@@ -3911,6 +3943,7 @@ function buildWorldInfoText() {
     console.warn('[SW][WB][TH] buildWorldInfoText: no entries collected');
     return '';
   }
+  // Respect recursion depth or additional metadata in future if exposed by TH
   const text = entries.map(e => (e.key ? `${e.key}: ${e.content}` : e.content)).join('\n\n');
   console.log('[SW][WB][TH] buildWorldInfoText length =', text.length);
   return text;
