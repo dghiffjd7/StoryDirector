@@ -13,7 +13,7 @@
         if (!mount) return;
         const root = mount.attachShadow({ mode: 'open' });
         root.innerHTML =
-          '<style>@import url("https://dghiffjd7.github.io/StoryDirector/door/door.css");</style><div class="fs"><div class="phone-wrap"><div class="phone"><div class="notch"></div><div class="screen"><div class="portal" aria-hidden="true"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div></div><div class="hud"><div class="topbar"><div class="title">空间门 · 控制面板</div><div class="spacer"></div><button id="btn-full" class="icon-btn" title="全屏">⤢</button><div class="pts" id="ui-pts">剩余点数：--</div></div><div class="cards"><div class="card" id="card-attrs"><div class="row"><div class="k">距离(m)</div><div class="val" id="v-range">--</div><div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div><div class="row"><div class="k">开口(cm)</div><div class="val" id="v-aperture">--</div><div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div><div class="row"><div class="k">持续(s)</div><div class="val" id="v-duration">--</div><div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div><div class="row"><div class="k">冷却(s)</div><div class="val" id="v-cd">--</div><div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div><div class="row"><div class="k">稳定等级</div><div class="val" id="v-stab">--</div><div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div></div></div><div class="foot"><div class="bar"><button id="btn-copy" class="ghost">复制提示片段</button><button id="btn-refresh" class="ghost">刷新数值</button></div><div class="frag" id="frag">提示片段将显示在此处…</div><div class="warn" id="msg"></div></div></div></div></div></div>';
+          '<style>@import url("https://dghiffjd7.github.io/StoryDirector/door/door.css");</style><div class="fs"><div class="phone-wrap"><div class="phone"><div class="notch"></div><div class="screen"><div class="portal" aria-hidden="true"><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="image-controls"><button id="prev-image" class="image-control-btn" title="上一张图片">‹</button><button id="next-image" class="image-control-btn" title="下一张图片">›</button><button id="random-image" class="image-control-btn" title="随机图片">🎲</button></div></div><div class="hud"><div class="topbar"><div class="title">空间门 · 控制面板</div><div class="spacer"></div><div class="settings-wrapper"><button id="btn-settings" class="icon-btn" title="设置">⚙</button><div id="settings-dropdown" class="dropdown-menu" style="display: none;"><div class="dropdown-item" id="dropdown-image-manager">📷 图片管理</div><div class="dropdown-item" id="dropdown-fullscreen">⤢ 全屏</div></div></div><div class="pts" id="ui-pts">剩余点数：--</div></div><div class="cards"><div class="card" id="card-attrs"><div class="row"><div class="k">距离(m)</div><div class="val" id="v-range">--</div><div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div><div class="row"><div class="k">开口(cm)</div><div class="val" id="v-aperture">--</div><div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div><div class="row"><div class="k">持续(s)</div><div class="val" id="v-duration">--</div><div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div><div class="row"><div class="k">冷却(s)</div><div class="val" id="v-cd">--</div><div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div><div class="row"><div class="k">稳定等级</div><div class="val" id="v-stab">--</div><div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div></div></div><div class="foot"><div class="bar"><button id="btn-copy" class="ghost">复制提示片段</button><button id="btn-refresh" class="ghost">刷新数值</button></div><div class="frag" id="frag">提示片段将显示在此处…</div><div class="warn" id="msg"></div></div></div><div id="image-manager-modal" class="modal" style="display: none;"><div class="modal-content"><div class="modal-header"><div class="modal-title">📷 图片管理器</div><button id="close-image-manager" class="modal-close">×</button></div><div class="modal-body"><div class="image-upload-section"><div class="upload-tabs"><button class="tab-btn active" data-tab="url">🔗 URL链接</button><button class="tab-btn" data-tab="upload">📁 上传文件</button></div><div class="tab-content" id="tab-url"><input type="text" id="image-url-input" placeholder="请输入图片URL或base64数据..." class="url-input"><button id="add-image-url" class="btn-primary">添加图片</button></div><div class="tab-content" id="tab-upload" style="display: none;"><input type="file" id="image-file-input" accept="image/*" class="file-input"><button id="add-image-file" class="btn-primary">添加图片</button></div></div><div class="image-list-section"><div class="section-title">已保存的图片</div><div id="image-list" class="image-list"></div></div></div></div></div></div></div></div>';
         const $ = sel => root.querySelector(sel);
         const $$ = sel => Array.from(root.querySelectorAll(sel));
         const Mvu = typeof parent !== 'undefined' && parent && parent.Mvu ? parent.Mvu : null;
@@ -30,7 +30,8 @@
           },
         };
         const fsEl = root.querySelector('.fs');
-        const fullBtn = $('#btn-full');
+        const settingsBtn = $('#btn-settings');
+        const settingsDropdown = $('#settings-dropdown');
         const n = x => (typeof x === 'number' ? x : Number(x) || 0);
         function boundsOf(key) {
           const map = {
@@ -103,6 +104,150 @@
           render(data);
           ui.msg.textContent = `已更新 ${key}: ${cur} → ${nxt}`;
         }
+        let savedImages = [];
+        let selectedImageIndex = -1;
+        function showImageManager() {
+          $('#image-manager-modal').style.display = 'flex';
+          loadImageList();
+        }
+        function hideImageManager() {
+          $('#image-manager-modal').style.display = 'none';
+        }
+        function loadImageList() {
+          const imageList = $('#image-list');
+          imageList.innerHTML = '';
+
+          if (savedImages.length === 0) {
+            imageList.innerHTML =
+              '<div style="color: rgba(234, 255, 255, 0.5); text-align: center; padding: 20px; font-size: 13px;">暂无图片</div>';
+            return;
+          }
+
+          savedImages.forEach((imageData, index) => {
+            const item = document.createElement('div');
+            item.className = `image-item ${index === selectedImageIndex ? 'selected' : ''}`;
+            item.innerHTML = `
+              <img src="${imageData.url}" alt="图片 ${index + 1}" />
+              <button class="delete-btn" data-index="${index}">×</button>
+            `;
+
+            item.addEventListener('click', e => {
+              if (e.target.classList.contains('delete-btn')) return;
+              selectImage(index);
+            });
+
+            const deleteBtn = item.querySelector('.delete-btn');
+            deleteBtn.addEventListener('click', e => {
+              e.stopPropagation();
+              deleteImage(index);
+            });
+
+            imageList.appendChild(item);
+          });
+        }
+        function selectImage(index) {
+          selectedImageIndex = index;
+          loadImageList();
+          updatePortalImage();
+          ui.msg.textContent = `已选择图片 ${index + 1}`;
+        }
+        function deleteImage(index) {
+          savedImages.splice(index, 1);
+          if (selectedImageIndex === index) {
+            selectedImageIndex = -1;
+            updatePortalImage();
+          } else if (selectedImageIndex > index) {
+            selectedImageIndex--;
+          }
+          loadImageList();
+          ui.msg.textContent = '图片已删除';
+        }
+        function updatePortalImage() {
+          const portal = root.querySelector('.portal');
+          if (selectedImageIndex >= 0 && selectedImageIndex < savedImages.length) {
+            const imageUrl = savedImages[selectedImageIndex].url;
+            portal.style.backgroundImage = `radial-gradient(120% 120% at 50% 50%, rgba(0,0,0,0.3) 0%, rgba(2,3,10,0.8) 60%, rgba(0,0,0,0.3) 100%), url("${imageUrl}")`;
+            portal.style.backgroundSize = 'cover, cover';
+            portal.style.backgroundPosition = 'center, center';
+          } else {
+            portal.style.backgroundImage = 'radial-gradient(120% 120% at 50% 50%, #000 0%, #02030a 60%, #000 100%)';
+            portal.style.backgroundSize = '';
+            portal.style.backgroundPosition = '';
+          }
+        }
+        async function addImageFromUrl() {
+          const urlInput = $('#image-url-input');
+          const url = urlInput.value.trim();
+
+          if (!url) {
+            ui.msg.textContent = '请输入图片URL';
+            return;
+          }
+
+          try {
+            // 验证图片是否可加载
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = url;
+            });
+
+            // 添加到保存列表
+            const imageData = {
+              url: url,
+              name: `图片_${Date.now()}`,
+              type: url.startsWith('data:') ? 'base64' : 'url',
+            };
+
+            savedImages.push(imageData);
+            urlInput.value = '';
+            loadImageList();
+            ui.msg.textContent = '图片添加成功';
+          } catch (error) {
+            ui.msg.textContent = '图片加载失败，请检查URL是否正确';
+          }
+        }
+        async function addImageFromFile() {
+          const fileInput = $('#image-file-input');
+          const file = fileInput.files[0];
+
+          if (!file) {
+            ui.msg.textContent = '请选择文件';
+            return;
+          }
+
+          if (!file.type.startsWith('image/')) {
+            ui.msg.textContent = '请选择图片文件';
+            return;
+          }
+
+          try {
+            const reader = new FileReader();
+
+            await new Promise((resolve, reject) => {
+              reader.onload = resolve;
+              reader.onerror = reject;
+              reader.readAsDataURL(file);
+            });
+
+            const base64Url = reader.result;
+            const imageData = {
+              url: base64Url,
+              name: file.name,
+              type: 'file',
+            };
+
+            savedImages.push(imageData);
+            fileInput.value = '';
+            loadImageList();
+            ui.msg.textContent = '图片上传成功';
+          } catch (error) {
+            ui.msg.textContent = '文件读取失败';
+          }
+        }
         function bind() {
           $$('#card-attrs button[data-k]').forEach(btn => {
             btn.addEventListener('click', () => {
@@ -130,7 +275,16 @@
               ui.msg.textContent = '复制失败：' + ((err && err.message) || err);
             }
           });
-          fullBtn.addEventListener('click', async () => {
+          settingsBtn.addEventListener('click', e => {
+            e.stopPropagation();
+            const isVisible = settingsDropdown.style.display !== 'none';
+            settingsDropdown.style.display = isVisible ? 'none' : 'block';
+          });
+          document.addEventListener('click', () => {
+            settingsDropdown.style.display = 'none';
+          });
+          $('#dropdown-fullscreen').addEventListener('click', async () => {
+            settingsDropdown.style.display = 'none';
             try {
               if (document.fullscreenElement) {
                 await document.exitFullscreen();
@@ -139,19 +293,78 @@
               }
             } catch (e) {}
           });
+          $('#dropdown-image-manager').addEventListener('click', () => {
+            settingsDropdown.style.display = 'none';
+            showImageManager();
+          });
           document.addEventListener(
             'fullscreenchange',
             () => {
+              const fullscreenItem = $('#dropdown-fullscreen');
               if (document.fullscreenElement) {
-                fullBtn.textContent = '⤡';
-                fullBtn.title = '退出全屏';
+                fullscreenItem.textContent = '⤡ 退出全屏';
               } else {
-                fullBtn.textContent = '⤢';
-                fullBtn.title = '全屏';
+                fullscreenItem.textContent = '⤢ 全屏';
               }
             },
             { passive: true },
           );
+          $('#close-image-manager').addEventListener('click', hideImageManager);
+          $('#image-manager-modal').addEventListener('click', e => {
+            if (e.target.id === 'image-manager-modal') {
+              hideImageManager();
+            }
+          });
+          $$('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+              const tabName = btn.getAttribute('data-tab');
+              $$('.tab-btn').forEach(b => b.classList.remove('active'));
+              $$('.tab-content').forEach(c => (c.style.display = 'none'));
+              btn.classList.add('active');
+              $(`#tab-${tabName}`).style.display = 'flex';
+            });
+          });
+          $('#add-image-url').addEventListener('click', addImageFromUrl);
+          $('#image-url-input').addEventListener('keypress', e => {
+            if (e.key === 'Enter') {
+              addImageFromUrl();
+            }
+          });
+          $('#add-image-file').addEventListener('click', () => {
+            $('#image-file-input').click();
+          });
+          $('#image-file-input').addEventListener('change', addImageFromFile);
+          $('#prev-image').addEventListener('click', () => {
+            if (savedImages.length === 0) {
+              ui.msg.textContent = '没有可切换的图片';
+              return;
+            }
+            const newIndex = selectedImageIndex > 0 ? selectedImageIndex - 1 : savedImages.length - 1;
+            selectImage(newIndex);
+          });
+          $('#next-image').addEventListener('click', () => {
+            if (savedImages.length === 0) {
+              ui.msg.textContent = '没有可切换的图片';
+              return;
+            }
+            const newIndex = selectedImageIndex < savedImages.length - 1 ? selectedImageIndex + 1 : 0;
+            selectImage(newIndex);
+          });
+          $('#random-image').addEventListener('click', () => {
+            if (savedImages.length === 0) {
+              ui.msg.textContent = '没有可切换的图片';
+              return;
+            }
+            if (savedImages.length === 1) {
+              selectImage(0);
+              return;
+            }
+            let newIndex;
+            do {
+              newIndex = Math.floor(Math.random() * savedImages.length);
+            } while (newIndex === selectedImageIndex);
+            selectImage(newIndex);
+          });
         }
         function init() {
           if (!Mvu) {
