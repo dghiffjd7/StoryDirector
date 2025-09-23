@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器7</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器8</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -514,6 +514,22 @@ function createNativePopup() {
   // Make main window draggable
   makeElementDraggable('#sw-popup-window', '.sw-window-header');
 
+  // Bind preview button via delegation to avoid lost handlers
+  try {
+    $(document)
+      .off('click.swPreview')
+      .on('click.swPreview', '#sw-preview-btn', function (e) {
+        e.preventDefault();
+        if (typeof handleNativePreview === 'function') {
+          handleNativePreview();
+        } else if (window && typeof window.handleNativePreview === 'function') {
+          window.handleNativePreview();
+        } else {
+          console.error('[SW][PREVIEW] handleNativePreview not found');
+        }
+      });
+  } catch (e) {}
+
   // Normalize starting position for dragging
   const wndRect = $('#sw-popup-window')[0].getBoundingClientRect();
   $('#sw-popup-window').css({ position: 'fixed', right: 'auto', left: wndRect.left + 'px', top: wndRect.top + 'px' });
@@ -572,28 +588,28 @@ function buildSimpleInterface(settings) {
         <textarea id="special-requirements" placeholder="任何特殊的剧情要求、角色设定或者风格偏好..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #bbb; border-radius: 5px; resize: vertical; color:#111;"></textarea>
       </div>
       
-      <button id="sw-preview-btn" onclick="handleNativePreview()" style="
+      <button id="sw-preview-btn" style="
         width: 100%;
-        padding: 10px;
+        padding: 8px;
         background: linear-gradient(90deg, #667eea, #764ba2);
         border: none;
         color: white;
-        border-radius: 8px;
+        border-radius: 6px;
         cursor: pointer;
-        font-size: 16px;
-        box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
-        margin-bottom: 15px;
+        font-size: 14px;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+        margin-bottom: 12px;
       ">预览完整提示词</button>
       <button id="sw-generate-btn" onclick="handleGenerate()" style="
         width: 100%;
-        padding: 10px;
+        padding: 8px;
         background: linear-gradient(90deg, #22c55e, #16a34a);
         border: none;
         color: white;
-        border-radius: 8px;
+        border-radius: 6px;
         cursor: pointer;
-        font-size: 16px;
-        box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+        font-size: 14px;
+        box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
         margin-bottom: 10px;
       ">🎯 生成故事大纲</button>
       
@@ -634,6 +650,7 @@ function buildSimpleInterface(settings) {
         }
 
         function handleNativePreview() {
+          console.log('[SW][PREVIEW] click preview');
           try {
             const settings = collectNativeSettingsForPreview();
             var fnBuild = (window && window.buildPromptForPreview) ? window.buildPromptForPreview : (typeof buildPromptForPreview === 'function' ? buildPromptForPreview : null);
