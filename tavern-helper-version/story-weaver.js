@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器6</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器7</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -584,6 +584,18 @@ function buildSimpleInterface(settings) {
         box-shadow: 0 6px 18px rgba(102, 126, 234, 0.4);
         margin-bottom: 15px;
       ">预览完整提示词</button>
+      <button id="sw-generate-btn" onclick="handleGenerate()" style="
+        width: 100%;
+        padding: 10px;
+        background: linear-gradient(90deg, #22c55e, #16a34a);
+        border: none;
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        box-shadow: 0 6px 18px rgba(34, 197, 94, 0.35);
+        margin-bottom: 10px;
+      ">🎯 生成故事大纲</button>
       
       <div id="sw-output-section" style="display: none;">
         <label style="display: block; margin-bottom: 5px; font-weight: 600;">生成结果：</label>
@@ -625,13 +637,27 @@ function buildSimpleInterface(settings) {
           try {
             const settings = collectNativeSettingsForPreview();
             var fnBuild = (window && window.buildPromptForPreview) ? window.buildPromptForPreview : (typeof buildPromptForPreview === 'function' ? buildPromptForPreview : null);
-            if (!fnBuild) { throw new Error('buildPromptForPreview is not defined'); }
+            if (!fnBuild) {
+              console.error('[SW][PREVIEW] buildPromptForPreview missing', {
+                hasWindow: typeof window !== 'undefined',
+                winHasFn: !!(window && window.buildPromptForPreview),
+                typeofLocal: typeof buildPromptForPreview
+              });
+              throw new Error('buildPromptForPreview is not defined');
+            }
             var previewData = fnBuild(settings);
             var fnDialog = (window && window.showPromptPreviewDialog) ? window.showPromptPreviewDialog : (typeof showPromptPreviewDialog === 'function' ? showPromptPreviewDialog : null);
-            if (!fnDialog) { throw new Error('showPromptPreviewDialog is not defined'); }
+            if (!fnDialog) {
+              console.error('[SW][PREVIEW] showPromptPreviewDialog missing', {
+                hasWindow: typeof window !== 'undefined',
+                winHasFn: !!(window && window.showPromptPreviewDialog),
+                typeofLocal: typeof showPromptPreviewDialog
+              });
+              throw new Error('showPromptPreviewDialog is not defined');
+            }
             fnDialog(previewData, settings);
           } catch (err) {
-            console.error('[SW] Preview failed:', err);
+            console.error('[SW][PREVIEW] failed:', err);
             alert('预览失败: ' + err.message);
           }
       }
@@ -3191,6 +3217,10 @@ try {
   if (typeof window !== 'undefined') {
     window.buildPromptForPreview = window.buildPromptForPreview || buildPromptForPreview;
     window.showPromptPreviewDialog = window.showPromptPreviewDialog || showPromptPreviewDialog;
+    console.log('[SW][PREVIEW] exported globals', {
+      hasBuild: !!window.buildPromptForPreview,
+      hasDialog: !!window.showPromptPreviewDialog,
+    });
   }
 } catch (e) {}
 
