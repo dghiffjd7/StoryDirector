@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器3</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器4</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -528,13 +528,13 @@ function buildSimpleInterface(settings) {
       
       <div style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事主题：</label>
-        <textarea id="sw-theme" placeholder="描述您想要的故事主题..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"></textarea>
+        <textarea id="sw-theme" placeholder="描述您想要的故事主题..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #bbb; border-radius: 5px; resize: vertical; color:#111;"></textarea>
       </div>
       
       <div style="display: flex; gap: 15px; margin-bottom: 15px;">
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事类型：</label>
-          <select id="sw-type" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+          <select id="sw-type" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;">
             ${Object.entries(STORY_TYPES)
               .map(([k, v]) => `<option value="${k}" ${k === settings.storyType ? 'selected' : ''}>${v}</option>`)
               .join('')}
@@ -542,7 +542,7 @@ function buildSimpleInterface(settings) {
         </div>
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">叙述风格：</label>
-          <select id="sw-style" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+          <select id="sw-style" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;">
             ${Object.entries(STORY_STYLES)
               .map(([k, v]) => `<option value="${k}" ${k === settings.storyStyle ? 'selected' : ''}>${v}</option>`)
               .join('')}
@@ -555,11 +555,11 @@ function buildSimpleInterface(settings) {
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">章节数量：</label>
           <input type="number" id="sw-chapter-count" value="${
             settings.chapterCount || 5
-          }" min="3" max="20" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;" />
+          }" min="3" max="20" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;" />
         </div>
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">详细程度：</label>
-          <select id="sw-detail" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 5px;">
+          <select id="sw-detail" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;">
             ${Object.entries(DETAIL_LEVELS)
               .map(([k, v]) => `<option value="${k}" ${k === settings.detailLevel ? 'selected' : ''}>${v}</option>`)
               .join('')}
@@ -569,7 +569,7 @@ function buildSimpleInterface(settings) {
       
       <div style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 600;">特殊要求：</label>
-        <textarea id="special-requirements" placeholder="任何特殊的剧情要求、角色设定或者风格偏好..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #ddd; border-radius: 5px; resize: vertical;"></textarea>
+        <textarea id="special-requirements" placeholder="任何特殊的剧情要求、角色设定或者风格偏好..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #bbb; border-radius: 5px; resize: vertical; color:#111;"></textarea>
       </div>
       
       <button id="sw-preview-btn" onclick="handleNativePreview()" style="
@@ -984,7 +984,7 @@ function buildCompleteInterface(settings) {
     <div class="output-section">
       <label class="label">生成结果：</label>
       <div id="output-content" class="output-content">
-        <div id="output-placeholder" style="color: #999; font-style: italic;">
+        <div id="output-placeholder" style="color: #666; font-style: italic;">
           点击"生成故事大纲"开始创作您的故事...
         </div>
       </div>
@@ -1738,7 +1738,7 @@ function buildPromptManagerContent() {
       </div>
 
       <div id="sw-prompt-list" style="
-        border: 1px solid #ddd;
+        border: 1px solid #bbb;
         border-radius: 8px;
         overflow: hidden;
       ">
@@ -2269,7 +2269,7 @@ function buildPromptEditorForm(prompt) {
 
         <div style="margin-bottom: 15px;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">
-            描述 <span style="color: #999; font-weight: normal;">(可选)</span>：
+            描述 <span style="color: #777; font-weight: normal;">(可选)</span>：
           </label>
           <input type="text" id="sw-editor-description" style="
             width: 100%;
@@ -2323,7 +2323,7 @@ function buildPromptEditorForm(prompt) {
               border-radius: 6px;
               font-size: 14px;
             ">
-            <small style="color: #666; font-size: 12px;">数字越小优先级越高</small>
+            <small style="color: #444; font-size: 12px;">数字越小优先级越高</small>
           </div>
           <div style="flex: 1;">
             <label style="display: block; margin-bottom: 5px; font-weight: 600;">注入深度：</label>
@@ -2334,7 +2334,7 @@ function buildPromptEditorForm(prompt) {
               border-radius: 6px;
               font-size: 14px;
             ">
-            <small style="color: #666; font-size: 12px;">控制注入的深度位置</small>
+            <small style="color: #444; font-size: 12px;">控制注入的深度位置</small>
           </div>
           <div style="flex: 1;">
             <label style="display: block; margin-bottom: 5px; font-weight: 600;">位置模式：</label>
@@ -2349,7 +2349,7 @@ function buildPromptEditorForm(prompt) {
               <option value="0">相对位置</option>
               <option value="1">绝对深度</option>
             </select>
-            <small style="color: #666; font-size: 12px;">注入位置计算方式</small>
+            <small style="color: #444; font-size: 12px;">注入位置计算方式</small>
           </div>
         </div>
       </div>
@@ -2399,10 +2399,10 @@ function buildPromptEditorForm(prompt) {
 {{CHARACTER_NAME}} - 角色名称"></textarea>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 8px;">
-          <small style="color: #666;">
+          <small style="color: #444;">
             💡 支持占位符变量，在使用时会自动替换为实际内容
           </small>
-          <small id="sw-editor-char-count" style="color: #999;">
+          <small id="sw-editor-char-count" style="color: #777;">
             字符数: 0
           </small>
         </div>
@@ -2897,7 +2897,7 @@ function showImportConfirmationDialog(prompts, order) {
             <p style="margin: 0 0 10px 0; color: #333;">
               找到 <strong>${prompts.length}</strong> 个提示词，确定要导入吗？
             </p>
-            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #ddd; border-radius: 5px; padding: 10px; background: #f8f9fa;">
+            <div style="max-height: 200px; overflow-y: auto; border: 1px solid #bbb; border-radius: 5px; padding: 10px; background: #f3f4f6;">
               ${prompts
                 .map(
                   p =>
@@ -3182,6 +3182,13 @@ function buildPromptForPreview(settings) {
   };
 }
 
+// Expose for inline handlers in injected popup HTML
+try {
+  if (typeof window !== 'undefined') {
+    window.buildPromptForPreview = window.buildPromptForPreview || buildPromptForPreview;
+  }
+} catch (e) {}
+
 function showPromptPreviewDialog(promptData, sampleSettings) {
   // Remove existing dialog
   $('#sw-preview-dialog').remove();
@@ -3268,16 +3275,17 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
               <div style="margin-bottom: 15px;">
                 <h4 style="margin: 0 0 10px 0; color: #333;">组装后的完整提示词：</h4>
                 <div style="
-                  background: #f8f9fa;
-                  border: 1px solid #ddd;
+                  background: #f3f4f6;
+                  border: 1px solid #cfd4da;
                   border-radius: 5px;
                   padding: 15px;
                   font-family: 'Courier New', monospace;
                   font-size: 13px;
-                  line-height: 1.5;
+                  line-height: 1.6;
                   white-space: pre-wrap;
                   max-height: 400px;
                   overflow-y: auto;
+                  color:#0f172a;
                 ">${promptData.final}</div>
               </div>
               <div style="display: flex; gap: 10px;">
@@ -3289,7 +3297,7 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
                   border-radius: 5px;
                   cursor: pointer;
                 ">📋 复制完整提示词</button>
-                <span style="color: #666; font-size: 12px; align-self: center;">
+                <span style="color: #444; font-size: 12px; align-self: center;">
                   字符数: ${promptData.final.length} | 启用的提示词: ${promptData.sections.length}
                 </span>
               </div>
@@ -3302,34 +3310,24 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
                 .map(
                   (section, index) => `
                 <div style="
-                  border: 1px solid #ddd;
+                  border: 1px solid #bbb;
                   border-radius: 5px;
                   margin-bottom: 15px;
-                  overflow: hidden;
                 ">
                   <div style="
-                    background: #f8f9fa;
+                    background: #f3f4f6;
                     padding: 10px 15px;
-                    border-bottom: 1px solid #ddd;
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
+                    border-bottom: 1px solid #cfd4da;
                   ">
                     <span style="font-weight: 600;">${section.name}</span>
-                    <div style="display: flex; gap: 10px; font-size: 12px; color: #666;">
+                    <div style="display: flex; gap: 10px; font-size: 12px; color: #444;">
                       <span>角色: ${section.role}</span>
                       <span>顺序: ${section.order}</span>
                     </div>
                   </div>
-                  <div style="
-                    padding: 15px;
-                    font-family: 'Courier New', monospace;
-                    font-size: 13px;
-                    line-height: 1.4;
-                    white-space: pre-wrap;
-                    max-height: 200px;
-                    overflow-y: auto;
-                  ">${section.content}</div>
+                  <div style="padding: 12px 15px; font-family: 'Courier New', monospace; font-size: 13px; color:#0f172a;">
+                    ${section.content.replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                  </div>
                 </div>
               `,
                 )
@@ -3340,15 +3338,16 @@ function showPromptPreviewDialog(promptData, sampleSettings) {
             <div class="preview-content" data-content="settings" style="display: none;">
               <h4 style="margin: 0 0 15px 0; color: #333;">用于预览的示例设置：</h4>
               <div style="
-                background: #f8f9fa;
-                border: 1px solid #ddd;
+                background: #f3f4f6;
+                border: 1px solid #cfd4da;
                 border-radius: 5px;
                 padding: 15px;
+                color:#0f172a;
                 font-family: 'Courier New', monospace;
                 font-size: 13px;
-                line-height: 1.5;
+                line-height: 1.6;
               ">${JSON.stringify(sampleSettings, null, 2)}</div>
-              <p style="margin-top: 10px; color: #666; font-size: 14px;">
+              <p style="margin-top: 10px; color: #444; font-size: 14px;">
                 💡 这是用于预览的示例设置。实际使用时，提示词会根据你在主界面中的具体设置进行动态替换。
               </p>
             </div>
