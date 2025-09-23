@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器6</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -624,13 +624,12 @@ function buildSimpleInterface(settings) {
         function handleNativePreview() {
           try {
             const settings = collectNativeSettingsForPreview();
-            const previewData = (window && window.buildPromptForPreview) ? window.buildPromptForPreview(settings) : null;
-            if (!previewData) { throw new Error('buildPromptForPreview is not defined'); }
-            if (window && window.showPromptPreviewDialog) {
-              window.showPromptPreviewDialog(previewData, settings);
-            } else {
-              throw new Error('showPromptPreviewDialog is not defined');
-            }
+            var fnBuild = (window && window.buildPromptForPreview) ? window.buildPromptForPreview : (typeof buildPromptForPreview === 'function' ? buildPromptForPreview : null);
+            if (!fnBuild) { throw new Error('buildPromptForPreview is not defined'); }
+            var previewData = fnBuild(settings);
+            var fnDialog = (window && window.showPromptPreviewDialog) ? window.showPromptPreviewDialog : (typeof showPromptPreviewDialog === 'function' ? showPromptPreviewDialog : null);
+            if (!fnDialog) { throw new Error('showPromptPreviewDialog is not defined'); }
+            fnDialog(previewData, settings);
           } catch (err) {
             console.error('[SW] Preview failed:', err);
             alert('预览失败: ' + err.message);
@@ -3191,6 +3190,7 @@ function buildPromptForPreview(settings) {
 try {
   if (typeof window !== 'undefined') {
     window.buildPromptForPreview = window.buildPromptForPreview || buildPromptForPreview;
+    window.showPromptPreviewDialog = window.showPromptPreviewDialog || showPromptPreviewDialog;
   }
 } catch (e) {}
 

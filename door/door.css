@@ -78,18 +78,12 @@
   z-index: 5;
   opacity: 0.9;
   border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 0 30px rgba(0, 0, 0, 0.9),
-    inset 0 0 30px rgba(0, 0, 0, 0.4),
-    0 0 60px rgba(170, 0, 255, 0.2);
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.9), inset 0 0 30px rgba(0, 0, 0, 0.4), 0 0 60px rgba(170, 0, 255, 0.2);
   transition: all 0.5s ease;
 }
 .portal-center-image:hover {
   transform: translate(-50%, -50%) scale(1.02);
-  box-shadow:
-    0 0 50px rgba(0, 0, 0, 0.9),
-    inset 0 0 40px rgba(0, 0, 0, 0.3),
-    0 0 100px rgba(170, 0, 255, 0.4);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.9), inset 0 0 40px rgba(0, 0, 0, 0.3), 0 0 100px rgba(170, 0, 255, 0.4);
 }
 .portal-placeholder {
   position: absolute;
@@ -400,7 +394,8 @@ button:active {
   flex-direction: column;
   gap: 12px;
 }
-.url-input, .file-input {
+.url-input,
+.file-input {
   width: 100%;
   padding: 10px 12px;
   background: rgba(0, 0, 0, 0.3);
