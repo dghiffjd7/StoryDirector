@@ -69,15 +69,15 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(120px, 25vw);
-  height: min(120px, 25vw);
+  width: 50vmin;
+  height: 50vmin;
   border-radius: 50%;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   z-index: 5;
   opacity: 0.9;
-  border: 2px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow:
     0 0 30px rgba(0, 0, 0, 0.9),
     inset 0 0 30px rgba(0, 0, 0, 0.4),
@@ -85,26 +85,26 @@
   transition: all 0.5s ease;
 }
 .portal-center-image:hover {
-  transform: translate(-50%, -50%) scale(1.05);
+  transform: translate(-50%, -50%) scale(1.02);
   box-shadow:
-    0 0 40px rgba(0, 0, 0, 0.9),
-    inset 0 0 30px rgba(0, 0, 0, 0.3),
-    0 0 80px rgba(170, 0, 255, 0.3);
+    0 0 50px rgba(0, 0, 0, 0.9),
+    inset 0 0 40px rgba(0, 0, 0, 0.3),
+    0 0 100px rgba(170, 0, 255, 0.4);
 }
 .portal-placeholder {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(120px, 25vw);
-  height: min(120px, 25vw);
+  width: 50vmin;
+  height: 50vmin;
   border-radius: 50%;
-  border: 2px dashed rgba(255, 255, 255, 0.2);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
   background: rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 4vmin;
   color: rgba(255, 255, 255, 0.3);
   z-index: 5;
   transition: all 0.3s ease;

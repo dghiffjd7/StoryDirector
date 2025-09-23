@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器4</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -624,8 +624,13 @@ function buildSimpleInterface(settings) {
         function handleNativePreview() {
           try {
             const settings = collectNativeSettingsForPreview();
-            const previewData = buildPromptForPreview(settings);
-            showPromptPreviewDialog(previewData, settings);
+            const previewData = (window && window.buildPromptForPreview) ? window.buildPromptForPreview(settings) : null;
+            if (!previewData) { throw new Error('buildPromptForPreview is not defined'); }
+            if (window && window.showPromptPreviewDialog) {
+              window.showPromptPreviewDialog(previewData, settings);
+            } else {
+              throw new Error('showPromptPreviewDialog is not defined');
+            }
           } catch (err) {
             console.error('[SW] Preview failed:', err);
             alert('预览失败: ' + err.message);
@@ -3644,7 +3649,7 @@ function openWorldbookManager() {
         <span>📚 世界书管理</span>
         <button id="sw-worldbook-close" class="sw-themed-close-btn" style="background: rgba(255,255,255,0.2); border: none; color: white; padding: 4px 8px; border-radius: 6px; cursor: pointer;">✕</button>
       </div>
-      <div class="sw-panel-body" style="padding: 12px; overflow: auto;">
+      <div class="sw-panel-body" style="padding: 12px; overflow: auto; background:#f3f4f6;">
         <div id="sw-worldbook-list" style="display: grid; grid-template-columns: 1fr; gap: 10px;"></div>
       </div>
     </div>
@@ -4221,12 +4226,12 @@ async function renderWorldbookList(containerSelector) {
       const key = entry.key || '';
       const content = entry.content || '';
       const item = $(`
-        <div style="border:1px solid #eee; border-radius:8px; overflow:hidden;">
-          <div style="background:#f8f9fa; padding:8px 10px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
-            <span>${$('<div/>').text(key).html()}</span>
-            <span style="color:#999; font-size:12px;">#${idx + 1}</span>
+        <div style="border:1px solid #cfd4da; border-radius:8px; overflow:hidden; background:white;">
+          <div style="background:#f3f4f6; padding:8px 10px; font-weight:600; display:flex; justify-content:space-between; align-items:center;">
+            <span style="color:#0f172a;">${$('<div/>').text(key).html()}</span>
+            <span style="color:#444; font-size:12px;">#${idx + 1}</span>
           </div>
-          <div style="padding:10px; font-family:'Courier New', monospace; white-space:pre-wrap; font-size:13px;">${$(
+          <div style="padding:10px; font-family:'Courier New', monospace; white-space:pre-wrap; font-size:13px; color:#0f172a;">${$(
             '<div/>',
           )
             .text(content)
