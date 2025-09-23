@@ -3771,7 +3771,7 @@ function getWorldbookEntriesFromTavernHelper() {
   }
 }
 
-function logTavernHelperWorldbookApis() {
+function logTavernHelperWorldbookApis_v1() {
   try {
     if (typeof window.TavernHelper === 'undefined') return;
     const keys = Object.keys(window.TavernHelper || {}).filter(k => /worldbook|lorebook/i.test(k));
@@ -3781,7 +3781,7 @@ function logTavernHelperWorldbookApis() {
 
 async function getWorldbookEntriesFromTavernHelperAsync() {
   console.log('[SW][WB][TH][async] start retrieval');
-  logTavernHelperWorldbookApis();
+  logTavernHelperWorldbookApis_v1();
 
   if (typeof window.TavernHelper === 'undefined') {
     console.warn('[SW][WB][TH][async] TavernHelper undefined');
