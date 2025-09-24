@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器4</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -631,7 +631,7 @@ function buildSimpleInterface(settings) {
         width: 70%;
         display: block;
         margin: 0 auto;
-        padding: 6px;
+        padding: 10px;
         background: linear-gradient(90deg, #667eea, #764ba2);
         border: none;
         color: white;
@@ -646,7 +646,7 @@ function buildSimpleInterface(settings) {
         width: 70%;
         display: block;
         margin: 0 auto;
-        padding: 6px;
+        padding: 10px;
         background: linear-gradient(90deg, #22c55e, #16a34a);
         border: none;
         color: white;
