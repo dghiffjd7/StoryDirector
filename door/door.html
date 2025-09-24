@@ -13,7 +13,7 @@
         if (!mount) return;
         const root = mount.attachShadow({ mode: 'open' });
         root.innerHTML =
-          '<style>@import url("https://dghiffjd7.github.io/StoryDirector/door/door.css");</style><div class="fs"><div class="phone-wrap"><div class="phone"><div class="notch"></div><div class="screen"><div class="portal" aria-hidden="true"><div id="portal-center-image" class="portal-center-image" style="display: none;"></div><div id="portal-placeholder" class="portal-placeholder">📷</div><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="image-controls"><button id="prev-image" class="image-control-btn" title="上一张图片">‹</button><button id="next-image" class="image-control-btn" title="下一张图片">›</button><button id="random-image" class="image-control-btn" title="随机图片">🎲</button></div></div><div class="hud"><div class="topbar"><div class="title">空间门 · 控制面板</div><div class="spacer"></div><div class="settings-wrapper"><button id="btn-settings" class="icon-btn" title="设置">⚙</button><div id="settings-dropdown" class="dropdown-menu" style="display: none;"><div class="dropdown-item" id="dropdown-image-manager">📷 图片管理</div><div class="dropdown-item" id="dropdown-fullscreen">⤢ 全屏</div></div></div><div class="pts" id="ui-pts">剩余点数：--</div></div><div class="cards"><div class="card" id="card-attrs"><div class="row"><div class="k">距离(m)</div><div class="val" id="v-range">--</div><div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div><div class="row"><div class="k">开口(cm)</div><div class="val" id="v-aperture">--</div><div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div><div class="row"><div class="k">持续(s)</div><div class="val" id="v-duration">--</div><div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div><div class="row"><div class="k">冷却(s)</div><div class="val" id="v-cd">--</div><div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div><div class="row"><div class="k">稳定等级</div><div class="val" id="v-stab">--</div><div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div></div></div><div class="foot"><div class="bar"><button id="btn-copy" class="ghost">复制提示片段</button><button id="btn-refresh" class="ghost">刷新数值</button></div><div class="frag" id="frag">提示片段将显示在此处…</div><div class="warn" id="msg"></div></div></div><div id="image-manager-modal" class="modal" style="display: none;"><div class="modal-content"><div class="modal-header"><div class="modal-title">📷 图片管理器</div><button id="close-image-manager" class="modal-close">×</button></div><div class="modal-body"><div class="image-upload-section"><div class="upload-tabs"><button class="tab-btn active" data-tab="url">🔗 URL链接</button><button class="tab-btn" data-tab="upload">📁 上传文件</button></div><div class="tab-content" id="tab-url"><input type="text" id="image-url-input" placeholder="请输入图片URL或base64数据..." class="url-input"><button id="add-image-url" class="btn-primary">添加图片</button></div><div class="tab-content" id="tab-upload" style="display: none;"><input type="file" id="image-file-input" accept="image/*" class="file-input"><button id="add-image-file" class="btn-primary">添加图片</button></div></div><div class="image-list-section"><div class="section-title">已保存的图片</div><div id="image-list" class="image-list"></div></div></div></div></div></div></div></div>';
+          '<style>@import url("https://dghiffjd7.github.io/StoryDirector/door/door.css");</style><div class="fs"><div class="phone-wrap"><div class="phone"><div class="notch"></div><div class="screen"><div class="portal" aria-hidden="true"><div id="portal-center-image" class="portal-center-image" style="display: none;"></div><div id="portal-placeholder" class="portal-placeholder">📷</div><div class="ring r1"></div><div class="ring r2"></div><div class="ring r3"></div><div class="image-controls"><button id="prev-image" class="image-control-btn" title="上一张图片">‹</button><button id="next-image" class="image-control-btn" title="下一张图片">›</button><button id="random-image" class="image-control-btn" title="随机图片">🎲</button></div></div><div class="hud"><div class="topbar"><div class="title">空间门 · 控制面板</div><div class="spacer"></div><div class="settings-wrapper"><button id="btn-settings" class="icon-btn" title="设置">⚙</button><div id="settings-dropdown" class="dropdown-menu" style="display: none;"><div class="dropdown-item" id="dropdown-image-manager">📷 图片管理</div><div class="dropdown-item" id="dropdown-keyword-test">🔍 关键词测试</div><div class="dropdown-item" id="dropdown-fullscreen">⤢ 全屏</div></div></div><div class="pts" id="ui-pts">剩余点数：--</div></div><div class="cards"><div class="card" id="card-attrs"><div class="row"><div class="k">距离(m)</div><div class="val" id="v-range">--</div><div class="btns"><button data-k="range_m" data-d="+1">+1</button><button data-k="range_m" data-d="-1">-1</button></div></div><div class="row"><div class="k">开口(cm)</div><div class="val" id="v-aperture">--</div><div class="btns"><button data-k="aperture_cm" data-d="+2">+2</button><button data-k="aperture_cm" data-d="-2">-2</button></div></div><div class="row"><div class="k">持续(s)</div><div class="val" id="v-duration">--</div><div class="btns"><button data-k="duration_s" data-d="+1">+1</button><button data-k="duration_s" data-d="-1">-1</button></div></div><div class="row"><div class="k">冷却(s)</div><div class="val" id="v-cd">--</div><div class="btns"><button data-k="cooldown_s" data-d="-2">-2</button><button data-k="cooldown_s" data-d="+2">+2</button></div></div><div class="row"><div class="k">稳定等级</div><div class="val" id="v-stab">--</div><div class="btns"><button data-k="stability" data-d="+1">+1</button><button data-k="stability" data-d="-1">-1</button></div></div></div></div><div class="foot"><div class="bar"><button id="btn-copy" class="ghost">复制提示片段</button><button id="btn-refresh" class="ghost">刷新数值</button></div><div class="frag" id="frag">提示片段将显示在此处…</div><div class="warn" id="msg"></div></div></div><div id="image-manager-modal" class="modal" style="display: none;"><div class="modal-content"><div class="modal-header"><div class="modal-title">📷 图片管理器</div><button id="close-image-manager" class="modal-close">×</button></div><div class="modal-body"><div class="slideshow-settings-section"><div class="section-title">🎬 幻灯片设置</div><div class="settings-row"><label class="settings-label"><input type="checkbox" id="slideshow-enabled" checked> 启用幻灯片功能</label></div><div class="settings-row"><label class="settings-label">切换间隔：<select id="slideshow-interval"><option value="1000">1秒</option><option value="2000">2秒</option><option value="3000">3秒</option><option value="5000" selected>5秒</option><option value="10000">10秒</option><option value="30000">30秒</option><option value="60000">1分钟</option></select></label></div><div class="settings-help">💡 匹配到多张图片时自动轮播展示</div></div><div class="image-upload-section"><div class="upload-tabs"><button class="tab-btn active" data-tab="url">🔗 URL链接</button><button class="tab-btn" data-tab="upload">📁 上传文件</button></div><div class="tab-content" id="tab-url"><input type="text" id="image-url-input" placeholder="请输入图片URL或base64数据..." class="url-input"><div class="category-section"><input type="text" id="url-category-input" placeholder="图片分类（如：自然、建筑、人物...）" class="category-input"><input type="text" id="url-keywords-input" placeholder="关键词（用逗号分隔，如：阳光,沙滩,海浪）" class="keywords-input"></div><button id="add-image-url" class="btn-primary">添加图片</button></div><div class="tab-content" id="tab-upload" style="display: none;"><input type="file" id="image-file-input" accept="image/*" class="file-input"><div class="category-section"><input type="text" id="file-category-input" placeholder="图片分类（如：自然、建筑、人物...）" class="category-input"><input type="text" id="file-keywords-input" placeholder="关键词（用逗号分隔，如：阳光,沙滩,海浪）" class="keywords-input"></div><button id="add-image-file" class="btn-primary">添加图片</button></div></div><div class="image-list-section"><div class="section-title">已保存的图片</div><div id="image-list" class="image-list"></div></div><div id="image-edit-modal" class="edit-modal" style="display: none;"><div class="edit-modal-content"><div class="edit-modal-header"><div class="edit-modal-title">编辑图片信息</div><button id="close-edit-modal" class="edit-modal-close">×</button></div><div class="edit-modal-body"><input type="text" id="edit-category-input" placeholder="图片分类" class="category-input"><input type="text" id="edit-keywords-input" placeholder="关键词（用逗号分隔）" class="keywords-input"><div class="edit-modal-actions"><button id="save-image-edit" class="btn-primary">保存</button><button id="cancel-image-edit" class="btn-secondary">取消</button></div></div></div></div></div></div><div id="keyword-test-modal" class="modal" style="display: none;"><div class="modal-content"><div class="modal-header"><div class="modal-title">🔍 关键词匹配测试</div><button id="close-keyword-test" class="modal-close">×</button></div><div class="modal-body"><div class="test-section"><textarea id="test-text-input" placeholder="输入测试文本，例如：&lt;Door&gt;阳光,沙滩&lt;/Door&gt;今天天气很好..." class="test-textarea"></textarea><button id="run-keyword-test" class="btn-primary">测试匹配</button></div><div id="test-results" class="test-results" style="display: none;"><div class="section-title">匹配结果</div><div id="test-results-content"></div></div></div></div></div></div></div></div></div>';
         const $ = sel => root.querySelector(sel);
         const $$ = sel => Array.from(root.querySelectorAll(sel));
         const Mvu = typeof parent !== 'undefined' && parent && parent.Mvu ? parent.Mvu : null;
@@ -105,9 +105,48 @@
         }
         let savedImages = [];
         let selectedImageIndex = -1;
+        let slideshowSettings = {
+          enabled: true,
+          interval: 5000, // 默认5秒切换
+        };
+        let slideshowTimer = null;
+        let slideshowImages = [];
+        function loadSlideshowSettings() {
+          const enabledCheckbox = $('#slideshow-enabled');
+          const intervalSelect = $('#slideshow-interval');
+
+          if (enabledCheckbox) {
+            enabledCheckbox.checked = slideshowSettings.enabled;
+          }
+          if (intervalSelect) {
+            intervalSelect.value = slideshowSettings.interval.toString();
+          }
+        }
+        function saveSlideshowSettings() {
+          const enabledCheckbox = $('#slideshow-enabled');
+          const intervalSelect = $('#slideshow-interval');
+
+          if (enabledCheckbox) {
+            slideshowSettings.enabled = enabledCheckbox.checked;
+          }
+          if (intervalSelect) {
+            slideshowSettings.interval = parseInt(intervalSelect.value, 10) || 5000;
+          }
+
+          // 如果当前正在播放幻灯片，重新启动以应用新设置
+          if (slideshowTimer && slideshowImages.length > 0) {
+            const currentImages = savedImages.filter((_, index) => slideshowImages.includes(index));
+            const matchedImages = currentImages.map((imageData, idx) => ({
+              index: slideshowImages[idx],
+              imageData: imageData,
+            }));
+            startSlideshow(matchedImages);
+          }
+        }
         function showImageManager() {
           $('#image-manager-modal').style.display = 'flex';
           loadImageList();
+          loadSlideshowSettings();
         }
         function hideImageManager() {
           $('#image-manager-modal').style.display = 'none';
@@ -125,14 +164,30 @@
           savedImages.forEach((imageData, index) => {
             const item = document.createElement('div');
             item.className = `image-item ${index === selectedImageIndex ? 'selected' : ''}`;
+
+            const categoryText = imageData.category ? `📂 ${imageData.category}` : '';
+            const keywordsText =
+              imageData.keywords && imageData.keywords.length > 0 ? `🏷️ ${imageData.keywords.join(', ')}` : '';
+
             item.innerHTML = `
               <img src="${imageData.url}" alt="图片 ${index + 1}" />
-              <button class="delete-btn" data-index="${index}">×</button>
+              <div class="image-info">
+                ${categoryText ? `<div class="image-category">${categoryText}</div>` : ''}
+                ${keywordsText ? `<div class="image-keywords">${keywordsText}</div>` : ''}
+              </div>
+              <button class="edit-btn" data-index="${index}" title="编辑">✏️</button>
+              <button class="delete-btn" data-index="${index}" title="删除">×</button>
             `;
 
             item.addEventListener('click', e => {
-              if (e.target.classList.contains('delete-btn')) return;
-              selectImage(index);
+              if (e.target.classList.contains('delete-btn') || e.target.classList.contains('edit-btn')) return;
+              selectImageManually(index);
+            });
+
+            const editBtn = item.querySelector('.edit-btn');
+            editBtn.addEventListener('click', e => {
+              e.stopPropagation();
+              editImageInfo(index);
             });
 
             const deleteBtn = item.querySelector('.delete-btn');
@@ -150,7 +205,15 @@
           updatePortalImage();
           ui.msg.textContent = `已选择图片 ${index + 1}`;
         }
+        function selectImageManually(index) {
+          // 手动选择图片时停止幻灯片
+          stopSlideshow();
+          selectImage(index);
+        }
         function deleteImage(index) {
+          // 删除图片时停止幻灯片
+          stopSlideshow();
+
           savedImages.splice(index, 1);
           if (selectedImageIndex === index) {
             selectedImageIndex = -1;
@@ -160,6 +223,293 @@
           }
           loadImageList();
           ui.msg.textContent = '图片已删除';
+        }
+        let editingImageIndex = -1;
+        function editImageInfo(index) {
+          editingImageIndex = index;
+          const imageData = savedImages[index];
+          const editModal = $('#image-edit-modal');
+          const categoryInput = $('#edit-category-input');
+          const keywordsInput = $('#edit-keywords-input');
+
+          categoryInput.value = imageData.category || '';
+          keywordsInput.value = imageData.keywords ? imageData.keywords.join(', ') : '';
+
+          editModal.style.display = 'flex';
+        }
+        function saveImageEdit() {
+          if (editingImageIndex < 0 || editingImageIndex >= savedImages.length) return;
+
+          const categoryInput = $('#edit-category-input');
+          const keywordsInput = $('#edit-keywords-input');
+          const category = categoryInput.value.trim();
+          const keywordsText = keywordsInput.value.trim();
+
+          const keywords = keywordsText
+            ? keywordsText
+                .split(',')
+                .map(k => k.trim())
+                .filter(k => k.length > 0)
+            : [];
+
+          savedImages[editingImageIndex].category = category;
+          savedImages[editingImageIndex].keywords = keywords;
+          savedImages[editingImageIndex].name = category || savedImages[editingImageIndex].name;
+
+          $('#image-edit-modal').style.display = 'none';
+          loadImageList();
+          ui.msg.textContent = '图片信息已更新';
+          editingImageIndex = -1;
+        }
+        function cancelImageEdit() {
+          $('#image-edit-modal').style.display = 'none';
+          editingImageIndex = -1;
+        }
+        function extractDoorKeywords(text) {
+          // 提取<Door>标签中的关键词
+          const doorRegex = /<Door>(.*?)<\/Door>/gi;
+          const keywords = [];
+          let match;
+
+          while ((match = doorRegex.exec(text)) !== null) {
+            const keywordText = match[1].trim();
+            if (keywordText) {
+              // 支持逗号分隔的多个关键词
+              const splitKeywords = keywordText
+                .split(',')
+                .map(k => k.trim())
+                .filter(k => k.length > 0);
+              keywords.push(...splitKeywords);
+            }
+          }
+
+          return keywords;
+        }
+        function matchImagesByDoorKeywords(text) {
+          if (!text || savedImages.length === 0) return [];
+
+          const doorKeywords = extractDoorKeywords(text);
+          if (doorKeywords.length === 0) return [];
+
+          const matches = [];
+
+          savedImages.forEach((imageData, index) => {
+            let score = 0;
+            const matchedKeywords = [];
+
+            // 检查分类匹配
+            if (imageData.category) {
+              doorKeywords.forEach(keyword => {
+                if (keyword.toLowerCase() === imageData.category.toLowerCase()) {
+                  score += 3; // 分类匹配权重更高
+                  matchedKeywords.push(keyword);
+                }
+              });
+            }
+
+            // 检查关键词匹配
+            if (imageData.keywords && imageData.keywords.length > 0) {
+              imageData.keywords.forEach(imgKeyword => {
+                doorKeywords.forEach(doorKeyword => {
+                  if (doorKeyword.toLowerCase() === imgKeyword.toLowerCase()) {
+                    score += 2;
+                    matchedKeywords.push(doorKeyword);
+                  }
+                });
+              });
+            }
+
+            if (score > 0) {
+              matches.push({
+                index: index,
+                score: score,
+                matchedKeywords: matchedKeywords,
+                imageData: imageData,
+              });
+            }
+          });
+
+          // 按匹配分数排序，分数高的在前
+          matches.sort((a, b) => b.score - a.score);
+          return matches;
+        }
+        // 保留原函数用于测试功能
+        function matchImagesByKeywords(text) {
+          if (!text || savedImages.length === 0) return [];
+
+          const textLower = text.toLowerCase();
+          const matches = [];
+
+          savedImages.forEach((imageData, index) => {
+            let score = 0;
+            const matchedKeywords = [];
+
+            // 检查分类匹配
+            if (imageData.category && textLower.includes(imageData.category.toLowerCase())) {
+              score += 2;
+              matchedKeywords.push(imageData.category);
+            }
+
+            // 检查关键词匹配
+            if (imageData.keywords && imageData.keywords.length > 0) {
+              imageData.keywords.forEach(keyword => {
+                if (textLower.includes(keyword.toLowerCase())) {
+                  score += 1;
+                  matchedKeywords.push(keyword);
+                }
+              });
+            }
+
+            if (score > 0) {
+              matches.push({
+                index: index,
+                score: score,
+                matchedKeywords: matchedKeywords,
+                imageData: imageData,
+              });
+            }
+          });
+
+          // 按匹配分数排序，分数高的在前
+          matches.sort((a, b) => b.score - a.score);
+          return matches;
+        }
+        function stopSlideshow() {
+          if (slideshowTimer) {
+            clearInterval(slideshowTimer);
+            slideshowTimer = null;
+          }
+          slideshowImages = [];
+        }
+        function startSlideshow(matchedImages) {
+          stopSlideshow();
+
+          if (!slideshowSettings.enabled || matchedImages.length <= 1) {
+            if (matchedImages.length > 0) {
+              selectImage(matchedImages[0].index);
+            }
+            return;
+          }
+
+          slideshowImages = matchedImages.map(m => m.index);
+          let currentSlideIndex = 0;
+
+          // 显示第一张图片
+          selectImage(slideshowImages[currentSlideIndex]);
+
+          // 启动自动切换
+          slideshowTimer = setInterval(() => {
+            currentSlideIndex = (currentSlideIndex + 1) % slideshowImages.length;
+            selectImage(slideshowImages[currentSlideIndex]);
+          }, slideshowSettings.interval);
+
+          const totalImages = slideshowImages.length;
+          const intervalSeconds = slideshowSettings.interval / 1000;
+          ui.msg.textContent = `幻灯片播放中：${totalImages}张图片，${intervalSeconds}秒切换`;
+        }
+        function autoSelectImageByDoorKeywords(text) {
+          const matches = matchImagesByDoorKeywords(text);
+
+          if (matches.length === 0) {
+            ui.msg.textContent = '未找到匹配<Door>标签的图片';
+            return false;
+          }
+
+          // 获取最高分数的所有图片
+          const topScore = matches[0].score;
+          const topMatches = matches.filter(m => m.score === topScore);
+
+          if (topMatches.length === 1) {
+            // 只有一张图片，直接选择
+            selectImage(topMatches[0].index);
+            const keywordsText = topMatches[0].matchedKeywords.join(', ');
+            ui.msg.textContent = `匹配图片，关键词：${keywordsText}`;
+          } else {
+            // 多张图片，启动幻灯片
+            const keywordsText = topMatches[0].matchedKeywords.join(', ');
+            ui.msg.textContent = `找到${topMatches.length}张匹配图片，关键词：${keywordsText}`;
+            startSlideshow(topMatches);
+          }
+
+          return true;
+        }
+        // 保留原函数用于测试功能
+        function autoSelectImageByKeywords(text) {
+          const matches = matchImagesByKeywords(text);
+
+          if (matches.length === 0) {
+            ui.msg.textContent = '未找到匹配关键词的图片';
+            return false;
+          }
+
+          // 如果有多个相同分数的图片，随机选择一个
+          const topScore = matches[0].score;
+          const topMatches = matches.filter(m => m.score === topScore);
+          const selectedMatch = topMatches[Math.floor(Math.random() * topMatches.length)];
+
+          selectImage(selectedMatch.index);
+
+          const keywordsText = selectedMatch.matchedKeywords.join(', ');
+          ui.msg.textContent = `自动选择图片，匹配关键词：${keywordsText}`;
+
+          return true;
+        }
+        function processAIResponse(responseText) {
+          // 这个函数可以被外部调用来处理AI回复
+          // 使用Door标签匹配功能
+          return autoSelectImageByDoorKeywords(responseText);
+        }
+        function showKeywordTest() {
+          $('#keyword-test-modal').style.display = 'flex';
+        }
+        function hideKeywordTest() {
+          $('#keyword-test-modal').style.display = 'none';
+        }
+        function runKeywordTest() {
+          const testInput = $('#test-text-input');
+          const testResults = $('#test-results');
+          const testResultsContent = $('#test-results-content');
+          const testText = testInput.value.trim();
+
+          if (!testText) {
+            ui.msg.textContent = '请输入测试文本';
+            return;
+          }
+
+          const matches = matchImagesByKeywords(testText);
+
+          testResultsContent.innerHTML = '';
+
+          if (matches.length === 0) {
+            testResultsContent.innerHTML =
+              '<div style="color: rgba(234, 255, 255, 0.5); text-align: center; padding: 20px; font-size: 13px;">没有找到匹配的图片</div>';
+          } else {
+            matches.forEach((match, index) => {
+              const resultItem = document.createElement('div');
+              resultItem.className = 'test-result-item';
+              resultItem.innerHTML = `
+                <div class="result-rank">#${index + 1}</div>
+                <img src="${match.imageData.url}" alt="匹配图片" class="result-image" />
+                <div class="result-info">
+                  <div class="result-category">${match.imageData.category || '未分类'}</div>
+                  <div class="result-score">匹配分数：${match.score}</div>
+                  <div class="result-keywords">命中关键词：${match.matchedKeywords.join(', ')}</div>
+                </div>
+                <button class="result-select-btn" data-index="${match.index}">选择</button>
+              `;
+
+              const selectBtn = resultItem.querySelector('.result-select-btn');
+              selectBtn.addEventListener('click', () => {
+                selectImageManually(match.index);
+                hideKeywordTest();
+                ui.msg.textContent = `已选择图片：${match.imageData.category || '未分类'}`;
+              });
+
+              testResultsContent.appendChild(resultItem);
+            });
+          }
+
+          testResults.style.display = 'block';
         }
         function updatePortalImage() {
           const portalImage = $('#portal-center-image');
@@ -178,7 +528,11 @@
         }
         async function addImageFromUrl() {
           const urlInput = $('#image-url-input');
+          const categoryInput = $('#url-category-input');
+          const keywordsInput = $('#url-keywords-input');
           const url = urlInput.value.trim();
+          const category = categoryInput.value.trim();
+          const keywordsText = keywordsInput.value.trim();
 
           if (!url) {
             ui.msg.textContent = '请输入图片URL';
@@ -196,24 +550,42 @@
               img.src = url;
             });
 
+            // 处理关键词
+            const keywords = keywordsText
+              ? keywordsText
+                  .split(',')
+                  .map(k => k.trim())
+                  .filter(k => k.length > 0)
+              : [];
+
             // 添加到保存列表
             const imageData = {
               url: url,
-              name: `图片_${Date.now()}`,
+              name: category || `图片_${Date.now()}`,
               type: url.startsWith('data:') ? 'base64' : 'url',
+              category: category,
+              keywords: keywords,
             };
 
             savedImages.push(imageData);
+            const newIndex = savedImages.length - 1;
+            selectImage(newIndex);
             urlInput.value = '';
+            categoryInput.value = '';
+            keywordsInput.value = '';
             loadImageList();
-            ui.msg.textContent = '图片添加成功';
+            ui.msg.textContent = '图片添加并选中成功';
           } catch (error) {
             ui.msg.textContent = '图片加载失败，请检查URL是否正确';
           }
         }
         async function addImageFromFile() {
           const fileInput = $('#image-file-input');
+          const categoryInput = $('#file-category-input');
+          const keywordsInput = $('#file-keywords-input');
           const file = fileInput.files[0];
+          const category = categoryInput.value.trim();
+          const keywordsText = keywordsInput.value.trim();
 
           if (!file) {
             ui.msg.textContent = '请选择文件';
@@ -234,17 +606,31 @@
               reader.readAsDataURL(file);
             });
 
+            // 处理关键词
+            const keywords = keywordsText
+              ? keywordsText
+                  .split(',')
+                  .map(k => k.trim())
+                  .filter(k => k.length > 0)
+              : [];
+
             const base64Url = reader.result;
             const imageData = {
               url: base64Url,
-              name: file.name,
+              name: category || file.name,
               type: 'file',
+              category: category,
+              keywords: keywords,
             };
 
             savedImages.push(imageData);
+            const newIndex = savedImages.length - 1;
+            selectImage(newIndex);
             fileInput.value = '';
+            categoryInput.value = '';
+            keywordsInput.value = '';
             loadImageList();
-            ui.msg.textContent = '图片上传成功';
+            ui.msg.textContent = '图片上传并选中成功';
           } catch (error) {
             ui.msg.textContent = '文件读取失败';
           }
@@ -311,6 +697,10 @@
             settingsDropdown.style.display = 'none';
             showImageManager();
           });
+          $('#dropdown-keyword-test').addEventListener('click', () => {
+            settingsDropdown.style.display = 'none';
+            showKeywordTest();
+          });
           document.addEventListener(
             'fullscreenchange',
             () => {
@@ -354,7 +744,7 @@
               return;
             }
             const newIndex = selectedImageIndex > 0 ? selectedImageIndex - 1 : savedImages.length - 1;
-            selectImage(newIndex);
+            selectImageManually(newIndex);
           });
           $('#next-image').addEventListener('click', () => {
             if (savedImages.length === 0) {
@@ -362,7 +752,7 @@
               return;
             }
             const newIndex = selectedImageIndex < savedImages.length - 1 ? selectedImageIndex + 1 : 0;
-            selectImage(newIndex);
+            selectImageManually(newIndex);
           });
           $('#random-image').addEventListener('click', () => {
             if (savedImages.length === 0) {
@@ -370,18 +760,28 @@
               return;
             }
             if (savedImages.length === 1) {
-              selectImage(0);
+              selectImageManually(0);
               return;
             }
             let newIndex;
             do {
               newIndex = Math.floor(Math.random() * savedImages.length);
             } while (newIndex === selectedImageIndex);
-            selectImage(newIndex);
+            selectImageManually(newIndex);
           });
           $('#portal-placeholder').addEventListener('click', () => {
             showImageManager();
           });
+          $('#save-image-edit').addEventListener('click', saveImageEdit);
+          $('#cancel-image-edit').addEventListener('click', cancelImageEdit);
+          $('#close-edit-modal').addEventListener('click', cancelImageEdit);
+          $('#image-edit-modal').addEventListener('click', e => {
+            if (e.target.id === 'image-edit-modal') {
+              cancelImageEdit();
+            }
+          });
+          $('#slideshow-enabled').addEventListener('change', saveSlideshowSettings);
+          $('#slideshow-interval').addEventListener('change', saveSlideshowSettings);
         }
         function init() {
           bind(); // 始终绑定事件监听器
@@ -391,6 +791,18 @@
           }
           render(Mvu.getCurrentMvuData());
         }
+
+        // 暴露给外部调用的API
+        if (typeof window !== 'undefined') {
+          window.DoorImageProcessor = {
+            processAIResponse: processAIResponse,
+            extractDoorKeywords: extractDoorKeywords,
+            matchImagesByDoorKeywords: matchImagesByDoorKeywords,
+            startSlideshow: startSlideshow,
+            stopSlideshow: stopSlideshow,
+          };
+        }
+
         init();
       })();
     </script>
