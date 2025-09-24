@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器3</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -519,6 +519,7 @@ function createNativePopup() {
     const bindOnce = () => {
       const p = document.getElementById('sw-preview-btn');
       const g = document.getElementById('sw-generate-btn');
+      console.log('[SW][BIND] found buttons', { p: !!p, g: !!g });
       if (p) {
         p.style.setProperty('width', '70%', 'important');
         p.style.setProperty('margin', '0 auto', 'important');
@@ -554,6 +555,8 @@ function createNativePopup() {
     bindOnce();
     // small delay to win against late overrides
     setTimeout(bindOnce, 0);
+    setTimeout(bindOnce, 50);
+    setTimeout(bindOnce, 200);
   } catch (e) {}
 
   // Normalize starting position for dragging
