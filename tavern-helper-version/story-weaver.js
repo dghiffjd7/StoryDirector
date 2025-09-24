@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器3</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器4</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -514,13 +514,15 @@ function createNativePopup() {
   // Make main window draggable
   makeElementDraggable('#sw-popup-window', '.sw-window-header');
 
-  // Bind buttons using capture phase and inline style overrides
+  // Bind buttons robustly: observe popup subtree until buttons appear, then attach capture listeners
   try {
-    const bindOnce = () => {
-      const p = document.getElementById('sw-preview-btn');
-      const g = document.getElementById('sw-generate-btn');
+    const container = document.getElementById('sw-popup-window');
+    const tryBind = () => {
+      const p = container && container.querySelector('#sw-preview-btn');
+      const g = container && container.querySelector('#sw-generate-btn');
       console.log('[SW][BIND] found buttons', { p: !!p, g: !!g });
-      if (p) {
+      if (p && !p.__swBound) {
+        p.__swBound = true;
         p.style.setProperty('width', '70%', 'important');
         p.style.setProperty('margin', '0 auto', 'important');
         p.addEventListener(
@@ -535,7 +537,8 @@ function createNativePopup() {
           true,
         );
       }
-      if (g) {
+      if (g && !g.__swBound) {
+        g.__swBound = true;
         g.style.setProperty('width', '70%', 'important');
         g.style.setProperty('margin', '0 auto', 'important');
         g.addEventListener(
@@ -551,13 +554,20 @@ function createNativePopup() {
           true,
         );
       }
+      return !!(p && g);
     };
-    bindOnce();
-    // small delay to win against late overrides
-    setTimeout(bindOnce, 0);
-    setTimeout(bindOnce, 50);
-    setTimeout(bindOnce, 200);
-  } catch (e) {}
+    const okNow = tryBind();
+    if (!okNow && container) {
+      const mo = new MutationObserver(() => {
+        if (tryBind()) {
+          mo.disconnect();
+        }
+      });
+      mo.observe(container, { childList: true, subtree: true });
+    }
+  } catch (e) {
+    console.error('[SW][BIND][ERR]', e);
+  }
 
   // Normalize starting position for dragging
   const wndRect = $('#sw-popup-window')[0].getBoundingClientRect();
