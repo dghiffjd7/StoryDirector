@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器5</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器6</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -514,56 +514,43 @@ function createNativePopup() {
   // Make main window draggable
   makeElementDraggable('#sw-popup-window', '.sw-window-header');
 
-  // Bind buttons robustly: observe popup subtree until buttons appear, then attach capture listeners
+  // Bind buttons using a single capturing listener on the popup container.
+  // This works even if the buttons are injected later or replaced.
   try {
     const container = document.getElementById('sw-popup-window');
-    const tryBind = () => {
-      const p = container && container.querySelector('#sw-preview-btn');
-      const g = container && container.querySelector('#sw-generate-btn');
-      console.log('[SW][BIND] found buttons', { p: !!p, g: !!g });
-      if (p && !p.__swBound) {
-        p.__swBound = true;
-        p.style.setProperty('width', '70%', 'important');
-        p.style.setProperty('margin', '0 auto', 'important');
-        p.addEventListener(
-          'click',
-          function (e) {
-            e.preventDefault();
+    if (container && !container.__swClickBound) {
+      container.__swClickBound = true;
+      container.addEventListener(
+        'click',
+        function (e) {
+          const targetBtn =
+            e.target && e.target.closest && e.target.closest('#sw-preview-btn, #sw-generate-btn, #generate-outline');
+          if (!targetBtn) return; // ignore other clicks
+          // Cosmetic width fix if needed
+          if (targetBtn.id === 'sw-preview-btn' || targetBtn.id === 'sw-generate-btn') {
+            targetBtn.style.setProperty('width', '70%', 'important');
+            targetBtn.style.setProperty('margin', '0 auto', 'important');
+          }
+          if (targetBtn.id === 'sw-preview-btn') {
             console.log('[SW][PREVIEW] button clicked');
+            e.preventDefault();
             if (typeof handleNativePreview === 'function') return handleNativePreview();
             if (window && typeof window.handleNativePreview === 'function') return window.handleNativePreview();
             console.error('[SW][PREVIEW] handleNativePreview not found');
-          },
-          true,
-        );
-      }
-      if (g && !g.__swBound) {
-        g.__swBound = true;
-        g.style.setProperty('width', '70%', 'important');
-        g.style.setProperty('margin', '0 auto', 'important');
-        g.addEventListener(
-          'click',
-          function (e) {
-            e.preventDefault();
+            return;
+          }
+          if (targetBtn.id === 'sw-generate-btn' || targetBtn.id === 'generate-outline') {
             console.log('[SW][GENERATE] button clicked');
+            e.preventDefault();
             if (typeof handleGenerate === 'function') return handleGenerate();
             if (window && typeof window.handleGenerate === 'function') return window.handleGenerate();
             console.error('[SW][GENERATE] handleGenerate not found');
             alert('生成失败: 处理函数未加载');
-          },
-          true,
-        );
-      }
-      return !!(p && g);
-    };
-    const okNow = tryBind();
-    if (!okNow && container) {
-      const mo = new MutationObserver(() => {
-        if (tryBind()) {
-          mo.disconnect();
-        }
-      });
-      mo.observe(container, { childList: true, subtree: true });
+            return;
+          }
+        },
+        true,
+      );
     }
   } catch (e) {
     console.error('[SW][BIND][ERR]', e);
@@ -583,13 +570,13 @@ function buildSimpleInterface(settings) {
       
       <div style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事主题：</label>
-        <textarea id="sw-theme" placeholder="描述您想要的故事主题..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #bbb; border-radius: 5px; resize: vertical; color:#111;"></textarea>
+        <textarea id="sw-theme" placeholder="描述您想要的故事主题..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #bbb; border-radius: 5px; resize: vertical; color:#111; pointer-events: auto;"></textarea>
       </div>
       
       <div style="display: flex; gap: 15px; margin-bottom: 15px;">
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">故事类型：</label>
-          <select id="sw-type" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;">
+          <select id="sw-type" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111; pointer-events: auto;">
             ${Object.entries(STORY_TYPES)
               .map(([k, v]) => `<option value="${k}" ${k === settings.storyType ? 'selected' : ''}>${v}</option>`)
               .join('')}
@@ -597,7 +584,7 @@ function buildSimpleInterface(settings) {
         </div>
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">叙述风格：</label>
-          <select id="sw-style" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;">
+          <select id="sw-style" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111; pointer-events: auto;">
             ${Object.entries(STORY_STYLES)
               .map(([k, v]) => `<option value="${k}" ${k === settings.storyStyle ? 'selected' : ''}>${v}</option>`)
               .join('')}
@@ -610,11 +597,11 @@ function buildSimpleInterface(settings) {
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">章节数量：</label>
           <input type="number" id="sw-chapter-count" value="${
             settings.chapterCount || 5
-          }" min="3" max="20" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;" />
+          }" min="3" max="20" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111; pointer-events: auto;" />
         </div>
         <div style="flex: 1;">
           <label style="display: block; margin-bottom: 5px; font-weight: 600;">详细程度：</label>
-          <select id="sw-detail" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111;">
+          <select id="sw-detail" style="width: 100%; padding: 10px; border: 1px solid #bbb; border-radius: 5px; color:#111; pointer-events: auto;">
             ${Object.entries(DETAIL_LEVELS)
               .map(([k, v]) => `<option value="${k}" ${k === settings.detailLevel ? 'selected' : ''}>${v}</option>`)
               .join('')}
@@ -624,7 +611,7 @@ function buildSimpleInterface(settings) {
       
       <div style="margin-bottom: 15px;">
         <label style="display: block; margin-bottom: 5px; font-weight: 600;">特殊要求：</label>
-        <textarea id="special-requirements" placeholder="任何特殊的剧情要求、角色设定或者风格偏好..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #bbb; border-radius: 5px; resize: vertical; color:#111;"></textarea>
+        <textarea id="special-requirements" placeholder="任何特殊的剧情要求、角色设定或者风格偏好..." style="width: 100%; height: 80px; padding: 10px; border: 1px solid #bbb; border-radius: 5px; resize: vertical; color:#111; pointer-events: auto;"></textarea>
       </div>
       
       <button id="sw-preview-btn" style="
