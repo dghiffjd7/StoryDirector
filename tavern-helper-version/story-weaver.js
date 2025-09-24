@@ -427,7 +427,7 @@ function createNativePopup() {
           cursor: move;
           user-select: none;
         ">
-          <span>📖 Story Weaver Enhanced - 故事大纲生成器1</span>
+          <span>📖 Story Weaver Enhanced - 故事大纲生成器2</span>
           <div style="display: flex; align-items: center; gap: 10px;">
             <button id="sw-settings-btn" style="
               background: rgba(255, 255, 255, 0.2);
@@ -710,6 +710,13 @@ function buildSimpleInterface(settings) {
             alert('预览失败: ' + err.message);
           }
       }
+
+// Ensure native preview handler is globally reachable for any inline/delegated calls
+try {
+  if (typeof window !== 'undefined') {
+    window.handleNativePreview = window.handleNativePreview || handleNativePreview;
+  }
+} catch (e) {}
       
       function copyNativeResult() {
         if (window.swNativeResult) {
@@ -1152,6 +1159,13 @@ function buildCompleteInterface(settings) {
         btnLoading.style.display = 'none';
       }
     }
+
+    // expose for popup button listeners
+    try {
+      if (typeof window !== 'undefined') {
+        window.handleGenerate = window.handleGenerate || handleGenerate;
+      }
+    } catch (e) {}
     
     function buildPrompt(settings) {
       // Build context data first
