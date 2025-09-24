@@ -514,35 +514,46 @@ function createNativePopup() {
   // Make main window draggable
   makeElementDraggable('#sw-popup-window', '.sw-window-header');
 
-  // Bind preview button via delegation to avoid lost handlers
+  // Bind buttons using capture phase and inline style overrides
   try {
-    $(document)
-      .off('click.swPreview')
-      .on('click.swPreview', '#sw-preview-btn', function (e) {
-        e.preventDefault();
-        if (typeof handleNativePreview === 'function') {
-          handleNativePreview();
-        } else if (window && typeof window.handleNativePreview === 'function') {
-          window.handleNativePreview();
-        } else {
-          console.error('[SW][PREVIEW] handleNativePreview not found');
-        }
-      });
-
-    // Bind generate button similarly (avoid inline onclick)
-    $(document)
-      .off('click.swGenerate')
-      .on('click.swGenerate', '#sw-generate-btn', function (e) {
-        e.preventDefault();
-        if (typeof handleGenerate === 'function') {
-          handleGenerate();
-        } else if (window && typeof window.handleGenerate === 'function') {
-          window.handleGenerate();
-        } else {
-          console.error('[SW][GENERATE] handleGenerate not found');
-          alert('生成失败: 处理函数未加载');
-        }
-      });
+    const bindOnce = () => {
+      const p = document.getElementById('sw-preview-btn');
+      const g = document.getElementById('sw-generate-btn');
+      if (p) {
+        p.style.setProperty('width', '70%', 'important');
+        p.style.setProperty('margin', '0 auto', 'important');
+        p.addEventListener(
+          'click',
+          function (e) {
+            e.preventDefault();
+            console.log('[SW][PREVIEW] button clicked');
+            if (typeof handleNativePreview === 'function') return handleNativePreview();
+            if (window && typeof window.handleNativePreview === 'function') return window.handleNativePreview();
+            console.error('[SW][PREVIEW] handleNativePreview not found');
+          },
+          true,
+        );
+      }
+      if (g) {
+        g.style.setProperty('width', '70%', 'important');
+        g.style.setProperty('margin', '0 auto', 'important');
+        g.addEventListener(
+          'click',
+          function (e) {
+            e.preventDefault();
+            console.log('[SW][GENERATE] button clicked');
+            if (typeof handleGenerate === 'function') return handleGenerate();
+            if (window && typeof window.handleGenerate === 'function') return window.handleGenerate();
+            console.error('[SW][GENERATE] handleGenerate not found');
+            alert('生成失败: 处理函数未加载');
+          },
+          true,
+        );
+      }
+    };
+    bindOnce();
+    // small delay to win against late overrides
+    setTimeout(bindOnce, 0);
   } catch (e) {}
 
   // Normalize starting position for dragging
@@ -604,7 +615,9 @@ function buildSimpleInterface(settings) {
       </div>
       
       <button id="sw-preview-btn" style="
-        width: 100%;
+        width: 70%;
+        display: block;
+        margin: 0 auto;
         padding: 6px;
         background: linear-gradient(90deg, #667eea, #764ba2);
         border: none;
@@ -617,7 +630,9 @@ function buildSimpleInterface(settings) {
         margin-bottom: 8px;
       ">预览完整提示词</button>
       <button id="sw-generate-btn" style="
-        width: 100%;
+        width: 70%;
+        display: block;
+        margin: 0 auto;
         padding: 6px;
         background: linear-gradient(90deg, #22c55e, #16a34a);
         border: none;
